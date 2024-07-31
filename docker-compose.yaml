@@ -3,10 +3,11 @@ version: '3.8'
 services:
   web:
     build: .
+    command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
     volumes:
       - .:/code
     ports:
-      - "8001:8000"
+      - "8000:8000"
     environment:
       - DEBUG=1
       - SECRET_KEY=django-insecure--bsp*si6*rh2z5+=(7t#y2e#$8&h=nbi@)vr)#^mufhl7jv-+=
