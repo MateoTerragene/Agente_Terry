@@ -1,4 +1,4 @@
-import openai
+from openai import OpenAI
 import json
 import os
 from django.http import JsonResponse
@@ -15,7 +15,7 @@ load_dotenv()  # Cargar las variables de entorno desde el archivo .env
 
 class ModuleManager(View):
     def __init__(self):
-        openai.api_key = os.getenv('OPENAI_API_KEY')
+        self.client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
         self.docs = "COA = certificado de calidad = certificado de analisis, IFU = Prospecto , PD = Descripcion de producto = Ficha tecnica, SDS = Hoja de seguridad, CC = Color chart, FDA = Certificado FDA = 510K "
         self.prompt = f"""Eres un asistente que clasifica consultas de usuarios e identifica tareas a realizar. Puede haber multiples tareas en una consulta. \
                 Tu respuesta debe ser un JSON que indique si has recibido una 'fileRequest' (solicitud de documentos), una 'technical_query' (consulta técnica), \
@@ -29,15 +29,14 @@ class ModuleManager(View):
         self.tasks = []
 
     def classify_query(self, query):
-        response = openai.ChatCompletion.create(
+        response = self.client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": self.prompt}, 
                 {"role": "user", "content": f"Clasifica la siguiente consulta y genera el JSON correspondiente: {query}"}
-            ],
-            max_tokens=150
+            ]
         )
-        classification = response.choices[0].message.content.strip()
+        classification = response.choices[0].message.content
         classification_json = json.loads(classification)
         self.tasks.extend(classification_json["tasks"])
         return classification_json

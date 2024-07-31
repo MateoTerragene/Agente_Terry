@@ -24,7 +24,7 @@
     <script>
         async function sendQuery() {
             const query = document.getElementById('query').value;
-            const response = await fetch(`/classify_query?query=${query}`);
+            const response = await fetch(`/module_manager/?query=${encodeURIComponent(query)}`);
             const data = await response.json();
             
             const messages = document.getElementById('messages');
