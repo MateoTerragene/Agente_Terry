@@ -10,6 +10,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.contrib.auth.models import User
 from .thread_manager import ThreadManager
+from File_Manager.services import FileManager 
 
 load_dotenv()  # Cargar las variables de entorno desde el archivo .env
 
@@ -27,7 +28,7 @@ class ModuleManager(View):
                     ]
                 }}"""
         self.tasks = []
-
+        self.file_manager = FileManager() 
     def classify_query(self, query):
         response = self.client.chat.completions.create(
             model="gpt-3.5-turbo",
@@ -50,6 +51,8 @@ class ModuleManager(View):
         if task == "fileRequest":
             print("Resolviendo solicitud de documentos...")
             # Lógica para resolver solicitud de documentos
+            response = self.file_manager.file_request() 
+            print(response) #Esto luego no va, se manda al LLM_Bottleneck.
         elif task == "technical_query":
             print("Resolviendo consulta técnica...")
             # Lógica para resolver consulta técnica
