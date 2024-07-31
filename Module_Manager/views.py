@@ -1,5 +1,3 @@
-# Module_Manager/views.py
-
 import openai
 import json
 import os
@@ -91,3 +89,6 @@ class QueryView(APIView):
         response = self.handle_query(thread, query)
         
         return Response({'response': response}, status=status.HTTP_200_OK)
+class ChatView(View):
+    def get(self, request):
+        return render(request, 'chat.html')

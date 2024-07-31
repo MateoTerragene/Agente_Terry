@@ -1,20 +1,16 @@
 from pathlib import Path
-
+import os
+from dotenv import load_dotenv
+load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
-
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure--bsp*si6*rh2z5+=(7t#y2e#$8&h=nbi@)vr)#^mufhl7jv-+="
+SECRET_KEY = os.getenv('SECRET_KEY', 'fallback_secret_key')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
 ALLOWED_HOSTS = []
-
 
 # Application definition
 
@@ -31,12 +27,6 @@ INSTALLED_APPS = [
     'PO_Manager',
     'Complaint_Manager',
     'LLM_Bottleneck',
-    "django.contrib.admin",
-    "django.contrib.auth",
-    "django.contrib.contenttypes",
-    "django.contrib.sessions",
-    "django.contrib.messages",
-    "django.contrib.staticfiles",
     'rest_framework',
 ]
 
@@ -55,7 +45,7 @@ ROOT_URLCONF = "Agente_Terry.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [os.path.join(BASE_DIR, 'Module_Manager', 'templates')],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [

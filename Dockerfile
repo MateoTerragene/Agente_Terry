@@ -1,14 +1,12 @@
-FROM python:3.10
+FROM python:3.11
 
-# Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# Set the working directory inside the container
 WORKDIR /code
 
-# Copy the requirements file and install dependencies
 COPY requirements.txt /code/
+RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
 # Copy the entire project
