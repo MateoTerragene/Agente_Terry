@@ -49,9 +49,9 @@ class ModuleManager(View):
 
     def process_tasks(self):
         while self.tasks:
-            task = self.tasks[0]  # Obtener la primera tarea sin eliminarla
+            task = self.tasks[0]
             if task.state in ['pending', 'in_progress', 'waiting_for_info']:
-                self.handle_task(task)# module_manager/views.py
+                self.handle_task(task)
 
 from django.http import JsonResponse
 from django.views import View
@@ -61,10 +61,10 @@ import os
 from openai import OpenAI
 from .Tasks import Task
 from File_Manager.services import FileManager
-from RAG_Manager.services import TechnicalQueryAssistant # Importar el manager específico
+from RAG_Manager.services import TechnicalQueryAssistant
 # Importar otros managers aquí cuando estén disponibles
 
-load_dotenv()  # Cargar las variables de entorno desde el archivo .env
+load_dotenv()
 
 class ModuleManager(View):
     def __init__(self):
@@ -106,42 +106,28 @@ class ModuleManager(View):
             if task.state in ['pending', 'in_progress', 'waiting_for_info']:
                 self.handle_task(task)
             if task.state == 'completed':
-                self.tasks.pop(0)  # Eliminar la tarea completada
+                self.tasks.pop(0)
 
     def handle_task(self, task):
         if task.task_type == "fileRequest":
             print("Resolviendo solicitud de documentos...")
             self.file_manager.resolve_task(task)
-            if task.state == 'completed':
-                print(task.response)  # Esto luego no va, se manda al LLM_Bottleneck.
+            # if task.state == 'completed':
+            #    print(task.response)  # Esto luego no va, se manda al LLM_Bottleneck.
+            task.update_state('completed')
         elif task.task_type == "technical_query":
             print("Resolviendo consulta técnica...")
             response = self.technical_query_assistant.handle_technical_query(self.query)
+            task.update_state('completed')
         elif task.task_type == "complaint":
             print("Resolviendo reclamo...")
+            task.update_state('completed')
             # Lógica para resolver reclamo
         elif task.task_type == "purchase_opportunity":
             print("Resolviendo oportunidad de compra...")
+            task.update_state('completed')
             # Lógica para resolver oportunidad de compra
         else:
             print(f"Tarea desconocida: {task.task_type}")
             if task.state == 'completed':
                 self.tasks.pop(0)  # Eliminar la tarea completada
-
-    def handle_task(self, task):
-        if task.task_type == "fileRequest":
-            print("Resolviendo solicitud de documentos...")
-            self.file_manager.resolve_task(task)
-            if task.state == 'completed':
-                print(task.response)  # Esto luego no va, se manda al LLM_Bottleneck.
-        elif task.task_type == "technical_query":
-            print("Resolviendo consulta técnica...")
-            response = self.technical_query_assistant.handle_technical_query(self.query)
-        elif task.task_type == "complaint":
-            print("Resolviendo reclamo...")
-            # Lógica para resolver reclamo
-        elif task.task_type == "purchase_opportunity":
-            print("Resolviendo oportunidad de compra...")
-            # Lógica para resolver oportunidad de compra
-        else:
-            print(f"Tarea desconocida: {task.task_type}")
