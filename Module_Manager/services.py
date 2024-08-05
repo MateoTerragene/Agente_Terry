@@ -7,7 +7,8 @@ import json
 import os
 from openai import OpenAI
 from .Tasks import Task
-from File_Manager.services import FileManager  # Importar el manager específico
+from File_Manager.services import FileManager
+from RAG_Manager.services import TechnicalQueryAssistant # Importar el manager específico
 # Importar otros managers aquí cuando estén disponibles
 
 load_dotenv()  # Cargar las variables de entorno desde el archivo .env
@@ -27,12 +28,13 @@ class ModuleManager(View):
                 }}"""
         self.tasks = []
         self.file_manager = FileManager()
+        self.technical_query_assistant = TechnicalQueryAssistant()
         # Inicializar otros managers aquí cuando estén disponibles
         self.current_task = None  # Contexto de la tarea actual
 
     def classify_query(self, query):
         response = self.client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": self.prompt}, 
                 {"role": "user", "content": f"Clasifica la siguiente consulta y genera el JSON correspondiente: {query}"}
@@ -61,7 +63,7 @@ class ModuleManager(View):
                 print(task.response)  # Esto luego no va, se manda al LLM_Bottleneck.
         elif task.task_type == "technical_query":
             print("Resolviendo consulta técnica...")
-            # Lógica para resolver consulta técnica
+            response = self.technical_query_assistant.handle_technical_query(self.query)
         elif task.task_type == "complaint":
             print("Resolviendo reclamo...")
             # Lógica para resolver reclamo
