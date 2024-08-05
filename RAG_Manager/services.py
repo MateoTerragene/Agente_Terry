@@ -12,13 +12,13 @@ class TechnicalQueryAssistant:
     def handle_technical_query(self, query):
         # Make the call to the chat completions endpoint with the assistant ID and ensure it uses the vector store
         response = self.client.chat.completions.create(
-            assistant_id=self.assistant_id,
+            model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "You are a technical assistant with access to a vector store for retrieving relevant information."},
                 {"role": "user", "content": query}
             ],
             tools=[
-                {"type": "retrieval"}  # Ensure the retrieval tool is specified
+                {"type": "file_search"}  # Ensure the retrieval tool is specified
             ]
         )
         return response.choices[0].message.content
