@@ -31,7 +31,7 @@ class ModuleManager(View):
         self.file_manager = FileManager() 
     def classify_query(self, query):
         response = self.client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": self.prompt}, 
                 {"role": "user", "content": f"Clasifica la siguiente consulta y genera el JSON correspondiente: {query}"}
