@@ -8,7 +8,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY', 'fallback_secret_key')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['*']
 
@@ -28,7 +28,9 @@ INSTALLED_APPS = [
     'Complaint_Manager',
     'LLM_Bottleneck',
     'rest_framework',
+   
 ]
+
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -45,7 +47,7 @@ ROOT_URLCONF = "Agente_Terry.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [os.path.join(BASE_DIR, 'Module_Manager', 'templates')],
+        "DIRS": [os.path.join(BASE_DIR, 'Module_Manager/templates')],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
