@@ -1,6 +1,6 @@
 # file_manager/services.py
 
-from .subtasks import FMSubTask
+from .SubTask import FMSubTask
 
 class FileManager:
     def resolve_task():

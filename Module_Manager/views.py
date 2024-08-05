@@ -18,11 +18,16 @@ class ClassifyQueryView(View):
         manager = ModuleManager()
         query = request.GET.get('query', '')
         if query:
-            response = manager.classify_query(query)
-            manager.process_tasks()
-            return JsonResponse(response)
+            try:
+                response = manager.classify_query(query)
+                manager.process_tasks()
+                if isinstance(response, dict):
+                    return JsonResponse(response)
+                else:
+                    return JsonResponse({'response': response})
+            except Exception as e:
+                return JsonResponse({'error': str(e)}, status=500)
         return JsonResponse({'error': 'No query provided'}, status=400)
-
 
 
 class ChatView(View):
