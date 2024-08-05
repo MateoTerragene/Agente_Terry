@@ -1,4 +1,8 @@
-class FileManager:
-    def file_request(self):
+# file_manager/services.py
 
-        return {"status": "success", "message": "Documentos enviados."}
+from .subtasks import FMSubTask
+
+class FileManager:
+    def resolve_task():
+        "Aca va la logica para crear las subtareas y resolverlas"
+        return(0)
