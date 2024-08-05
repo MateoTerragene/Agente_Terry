@@ -6,8 +6,8 @@ from dotenv import load_dotenv
 import json
 import os
 from openai import OpenAI
-from .tasks import Task
-from file_manager.services import FileManager  # Importar el manager específico
+from .Tasks import Task
+from File_Manager.services import FileManager  # Importar el manager específico
 # Importar otros managers aquí cuando estén disponibles
 
 load_dotenv()  # Cargar las variables de entorno desde el archivo .env
@@ -47,12 +47,13 @@ class ModuleManager(View):
 
     def process_tasks(self):
         while self.tasks:
-            task = self.tasks.pop(0)
-            if task.task_type == "fileRequest":
-                self.file_manager.create_and_resolve_task(task)
-            # Delegar a otros managers según el tipo de tarea aquí
+            task = self.tasks[0]  # Obtener la primera tarea sin eliminarla
+            if task.state in ['pending', 'in_progress', 'waiting_for_info']:
+                self.handle_task(task)
+            if task.state == 'completed':
+                self.tasks.pop(0)  # Eliminar la tarea completada
 
-    def resolve_task(self, task):
+    def handle_task(self, task):
         if task.task_type == "fileRequest":
             print("Resolviendo solicitud de documentos...")
             self.file_manager.resolve_task(task)
