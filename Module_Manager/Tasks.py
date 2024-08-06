@@ -32,10 +32,13 @@ class Task:
             else:
                 return None
         else:
-            responses = {}
-            for i, subtask in enumerate(self.subtasks):
-                responses[i] = subtask.get_response()
-            return responses
+            if len(self.subtasks)==0:
+                return self.response
+            else:
+                responses = {}
+                for i, subtask in enumerate(self.subtasks):
+                    responses[i] = subtask.get_response()
+                return responses
 
     def get_next_pending_subtask(self):
         for subtask in self.subtasks:

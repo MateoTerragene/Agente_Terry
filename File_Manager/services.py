@@ -2,19 +2,24 @@
 from openai import OpenAI
 from .SubTask import FMSubTask
 from django.http import JsonResponse
-
+from Module_Manager.Tasks import Task
+from File_Manager import SubTask
 import json
 import os
 
 
 class FileManager:
     def __init__(self):
-        self.prompt_extract_parameters = None
-        self.products = None
-        self.document_types = None
-        self.prompt_gather_parameters = None
-        self.historial = []
-
+        try:
+            self.prompt_extract_parameters = None
+            self.products = None
+            self.document_types = None
+            self.prompt_gather_parameters = None
+            self.historial = []
+            
+       
+        except Exception as e:
+            print( JsonResponse({'error': f"An error occurred while creating atributes: {str(e)}"}, status=500))
         response = self.load_data()
         if isinstance(response, JsonResponse):
             print(response.content.decode())  # Puedes manejar la respuesta de error según sea necesario
@@ -42,7 +47,7 @@ class FileManager:
 
     def get_file_parameters(self, query):
         self.agregar_mensaje("user", query)
-        self.agregar_mensaje("system", "Eres el asistente 1.")
+       
         response = OpenAI.chat.completions.create(
             model="gpt-4o-mini",
             messages=self.historial,
@@ -53,8 +58,13 @@ class FileManager:
         return respuesta
 
 
-    def resolve_task(self):
-        "Aca va la logica para crear las subtareas y resolverlas"
+    def resolve_task(self,task):
+       ST=SubTask('IFU')
+       ST.set_response("Aca va la logica para crear las subtareas y resolverlas")
+       task.add_subtask(ST)
+       task.update_state('completed') 
+
+       
         
 
 
@@ -71,7 +81,3 @@ class FileManager:
     #     for task_type in classification_json["tasks"]:
     #         task = Task(task_type)
     #         self.tasks.append(task)
-
-    def resolve_task():
-        "Aca va la logica para crear las subtareas y resolverlas"
-        return(0)

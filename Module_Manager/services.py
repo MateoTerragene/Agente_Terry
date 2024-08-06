@@ -6,33 +6,41 @@ from dotenv import load_dotenv
 import json
 import os
 from openai import OpenAI
-from .Tasks import Task
+from Module_Manager.Tasks import Task
 from File_Manager.services import FileManager
+from LLM_Bottleneck.services import LLM_Bottleneck
 from RAG_Manager.services import TechnicalQueryAssistant
 # Importar otros managers aquí cuando estén disponibles
 
 load_dotenv()  # Cargar las variables de entorno desde el archivo .env
 
-class ModuleManager(View):
+class ModuleManager:
     def __init__(self):
-        self.client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-        self.docs = "COA = certificado de calidad = certificado de analisis, IFU = Prospecto , PD = Descripcion de producto = Ficha tecnica, SDS = Hoja de seguridad, CC = Color chart, FDA = Certificado FDA = 510K "
-        self.prompt = f"""Eres un asistente que clasifica consultas de usuarios e identifica tareas a realizar. Puede haber multiples tareas en una consulta. \
-                Tu respuesta debe ser un JSON que indique si has recibido una 'fileRequest' (solicitud de documentos), una 'technical_query' (consulta técnica), \
-                un 'complaint' (reclamo) o un 'purchase_opportunity' (consulta de compra).  Los documentos que te puede pedir el usuario son: {self.docs}.\
-                Debes responder únicamente en el siguiente formato JSON: \
-                {{
-                    "tasks": [
-                        "technical_query" | "fileRequest" | "complaint" | "purchase_opportunity"
-                    ]
-                }}"""
-        self.tasks = []
-        self.file_manager = FileManager()
-        self.file_manager.load_data
-        self.technical_query_assistant = TechnicalQueryAssistant()
-        # Inicializar otros managers aquí cuando estén disponibles
-        self.current_task = None  # Contexto de la tarea actual
-
+        try:
+            self.client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+            self.docs = "COA = certificado de calidad = certificado de analisis, IFU = Prospecto , PD = Descripcion de producto = Ficha tecnica, SDS = Hoja de seguridad, CC = Color chart, FDA = Certificado FDA = 510K "
+            self.prompt = f"""Eres un asistente que clasifica consultas de usuarios e identifica tareas a realizar. Puede haber multiples tareas en una consulta. \
+                    Tu respuesta debe ser un JSON que indique si has recibido una 'fileRequest' (solicitud de documentos), una 'technical_query' (consulta técnica), \
+                    un 'complaint' (reclamo) o un 'purchase_opportunity' (consulta de compra).  Los documentos que te puede pedir el usuario son: {self.docs}.\
+                    Debes responder únicamente en el siguiente formato JSON: \
+                    {{
+                        "tasks": [
+                            "technical_query" | "fileRequest" | "complaint" | "purchase_opportunity"
+                        ]
+                    }}"""
+            self.tasks = []
+           
+            self.file_manager = FileManager()
+          
+            self.LLM_BN = LLM_Bottleneck()
+         
+            self.technical_query_assistant = TechnicalQueryAssistant()
+           
+            # Inicializar otros managers aquí cuando estén disponibles
+            self.current_task = None  # Contexto de la tarea actual
+        except Exception as e:
+            raise RuntimeError(f"An error occurred while loading data: {str(e)}")
+        
     def classify_query(self, query):
         self.query = query
         response = self.client.chat.completions.create(
@@ -48,7 +56,10 @@ class ModuleManager(View):
             task = Task(task_type)
             self.tasks.append(task)
         self.process_tasks()
-        return self.respuesta
+        resp= self.LLM_BN.generate_tasks_response(query)
+        
+        return resp
+     
 
     def process_tasks(self):
         while self.tasks:
@@ -61,15 +72,19 @@ class ModuleManager(View):
     def handle_task(self, task):
         if task.task_type == "fileRequest":
             print("Resolviendo solicitud de documentos...")
-            # self.file_manager.resolve_task(task)
+            self.file_manager.resolve_task(task)
+            self.LLM_BN.receive_task(task)
             # if task.state == 'completed':
             #    print(task.response)  # Esto luego no va, se manda al LLM_Bottleneck.
-            task.update_state('completed')
+            # task.update_state('completed')
+
         elif task.task_type == "technical_query":
             print("Resolviendo consulta técnica...")
-            response = self.technical_query_assistant.handle_technical_query(self.query)
-            self.respuesta = response
-            task.update_state('completed')
+            self.technical_query_assistant.handle_technical_query(self.query,task)
+           
+            self.LLM_BN.receive_task(task)
+           
+            
             
         elif task.task_type == "complaint":
             print("Resolviendo reclamo...")
@@ -83,3 +98,4 @@ class ModuleManager(View):
             print(f"Tarea desconocida: {task.task_type}")
             if task.state == 'completed':
                 self.tasks.pop(0)  # Eliminar la tarea completada
+        

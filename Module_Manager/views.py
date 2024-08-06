@@ -11,24 +11,26 @@ from rest_framework import status
 from django.contrib.auth.models import User
 from .thread_manager import ThreadManager
 from File_Manager.services import FileManager 
-from .services import ModuleManager
-
+from Module_Manager.services import ModuleManager
+from LLM_Bottleneck.services import LLM_Bottleneck
+from RAG_Manager.services import TechnicalQueryAssistant
 class ClassifyQueryView(View):
     def get(self, request):
-        manager = ModuleManager()
-        query = request.GET.get('query', '')
-        print(query)
-        if query:
-            try:
-                response = manager.classify_query(query)
-                manager.process_tasks()
-                if isinstance(response, dict):
-                    return JsonResponse(response)
-                else:
+        try:
+            manager = ModuleManager()
+            query = request.GET.get('query', '')
+            print(query)
+            if query:
+                try:
+                    response = manager.classify_query(query)
                     return JsonResponse({'response': response})
-            except Exception as e:
-                return JsonResponse({'error': str(e)}, status=501)
-        return JsonResponse({'error': 'No query provided'}, status=400)
+                except Exception as e:
+                    print("error: ", str(e))
+                    return JsonResponse({'error': str(e)}, status=501)
+            return JsonResponse({'error': 'No query provided'}, status=400)
+        except Exception as e:
+            print("Initialization error: ", str(e))
+            return JsonResponse({'error': str(e)}, status=500)
 
 
 class ChatView(View):
