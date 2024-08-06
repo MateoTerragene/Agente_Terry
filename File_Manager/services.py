@@ -17,19 +17,26 @@ class FileManager:
 
         response = self.load_data()
         if isinstance(response, JsonResponse):
-            print(response)  # Maneja la respuesta de error según sea necesario
+            print(response.content.decode())  # Puedes manejar la respuesta de error según sea necesario
 
     def load_data(self):
         try:
-            with open('data.json') as f:
+            file_path = os.path.join(os.path.dirname(__file__), 'data.json')
+            with open(file_path) as f:
                 data = json.load(f)
-                self.prompt_extract_parameters = data["prompt_extract_parameters"]
-                self.products = data["products"]
-                self.document_types = data["document_types"]
-                self.prompt_gather_parameters = data["prompt_gather_parameters"]
+                self.prompt_extract_parameters = data.get("prompt_extract_parameters")
+                self.products = data.get("products")
+                self.document_types = data.get("document_types")
+                self.prompt_gather_parameters = data.get("prompt_gather_parameters")
             self.historial = [{"role": "system", "content": "Eres un asistente que reune parámetros."}]
+            return None
+        except FileNotFoundError:
+            return JsonResponse({'error': "The file 'data.json' was not found."}, status=404)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': "The file 'data.json' contains invalid JSON."}, status=400)
         except Exception as e:
-            return JsonResponse({'error': str(e)}, status=501)
+            return JsonResponse({'error': f"An error occurred while loading data: {str(e)}"}, status=500)
+    
     def agregar_mensaje(self, rol, contenido):
         self.historial.append({"role": rol, "content": contenido})
 

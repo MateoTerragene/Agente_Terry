@@ -28,6 +28,7 @@ class ModuleManager(View):
                 }}"""
         self.tasks = []
         self.file_manager = FileManager()
+        self.file_manager.load_data
         self.technical_query_assistant = TechnicalQueryAssistant()
         # Inicializar otros managers aquí cuando estén disponibles
         self.current_task = None  # Contexto de la tarea actual
