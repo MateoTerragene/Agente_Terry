@@ -73,16 +73,24 @@ class ModuleManager:
         if task.task_type == "fileRequest":
             print("Resolviendo solicitud de documentos...")
             self.file_manager.resolve_task(task)
+            print(task.get_response())
+            print("llego hasta aca?")
+
             self.LLM_BN.receive_task(task)
+            print(task.get_response())
+            print(type(task.get_response() ))
             # if task.state == 'completed':
             #    print(task.response)  # Esto luego no va, se manda al LLM_Bottleneck.
             # task.update_state('completed')
 
         elif task.task_type == "technical_query":
             print("Resolviendo consulta técnica...")
+
             self.technical_query_assistant.handle_technical_query(self.query,task)
-           
+            
             self.LLM_BN.receive_task(task)
+            
+
            
             
             

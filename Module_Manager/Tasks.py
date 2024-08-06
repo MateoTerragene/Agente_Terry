@@ -26,19 +26,19 @@ class Task:
             self.response = response
 
     def get_response(self, indice=None):
-        if indice is not None:
-            if indice < len(self.subtasks):
-                return self.subtasks[indice].get_response()
-            else:
-                return None
-        else:
-            if len(self.subtasks)==0:
+        if len(self.subtasks)==0:
                 return self.response
+        else:
+            if indice is not None:
+                if indice < len(self.subtasks):
+                    return self.subtasks[indice].get_response()
             else:
-                responses = {}
+                responses = ""
                 for i, subtask in enumerate(self.subtasks):
-                    responses[i] = subtask.get_response()
-                return responses
+                    subtask_response = subtask.get_response()
+                    if subtask_response:  # Ensure the subtask has a response
+                        responses += f"{subtask_response} "  # Concatenate responses with a space
+                return responses.strip()  # Remove any trailing spaces
 
     def get_next_pending_subtask(self):
         for subtask in self.subtasks:

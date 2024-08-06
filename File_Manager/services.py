@@ -3,7 +3,7 @@ from openai import OpenAI
 from .SubTask import FMSubTask
 from django.http import JsonResponse
 from Module_Manager.Tasks import Task
-from File_Manager import SubTask
+from File_Manager.SubTask import FMSubTask
 import json
 import os
 
@@ -59,8 +59,8 @@ class FileManager:
 
 
     def resolve_task(self,task):
-       ST=SubTask('IFU')
-       ST.set_response("Aca va la logica para crear las subtareas y resolverlas")
+       ST=FMSubTask('IFU')
+       ST.set_response("Aca tenes el IFU: https://terragene.com/wp-content/uploads/IFU/biologico/BT10/IU-BT10%20Rev.16.pdf")
        task.add_subtask(ST)
        task.update_state('completed') 
 
