@@ -60,7 +60,7 @@ class ModuleManager(View):
     def handle_task(self, task):
         if task.task_type == "fileRequest":
             print("Resolviendo solicitud de documentos...")
-            self.file_manager.resolve_task(task)
+            # self.file_manager.resolve_task(task)
             # if task.state == 'completed':
             #    print(task.response)  # Esto luego no va, se manda al LLM_Bottleneck.
             task.update_state('completed')
