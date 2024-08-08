@@ -53,6 +53,7 @@ class ModuleManager:
         classification = response.choices[0].message.content
         classification_json = json.loads(classification)
         for task_type in classification_json["tasks"]:
+            print(task_type)
             task = Task(task_type)
             self.tasks.append(task)
         self.process_tasks()
@@ -72,11 +73,11 @@ class ModuleManager:
     def handle_task(self, task):
         if task.task_type == "fileRequest":
             print("Resolviendo solicitud de documentos...")
-            self.file_manager.resolve_task(task)
+            self.file_manager.resolve_task(task,self.query)
             print(task.get_response())
             print("llego hasta aca?")
 
-            self.LLM_BN.receive_task(task)
+            self.LLM_BN.receive_task(task,)
             print(task.get_response())
             print(type(task.get_response() ))
             # if task.state == 'completed':

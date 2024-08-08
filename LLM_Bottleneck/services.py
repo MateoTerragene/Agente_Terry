@@ -28,7 +28,7 @@ class LLM_Bottleneck:
 
     def generate_response(self, user_prompt):             # Esta funcion se puede llamar dentro de una funcion que saque una respuesta por el chat
         response = self.client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": self.prompt},
                 {"role": "user", "content": user_prompt}
