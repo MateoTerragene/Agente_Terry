@@ -10,6 +10,7 @@ from Module_Manager.Tasks import Task
 from File_Manager.services import FileManager
 from LLM_Bottleneck.services import LLM_Bottleneck
 from RAG_Manager.services import TechnicalQueryAssistant
+from Complaint_Manager.services import ComplaintManager
 # Importar otros managers aquí cuando estén disponibles
 
 load_dotenv()  # Cargar las variables de entorno desde el archivo .env
@@ -31,7 +32,7 @@ class ModuleManager:
             self.tasks = []
            
             self.file_manager = FileManager()
-          
+            self.complaint_manager=ComplaintManager()
             self.LLM_BN = LLM_Bottleneck()
          
             self.technical_query_assistant = TechnicalQueryAssistant()
@@ -89,13 +90,12 @@ class ModuleManager:
             self.technical_query_assistant.handle_technical_query(self.query,task)
             
             self.LLM_BN.receive_task(task)
-            
-
-           
-            
+    
             
         elif task.task_type == "complaint":
             print("Resolviendo reclamo...")
+            self.complaint_manager.handle_complaint(self.query,task)
+            self.LLM_BN.receive_task(task)
             task.update_state('completed')
             # Lógica para resolver reclamo
         elif task.task_type == "purchase_opportunity":
