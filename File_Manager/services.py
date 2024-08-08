@@ -98,8 +98,7 @@ class FileManager:
     def get_file(self):
         document_type = self.state.get("documento")
         product = self.state.get("producto")
-        if self.state.get("lote") is not None:
-            lote = self.state.get("lote")
+        lote = self.state.get("lote")
         print(f"document_type: {document_type}, product: {product}")
 
         best_match_product = self.best_match(product, self.products_string)
