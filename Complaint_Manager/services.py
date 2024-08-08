@@ -1,7 +1,7 @@
 from dotenv import load_dotenv
 from openai import OpenAI
 load_dotenv()  # Cargar las variables de entorno desde el archivo .env
-
+import os
 class ComplaintManager:
     def __init__(self):
         try:

@@ -10,7 +10,7 @@ class LLM_Bottleneck:
             self.prompt = (
                 "You are an assistant that helps to organize and summarize responses from various tasks. "
                 "Your job is to take the responses from different tasks, provided by the user, and generate "
-                "a coherent and well-formatted summary. Additionally, you can rephrase sentences to make them "
+                "a coherent and well-formatted summary. Do not send the user Query, send only the answer (do not specify that it is the answer). Additionally, you can rephrase sentences to make them "
                 "clearer and more elegant."
             )
             self.tasks = []
@@ -41,6 +41,7 @@ class LLM_Bottleneck:
         user_prompt = self.generate_prompt_tasks(query)
         response = self.generate_response(user_prompt)
         # print(response) # este print es solo para probar
+        print(response)
         return response
 
     def receive_task(self, task):        # esta funcion deberia llamarse al final de cada "if  y elif" de Module_Manager/services handle_task 

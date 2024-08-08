@@ -29,7 +29,7 @@
             
             const messages = document.getElementById('messages');
             messages.innerHTML += `<div class="message user">${query}</div>`;
-            messages.innerHTML += `<div class="message ai">${JSON.stringify(data)}</div>`;
+            messages.innerHTML += `<div class="message ai">${data.response}</div>`;
             document.getElementById('query').value = '';
         }
     </script>
