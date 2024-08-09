@@ -1,7 +1,8 @@
 # module_manager/tasks.py
+import copy
 class Task:
-    def __init__(self, task_type):
-        self.task_type = task_type
+    def __init__(self):
+        self.task_type = None
         self.state = 'pending'  # or 'in_progress', 'waiting_for_info', 'completed'
         self.subtasks = []
         self.context = {}
@@ -13,9 +14,13 @@ class Task:
     def update_state(self, state):
         self.state = state
 
+    def get_state(self):
+        return(self.state)
+
     def update_context(self, context):
         self.context.update(context)
-
+    def set_type(self, type):
+        self.task_type=type
     def set_response(self, response, indice=None):
         if indice is not None:
             if indice < len(self.subtasks):
@@ -45,7 +50,8 @@ class Task:
             if subtask.state == 'pending':
                 return subtask
         return None
-
+    def clone(self):
+        return copy.deepcopy(self)
 class SubTask:
     def __init__(self, subtask_type):
         self.subtask_type = subtask_type

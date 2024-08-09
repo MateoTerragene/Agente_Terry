@@ -11,6 +11,7 @@ class TechnicalQueryAssistant:
         self.assistant_id = os.getenv('ASSISTANT_ID')
 
     def handle_technical_query(self, query,task):
+        task.update_state('in_progress')
         # Make the call to the chat completions endpoint with the assistant ID and ensure it uses the vector store
         chat = self.client.beta.threads.create(
             messages=[
@@ -49,6 +50,7 @@ class TechnicalQueryAssistant:
                     text_block = content_blocks[0]
                     if hasattr(text_block, 'text') and hasattr(text_block.text, 'value'):
                         text_value = text_block.text.value
+                        print(text_value)
                         task.set_response(text_value)
                         task.update_state('completed')
                         

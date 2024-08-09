@@ -41,7 +41,7 @@ class LLM_Bottleneck:
         user_prompt = self.generate_prompt_tasks(query)
         response = self.generate_response(user_prompt)
         # print(response) # este print es solo para probar
-        print(response)
+        # print(response)
         return response
 
     def receive_task(self, task):        # esta funcion deberia llamarse al final de cada "if  y elif" de Module_Manager/services handle_task 

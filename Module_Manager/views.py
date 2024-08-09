@@ -23,6 +23,7 @@ class ClassifyQueryView(View):
             if query:
                 try:
                     response = manager.classify_query(query)
+                    print("response final: " + response)
                     return JsonResponse({'response': response})
                 except Exception as e:
                     print("error: ", str(e))

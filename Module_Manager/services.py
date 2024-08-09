@@ -1,4 +1,5 @@
 # module_manager/views.py
+import copy
 
 from django.http import JsonResponse
 from django.views import View
@@ -18,6 +19,7 @@ load_dotenv()  # Cargar las variables de entorno desde el archivo .env
 class ModuleManager:
     def __init__(self):
         try:
+            print("ADENTRO DEL CONSTRUCTOR")
             self.client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
             self.docs = "COA = certificado de calidad = certificado de analisis, IFU = Prospecto , PD = Descripcion de producto = Ficha tecnica, SDS = Hoja de seguridad, CC = Color chart, FDA = Certificado FDA = 510K "
             self.prompt = f"""Eres un asistente que clasifica consultas de usuarios e identifica tareas a realizar. Puede haber multiples tareas en una consulta. \
@@ -30,33 +32,39 @@ class ModuleManager:
                         ]
                     }}"""
             self.tasks = []
-           
+            # self.task = Task()
             self.file_manager = FileManager()
             self.complaint_manager=ComplaintManager()
-            self.LLM_BN = LLM_Bottleneck()
+            
          
             self.technical_query_assistant = TechnicalQueryAssistant()
-           
+            self.LLM_BN = LLM_Bottleneck()
             # Inicializar otros managers aquí cuando estén disponibles
-            self.current_task = None  # Contexto de la tarea actual
+            # self.current_task = None  # Contexto de la tarea actual
         except Exception as e:
             raise RuntimeError(f"An error occurred while loading data: {str(e)}")
         
     def classify_query(self, query):
-        self.query = query
-        response = self.client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": self.prompt}, 
-                {"role": "user", "content": f"Clasifica la siguiente consulta y genera el JSON correspondiente: {query}"}
-            ]
-        )
-        classification = response.choices[0].message.content
-        classification_json = json.loads(classification)
-        for task_type in classification_json["tasks"]:
-            print(task_type)
-            task = Task(task_type)
-            self.tasks.append(task)
+        
+        if not self.tasks or self.tasks[0].get_state() == 'pending':
+            print("entro a clasificar")
+            self.query = query
+            response = self.client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": self.prompt}, 
+                    {"role": "user", "content": f"Clasifica la siguiente consulta y genera el JSON correspondiente: {query}"}
+                ]
+            )
+            classification = response.choices[0].message.content
+            classification_json = json.loads(classification)
+            for task_type in classification_json["tasks"]:
+                task = Task()  # Crear una nueva instancia de Task (o la clase que estés utilizando)
+                task.set_type(task_type)
+                print(task.task_type)
+                self.tasks.append(task)
+            # self.task = copy.deepcopy(self.tasks[0])
+            
         self.process_tasks()
         resp= self.LLM_BN.generate_tasks_response(query)
         
@@ -64,44 +72,44 @@ class ModuleManager:
      
 
     def process_tasks(self):
-        while self.tasks:
-            task = self.tasks[0]  # Obtener la primera tarea sin eliminarla
-            if task.state in ['pending', 'in_progress', 'waiting_for_info']:
-                self.handle_task(task)
-            if task.state == 'completed':
-                self.tasks.pop(0)
+       
+        for i in range(len(self.tasks)):
+            task = self.tasks[0]  # Siempre obtenemos la primera tarea
 
-    def handle_task(self, task):
+            self.handle_task(task)
+
+            if task.get_state() == 'completed':
+                self.tasks.pop(0)  # Eliminar la tarea completada de la lista
+
+         
+    def handle_task(self,task):
         if task.task_type == "fileRequest":
             print("Resolviendo solicitud de documentos...")
             self.file_manager.resolve_task(task,self.query)
-            print(task.get_response())
-            print("llego hasta aca?")
-
-            self.LLM_BN.receive_task(task,)
-            print(task.get_response())
-            print(type(task.get_response() ))
-            # if task.state == 'completed':
-            #    print(task.response)  # Esto luego no va, se manda al LLM_Bottleneck.
-            # task.update_state('completed')
+           
+            self.LLM_BN.receive_task(task.clone())
+ 
 
         elif task.task_type == "technical_query":
             print("Resolviendo consulta técnica...")
 
             self.technical_query_assistant.handle_technical_query(self.query,task)
-            
-            self.LLM_BN.receive_task(task)
+           
+            self.LLM_BN.receive_task(task.clone())
     
             
         elif task.task_type == "complaint":
             print("Resolviendo reclamo...")
             self.complaint_manager.handle_complaint(self.query,task)
-            self.LLM_BN.receive_task(task)
-            task.update_state('completed')
+           
+            self.LLM_BN.receive_task(task.clone())
+            # task.update_state('completed')
             # Lógica para resolver reclamo
+
+
         elif task.task_type == "purchase_opportunity":
             print("Resolviendo oportunidad de compra...")
-            task.update_state('completed')
+            # self.task.update_state('completed')
             # Lógica para resolver oportunidad de compra
         else:
             print(f"Tarea desconocida: {task.task_type}")

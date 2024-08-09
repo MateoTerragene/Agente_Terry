@@ -156,6 +156,7 @@ class FileManager:
 
 
     def resolve_task(self,task,entry):
+        task.update_state('in_progress')
         self.load_data()
         ST=FMSubTask('IFU')
         parameters = self.extract_variables(entry)
@@ -166,7 +167,9 @@ class FileManager:
             Bandera=1
         else: 
             additional_context = "bt220.png"
-       
-        ST.set_response(additional_context)
+        # print(additional_context)
         task.add_subtask(ST)
+        ST.set_response(additional_context)
+        task.set_response(additional_context)
         task.update_state('completed') 
+        ST.update_state('completed') 
