@@ -39,38 +39,38 @@ class ThreadManager:
             raise
 
 ###########################################################3333
-    def get_or_create_active_thread(self, user):
-        try:
-            # Forzar la creación de un nuevo thread para pruebas
-            thread, module_manager = self.create_thread(user)
-            return thread, module_manager
-        except Exception as e:
-            logger.error(f"Error al obtener o crear thread para usuario {user.username}: {str(e)}")
-            raise
-
-
-#########################################################33
     # def get_or_create_active_thread(self, user):
     #     try:
-    #         # Intentar obtener el thread más reciente para el usuario
-    #         thread = Thread.objects.filter(user=user).latest('created_at')
-    #         # Verificar si el thread es reciente o necesita uno nuevo
-    #         if thread.last_activity < timezone.now() - timedelta(minutes=10):
-    #             logger.info(f"Thread antiguo encontrado para el usuario {user.username}. Creando nuevo thread.")
-    #             thread, module_manager = self.create_thread(user)
-    #         else:
-    #             # Reutilizar el thread existente
-    #             logger.info(f"Thread reciente encontrado para el usuario {user.username}. Reutilizando thread.")
-    #             thread.update_last_activity()
-    #             module_manager = ModuleManager()
-    #     except Thread.DoesNotExist:
-    #         logger.info(f"No se encontró ningún thread para el usuario {user.username}. Creando nuevo thread.")
+    #         # Forzar la creación de un nuevo thread para pruebas
     #         thread, module_manager = self.create_thread(user)
+    #         return thread, module_manager
     #     except Exception as e:
     #         logger.error(f"Error al obtener o crear thread para usuario {user.username}: {str(e)}")
     #         raise
 
-    #     return thread, module_manager
+
+#########################################################33
+    def get_or_create_active_thread(self, user):
+        try:
+            # Intentar obtener el thread más reciente para el usuario
+            thread = Thread.objects.filter(user=user).latest('created_at')
+            # Verificar si el thread es reciente o necesita uno nuevo
+            if thread.last_activity < timezone.now() - timedelta(minutes=10):
+                logger.info(f"Thread antiguo encontrado para el usuario {user.username}. Creando nuevo thread.")
+                thread, module_manager = self.create_thread(user)
+            else:
+                # Reutilizar el thread existente
+                logger.info(f"Thread reciente encontrado para el usuario {user.username}. Reutilizando thread.")
+                thread.update_last_activity()
+                module_manager = ModuleManager()
+        except Thread.DoesNotExist:
+            logger.info(f"No se encontró ningún thread para el usuario {user.username}. Creando nuevo thread.")
+            thread, module_manager = self.create_thread(user)
+        except Exception as e:
+            logger.error(f"Error al obtener o crear thread para usuario {user.username}: {str(e)}")
+            raise
+
+        return thread, module_manager
 
     def delete_thread(self, user):
         try:
