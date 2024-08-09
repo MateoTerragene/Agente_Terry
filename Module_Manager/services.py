@@ -44,7 +44,7 @@ class ModuleManager:
         except Exception as e:
             raise RuntimeError(f"An error occurred while loading data: {str(e)}")
         
-    def classify_query(self, query):
+    def classify_query(self, thread, query):
         
         if not self.tasks or self.tasks[0].get_state() == 'pending':
             print("entro a clasificar")

@@ -8,29 +8,81 @@
         .message { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 5px; }
         .message.user { background-color: #f0f0f0; }
         .message.ai { background-color: #e0ffe0; }
-        .input-container { display: flex; }
+        .input-container { display: flex; margin-top: 20px; }
         .input-container input { flex: 1; padding: 10px; }
         .input-container button { padding: 10px; }
+        .loading { font-style: italic; color: #999; }
     </style>
 </head>
 <body>
     <div class="chat-container">
         <div id="messages"></div>
         <div class="input-container">
-            <input type="text" id="query" placeholder="Escribe tu consulta...">
-            <button onclick="sendQuery()">Enviar</button>
+            <input type="text" id="query" placeholder="Escribe tu consulta..." onkeypress="handleKeyPress(event)">
+            <button id="sendButton" onclick="sendQuery()">Enviar</button>
         </div>
     </div>
     <script>
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendQuery();
+            }
+        }
+
         async function sendQuery() {
-            const query = document.getElementById('query').value;
-            const response = await fetch(`/module_manager/?query=${encodeURIComponent(query)}`);
-            const data = await response.json();
-            
+            const query = document.getElementById('query').value.trim();
+            if (query === '') return; // No enviar consultas vacías
+
+            const sendButton = document.getElementById('sendButton');
+            sendButton.disabled = true; // Deshabilitar botón mientras se procesa
+
             const messages = document.getElementById('messages');
             messages.innerHTML += `<div class="message user">${query}</div>`;
-            messages.innerHTML += `<div class="message ai">${data.response}</div>`;
-            document.getElementById('query').value = '';
+            messages.innerHTML += `<div class="message ai loading">Procesando...</div>`;
+            document.getElementById('query').value = ''; // Limpiar input
+
+            try {
+                const response = await fetch(`/module_manager/`, {  // Asegúrate de que esta URL es correcta
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')  // Para manejar el CSRF token si es necesario
+                    },
+                    body: JSON.stringify({ query })  // Asegúrate de que estás enviando la consulta en el cuerpo de la solicitud
+                });
+
+                const data = await response.json();
+                messages.querySelector('.loading').remove(); // Eliminar indicador de carga
+
+                if (response.ok) {
+                    messages.innerHTML += `<div class="message ai">${data.response}</div>`;
+                } else {
+                    messages.innerHTML += `<div class="message ai">Error: ${data.error}</div>`;
+                }
+            } catch (error) {
+                console.error("Error: ", error);
+                messages.querySelector('.loading').remove(); // Eliminar indicador de carga
+                messages.innerHTML += `<div class="message ai">Error al procesar la consulta.</div>`;
+            } finally {
+                sendButton.disabled = false; // Rehabilitar botón
+            }
+        }
+
+
+        // Función para obtener el CSRF token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
         }
     </script>
 </body>
