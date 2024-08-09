@@ -10,28 +10,26 @@ class TechnicalQueryAssistant:
         self.client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
         self.assistant_id = os.getenv('ASSISTANT_ID')
 
-    def handle_technical_query(self, query,task):
+    def handle_technical_query(self, query,task,thread):
         task.update_state('in_progress')
         # Make the call to the chat completions endpoint with the assistant ID and ensure it uses the vector store
-        chat = self.client.beta.threads.create(
-            messages=[
-                {
-                    "role":"user",
-                    "content":f"{query}"
-                }
-            ]
+        chat = self.client.beta.threads.messages.create(
+            thread_id=thread.thread_id,
+            role="user",
+            content=f"{query}"
+           
         )
 
 
 
         run = self.client.beta.threads.runs.create(
-            thread_id=chat.id,
+            thread_id=thread.thread_id,
             assistant_id=self.assistant_id,
             tool_choice="auto")
         print(f"Run Created: {run.id}")
 
         while run.status != "completed":
-            run = self.client.beta.threads.runs.retrieve(thread_id=chat.id,run_id=run.id)
+            run = self.client.beta.threads.runs.retrieve(thread_id=thread.thread_id,run_id=run.id)
             print(f"Run Status: {run.status}")
             if run.status == "failed":
                 break
@@ -40,7 +38,7 @@ class TechnicalQueryAssistant:
         if run.status != "failed":
             print("Run Completed!")
 
-            messages_response = self.client.beta.threads.messages.list(thread_id=chat.id)
+            messages_response = self.client.beta.threads.messages.list(thread_id=thread.thread_id)
             messages = messages_response.data
             latest_message = messages[0]
 ####################lo agregue para sacar el resultado en un str

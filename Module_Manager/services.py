@@ -1,5 +1,6 @@
 # module_manager/views.py
 import copy
+import logging
 
 from django.http import JsonResponse
 from django.views import View
@@ -13,7 +14,7 @@ from LLM_Bottleneck.services import LLM_Bottleneck
 from RAG_Manager.services import TechnicalQueryAssistant
 from Complaint_Manager.services import ComplaintManager
 # Importar otros managers aquí cuando estén disponibles
-
+logger = logging.getLogger(__name__)
 load_dotenv()  # Cargar las variables de entorno desde el archivo .env
 
 class ModuleManager:
@@ -45,7 +46,9 @@ class ModuleManager:
             raise RuntimeError(f"An error occurred while loading data: {str(e)}")
         
     def classify_query(self, thread, query):
-        
+        thread_id = thread.thread_id
+        print(f"ClassQuer Usando el thread ID: {thread_id} para clasificar la consulta.")
+        logger.info(f"Usando el thread ID: {thread_id} para clasificar la consulta.")
         if not self.tasks or self.tasks[0].get_state() == 'pending':
             print("entro a clasificar")
             self.query = query
@@ -55,6 +58,7 @@ class ModuleManager:
                     {"role": "system", "content": self.prompt}, 
                     {"role": "user", "content": f"Clasifica la siguiente consulta y genera el JSON correspondiente: {query}"}
                 ]
+                # thread_id=thread_id  # Asegúrate de que el thread_id es el correcto
             )
             classification = response.choices[0].message.content
             classification_json = json.loads(classification)
@@ -65,24 +69,24 @@ class ModuleManager:
                 self.tasks.append(task)
             # self.task = copy.deepcopy(self.tasks[0])
             
-        self.process_tasks()
+        self.process_tasks(thread)
         resp= self.LLM_BN.generate_tasks_response(query)
         
         return resp
      
 
-    def process_tasks(self):
+    def process_tasks(self,thread):
        
         for i in range(len(self.tasks)):
             task = self.tasks[0]  # Siempre obtenemos la primera tarea
 
-            self.handle_task(task)
+            self.handle_task(task,thread)
 
             if task.get_state() == 'completed':
                 self.tasks.pop(0)  # Eliminar la tarea completada de la lista
 
          
-    def handle_task(self,task):
+    def handle_task(self,task,thread):
         if task.task_type == "fileRequest":
             print("Resolviendo solicitud de documentos...")
             self.file_manager.resolve_task(task,self.query)
@@ -93,7 +97,7 @@ class ModuleManager:
         elif task.task_type == "technical_query":
             print("Resolviendo consulta técnica...")
 
-            self.technical_query_assistant.handle_technical_query(self.query,task)
+            self.technical_query_assistant.handle_technical_query(self.query,task,thread)
            
             self.LLM_BN.receive_task(task.clone())
     
