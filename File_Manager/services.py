@@ -165,7 +165,7 @@ class FileManager:
             additional_context = f" Devuelve el siguiente enlace textual: '{file_link}'" 
             Bandera=1
         else: 
-            additional_context = "bt220.png"
+            additional_context = ""
        
         ST.set_response(additional_context)
         task.add_subtask(ST)
