@@ -1,4 +1,5 @@
 from datetime import timedelta
+
 from django.utils import timezone
 from django.conf import settings
 from .models import Thread
@@ -7,13 +8,14 @@ from Module_Manager.services import ModuleManager
 import os
 import logging
 import time
+
 logger = logging.getLogger(__name__)
 
 class ThreadManager:
     def __init__(self):
         self.client = openai
         self.client.api_key = os.getenv('OPENAI_API_KEY')
-
+        self.module_manager=ModuleManager()
     def create_thread(self, user):
         try:
             # Crear un nuevo thread en OpenAI
@@ -23,17 +25,17 @@ class ThreadManager:
             print(f"Thread creado en OpenAI con ID: {thread_id} para el usuario {user.username}")
             # Esperar un momento antes de usar el thread
             time.sleep(1)  # Esperar 1 segundo
-            
+
             # Guardar el thread en la base de datos
             thread = Thread.objects.create(user=user, thread_id=thread_id)
             thread.update_last_activity()
 
             logger.info(f"Thread guardado en la base de datos con ID: {thread.thread_id}")
-            
+
             # Inicializar ModuleManager para el nuevo thread
-            module_manager = ModuleManager()
-            
-            return thread, module_manager
+            # self.module_manager = ModuleManager()
+
+            return thread
         except Exception as e:
             logger.error(f"Error creando thread para usuario {user.username}: {str(e)}")
             raise
@@ -57,20 +59,20 @@ class ThreadManager:
             # Verificar si el thread es reciente o necesita uno nuevo
             if thread.last_activity < timezone.now() - timedelta(minutes=10):
                 logger.info(f"Thread antiguo encontrado para el usuario {user.username}. Creando nuevo thread.")
-                thread, module_manager = self.create_thread(user)
+                thread = self.create_thread(user)
             else:
                 # Reutilizar el thread existente
                 logger.info(f"Thread reciente encontrado para el usuario {user.username}. Reutilizando thread.")
                 thread.update_last_activity()
-                module_manager = ModuleManager()
+                # module_manager = ModuleManager()
         except Thread.DoesNotExist:
             logger.info(f"No se encontró ningún thread para el usuario {user.username}. Creando nuevo thread.")
-            thread, module_manager = self.create_thread(user)
+            thread= self.create_thread(user)
         except Exception as e:
             logger.error(f"Error al obtener o crear thread para usuario {user.username}: {str(e)}")
             raise
 
-        return thread, module_manager
+        return thread, self.module_manager
 
     def delete_thread(self, user):
         try:
@@ -80,3 +82,4 @@ class ThreadManager:
         except Exception as e:
             logger.error(f"Error al desactivar threads para usuario {user.username}: {str(e)}")
             raise
+thread_manager_instance = ThreadManager()

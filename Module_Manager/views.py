@@ -6,16 +6,18 @@ from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from .thread_manager import ThreadManager
+from Module_Manager.thread_manager import thread_manager_instance
 
 logger = logging.getLogger(__name__)
 
 @method_decorator(login_required, name='dispatch')
 class ClassifyQueryView(View):
+
     def post(self, request):
         try:
-            thread_manager = ThreadManager()
+            # thread_manager = ThreadManager()
             user = request.user
-            
+            thread_manager = thread_manager_instance
             # Obtener o crear un thread activo para el usuario
             thread, module_manager = thread_manager.get_or_create_active_thread(user)
             thread.update_last_activity()

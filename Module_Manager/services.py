@@ -104,7 +104,7 @@ class ModuleManager:
             
         elif task.task_type == "complaint":
             print("Resolviendo reclamo...")
-            self.complaint_manager.handle_complaint(self.query,task)
+            self.complaint_manager.handle_complaint(self.query,task,thread)
            
             self.LLM_BN.receive_task(task.clone())
             # task.update_state('completed')
