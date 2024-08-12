@@ -13,7 +13,8 @@ from File_Manager.services import FileManager
 from LLM_Bottleneck.services import LLM_Bottleneck
 from RAG_Manager.services import TechnicalQueryAssistant
 from Complaint_Manager.services import ComplaintManager
-from PO_Manager.services import Purchase_Oportunity
+from PO_Manager.services import PurchaseOpportunity
+
 # Importar otros managers aquí cuando estén disponibles
 logger = logging.getLogger(__name__)
 load_dotenv()  # Cargar las variables de entorno desde el archivo .env
@@ -37,7 +38,7 @@ class ModuleManager:
             # self.task = Task()
             self.file_manager = FileManager()
             self.complaint_manager=ComplaintManager()
-            self.PO_manager = Purchase_Oportunity()
+            self.PO_manager = PurchaseOpportunity()
             
          
             self.technical_query_assistant = TechnicalQueryAssistant()
