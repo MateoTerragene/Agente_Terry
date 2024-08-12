@@ -23,15 +23,13 @@ class FileManager:
             self.client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
             self.document_types_string = ""
             self.products_string = ""
-            self.prompt = None  # Initialize prompt as None initially
+            self.prompt = None  
             
-            # Check if data is loaded correctly
             response = self.load_data()
             if isinstance(response, JsonResponse):
                 print(response.content.decode())
-                return  # Exit __init__ if loading data failed
+                return  
 
-            # Set the prompt after loading data
             self.prompt = f"Eres un experto extrayendo información de conversaciones. Extrae las variables importantes (documento, producto y lote) y devuélvelas en formato JSON. Tu rol NO es devolver documentos. Documento solo puede ser igual a {self.document_types_string}. Producto solo puede ser igual a {self.products_string}. NO PIDAS CONFIRMACIÓN."
             self.state = {
                 "documento": None,
@@ -173,3 +171,4 @@ class FileManager:
         task.set_response(additional_context)
         task.update_state('completed') 
         ST.update_state('completed') 
+        self.reset_state()
