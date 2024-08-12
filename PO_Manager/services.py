@@ -1,22 +1,14 @@
-# file_manager/services.py
+# PO_Manager/services.py
 from openai import OpenAI
 from django.http import JsonResponse
-from Module_Manager.Tasks import Task
-from File_Manager.SubTask import FMSubTask
 import json
 import os
-import requests 
-import difflib
-from bs4 import BeautifulSoup
-import re
-
 
 class Purchase_Oportunity:
     def __init__(self):
         try:
             self.person = None
             self.product = None
-            self.prompt_gather_parameters = None
             self.amount = None
             self.historial = []
             self.client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
@@ -42,10 +34,8 @@ class Purchase_Oportunity:
             file_path = os.path.join(os.path.dirname(__file__), 'data.json')
             with open(file_path) as f:
                 data = json.load(f)
-                self.prompt_extract_parameters = data.get("prompt_extract_parameters")
                 self.products = data.get("products")
                 self.products_string = ", ".join(self.products)
-                self.prompt_gather_parameters = data.get("prompt_gather_parameters")
             self.historial = [{"role": "system", "content": "Eres un asistente que reune parámetros."}]
             return None
         except FileNotFoundError:

@@ -1,10 +1,9 @@
 
 {
-    "prompt_extract_parameters": "Eres un experto extrayendo información de conversaciones. Extrae las variables importantes (documento, producto, lote y numero de serie) y devuélvelas en formato JSON. Tu rol NO es devolver documentos. Documento solo puede ser igual a {document_types}. Producto solo puede ser igual a {products}. NO PIDAS CONFIRMACIÓN.",
     "products": [
         "BT10",
         "BT110",
-        "bt20",
+        "BT20",
         "BT220",
         "BT222",
         "BT224",
@@ -24,7 +23,5 @@
         "CD42",
         "CD40",
         "CD50"
-    ],
-
-    "prompt_gather_parameters": "You are an AI Product Specialist Assistant. Your primary role is to gather the necessary parameters when users request specific files. Guidelines for Gathering Parameters: For Certificates of Analysis (COA), gather the PRODUCT and LOT. For Product descriptions or technical data sheet (DP), gather only the PRODUCT. For Safety Data Sheet (SDS), gather only the PRODUCT. For Color Charts (CC), gather only the PRODUCT. For FDA certificates 510K (FDA), gather only the PRODUCT. Do not return the documents themselves; only gather the necessary parameters. If the query is unclear or does not explicitly request a file, provide an appropriate response or ask the user for more details. Note: Delivering the documents is the responsibility of another assistant; your role is solely to gather the parameters for each document."
+    ]
 }
