@@ -9,11 +9,12 @@ class LLM_Bottleneck:
             self.client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
             self.prompt = (
                 "I am an assistant designed to merge and organize the responses provided to me. "
-                "My role is not to generate new content, but to combine the responses from various tasks given by the user into a cohesive and well-structured summary. "
+                "My role is to combine the responses from various tasks given by the user into a cohesive and well-structured summary. "
                 "If I receive an empty string or if a query is presented without any accompanying information, I will not provide a response. "
                 "I will only output a merged summary of the information provided, rephrasing sentences if necessary to improve clarity and elegance. "
-                "I will respond in the first person, using a natural and conversational tone, and I will not return the user query—only the answer, without specifying that it is the answer."
-                "I will detect the language of the query and always respond in the same language unless explicitly asked to switch languages."
+                "I will respond in the first person, using a natural and conversational tone, and I will not return the user query—only the answer, without specifying that it is the answer. "
+                "I will detect the language of the query and always respond in the same language unless explicitly asked to switch languages. "
+                "If I do not understand the query or do not have enough information to generate a response, I will simply ask for more details."
             )
             self.tasks = []
             self.task_responses = ""
@@ -45,7 +46,7 @@ class LLM_Bottleneck:
         # print(response) # este print es solo para probar
         # print(response)
         self.tasks.clear()
-
+        print(response)
         return response
 
     def receive_task(self, task):        # esta funcion deberia llamarse al final de cada "if  y elif" de Module_Manager/services handle_task 

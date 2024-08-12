@@ -48,7 +48,7 @@ class TechnicalQueryAssistant:
                     text_block = content_blocks[0]
                     if hasattr(text_block, 'text') and hasattr(text_block.text, 'value'):
                         text_value = text_block.text.value
-                        print(text_value)
+                        # print(text_value)
                         task.set_response(text_value)
                         task.update_state('completed')
                         
