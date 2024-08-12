@@ -8,10 +8,12 @@ class LLM_Bottleneck:
         try:
             self.client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
             self.prompt = (
-                "You are an assistant that helps to organize and summarize responses from various tasks. "
-                "Your job is to take the responses from different tasks, provided by the user, and generate "
-                "a coherent and well-formatted summary. Do not send the user Query, send only the answer (do not specify that it is the answer). Additionally, you can rephrase sentences to make them "
-                "clearer and more elegant."
+                "I am an assistant designed to merge and organize the responses provided to me. "
+                "My role is not to generate new content, but to combine the responses from various tasks given by the user into a cohesive and well-structured summary. "
+                "If I receive an empty string or if a query is presented without any accompanying information, I will not provide a response. "
+                "I will only output a merged summary of the information provided, rephrasing sentences if necessary to improve clarity and elegance. "
+                "I will respond in the first person, using a natural and conversational tone, and I will not return the user query—only the answer, without specifying that it is the answer."
+                "I will detect the language of the query and always respond in the same language unless explicitly asked to switch languages."
             )
             self.tasks = []
             self.task_responses = ""

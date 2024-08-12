@@ -3,7 +3,7 @@ from openai import OpenAI
 from pydantic import BaseModel, Field
 import openai
 import os
-
+import json
 load_dotenv()  # Cargar las variables de entorno desde el archivo .env
 
 class ComplaintDetails(BaseModel):
@@ -110,27 +110,25 @@ class ComplaintManager:
                 setattr(current_details, field, value)
  
 
-    def extract_fields(self,query,ask_for,conversation_history):
+    def extract_fields(self,query,ask_for):
         fields_text = ", ".join(ask_for)
 
         prompt = (
-            f"Extract the following information from the user's input and map it to the appropriate fields: {fields_text}.\n\n"
-            f"User input: {query}\n\n"
-            f"Extracted fields:"
-            f"Return only the fields you were able to map."
+            f"Extract the following information from the user's input : {fields_text}.\n\n"
+            f" Please return only the fields that could be extracted in JSON format. "
+            f"If you are unable to extract a specific field, include the field in the JSON response with an empty string ('') as its value."
         )
-        conversation_history.append({"role": "user", "content": prompt})
+
         response = self.client.chat.completions.create(
             model="gpt-3.5-turbo",
-            messages=conversation_history
-            # [
-            #     {"role": "system", "content": "You are a helpful assistant."},
-            #     {"role": "user", "content": prompt}
-            
-            )
+            messages=[
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": query}
+            ]
+        )
         
         extracted_info = response.choices[0].message.content
-     
+       
         return extracted_info
     
     def ask_for_info(self, ask_for, thread):
@@ -162,24 +160,37 @@ class ComplaintManager:
     
         return ai_chat
 
-    def filter_response(self, query, complaint_details_form,conversation_history):
+    def filter_response(self, query, complaint_details_form):
+        
         ask_for = self.check_what_is_empty(complaint_details_form)
-        extracted_info = self.extract_fields(query,ask_for,conversation_history)
-        extracted_info_dict = {field.split(':')[0].strip().strip("'"): field.split(':')[1].strip().strip("'") for field in extracted_info.split('\n') if ':' in field}
-        new_details = ComplaintDetails(**extracted_info_dict)
-        print("extracted_info: ")
-        print(extracted_info)
+        print("ask_for: ")
+        print(ask_for)
+        print("query: ")
+        print(query)
+        extracted_info = self.extract_fields(query, ask_for)
+      
+        # Supongamos que extracted_info es un JSON devuelto por el LLM, lo parseamos directamente
+        extracted_info_dict = json.loads(extracted_info)
+
+        # Filtramos el diccionario para incluir solo los campos que no están vacíos
+        filtered_info = {key: value for key, value in extracted_info_dict.items() if value}
+
+        # Creamos una nueva instancia de ComplaintDetails con la información extraída
+        new_details = ComplaintDetails(**filtered_info)
+        print("filtered_info: ")
+        print(filtered_info)
         
         self.add_non_empty_details(complaint_details_form, new_details)
+
         ask_for = self.check_what_is_empty(complaint_details_form)
+       
         return ask_for
 
     def handle_complaint(self, query, task,thread):
-        ai_response=""
+        
         task.update_state('in_progress')
-        conversation_history = [
-        {"role": "system", "content": ai_response},]
-        ask_for = self.filter_response(query, self.complaint,conversation_history)
+       
+        ask_for = self.filter_response(query, self.complaint)
         ai_response = self.ask_for_info(ask_for, thread)
         print(ai_response)
          # Depuración para ver qué se está solicitando
@@ -187,9 +198,11 @@ class ComplaintManager:
         if not ask_for:
                 ai_response = 'Everything gathered, move to next phase'
                 print("AI response: " + ai_response)
+                print(self.complaint)
+                print("")
                 task.update_state('completed')
         task.set_response(ai_response)            
-        
+
         # task.set_response(ai_response)
         return 0
         # ask_for = self.check_what_is_empty(self.complaint)
