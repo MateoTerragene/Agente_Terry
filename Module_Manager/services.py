@@ -73,7 +73,7 @@ class ModuleManager:
             # self.task = copy.deepcopy(self.tasks[0])
             
         self.process_tasks(thread)
-        resp= self.LLM_BN.generate_tasks_response(query)
+        resp= self.LLM_BN.generate_tasks_response(query,thread)
         
         return resp
      
@@ -92,7 +92,7 @@ class ModuleManager:
     def handle_task(self,task,thread):
         if task.task_type == "fileRequest":
             print("Resolviendo solicitud de documentos...")
-            self.file_manager.resolve_task(task,self.query)
+            self.file_manager.resolve_task(self.query,task,thread)
            
             self.LLM_BN.receive_task(task.clone())
  

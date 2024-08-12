@@ -202,7 +202,7 @@ class ComplaintManager:
                 print("")
                 task.update_state('completed')
         task.set_response(ai_response)            
-
+ 
         # task.set_response(ai_response)
         return 0
         # ask_for = self.check_what_is_empty(self.complaint)
