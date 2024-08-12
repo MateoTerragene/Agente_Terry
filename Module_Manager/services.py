@@ -13,6 +13,7 @@ from File_Manager.services import FileManager
 from LLM_Bottleneck.services import LLM_Bottleneck
 from RAG_Manager.services import TechnicalQueryAssistant
 from Complaint_Manager.services import ComplaintManager
+from PO_Manager.services import Purchase_Oportunity
 # Importar otros managers aquí cuando estén disponibles
 logger = logging.getLogger(__name__)
 load_dotenv()  # Cargar las variables de entorno desde el archivo .env
@@ -36,6 +37,7 @@ class ModuleManager:
             # self.task = Task()
             self.file_manager = FileManager()
             self.complaint_manager=ComplaintManager()
+            self.PO_manager = Purchase_Oportunity()
             
          
             self.technical_query_assistant = TechnicalQueryAssistant()
@@ -114,8 +116,10 @@ class ModuleManager:
 
         elif task.task_type == "purchase_opportunity":
             print("Resolviendo oportunidad de compra...")
-            # self.task.update_state('completed')
-            # Lógica para resolver oportunidad de compra
+            self.PO_manager.resolve_task(task,self.query)
+           
+            self.LLM_BN.receive_task(task.clone())
+ 
         else:
             print(f"Tarea desconocida: {task.task_type}")
             if task.state == 'completed':
