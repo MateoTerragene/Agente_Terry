@@ -11,12 +11,31 @@ class Task:
     def add_subtask(self, subtask):
         self.subtasks.append(subtask)
 
-    def update_state(self, state):
-        self.state = state
-
+    # def update_state(self, state):
+    #     self.state = state
+    def update_state(self, state=None):
+        if state is not None:
+            self.state = state
+        else:
+            # Determinar el estado basado en las subtasks
+            if all(subtask.state == 'completed' for subtask in self.subtasks):
+                self.state = 'completed'
+            elif any(subtask.state == 'pending' for subtask in self.subtasks):
+                self.state = 'pending'
+            elif any(subtask.state == 'in_progress' for subtask in self.subtasks):
+                self.state = 'in_progress'
+            else:
+                # Si no hay subtasks, mantener el estado actual o establecer un estado por defecto
+                self.state = 'pending' if not self.subtasks else self.state
+                
     def get_state(self):
-        return(self.state)
-
+        if not self.subtasks:
+            return self.state
+        else:
+            if any(subtask.state != 'completed' for subtask in self.subtasks):
+                return 'in_progress'
+            else:
+                return 'completed' 
     def update_context(self, context):
         self.context.update(context)
     def set_type(self, type):
@@ -52,22 +71,15 @@ class Task:
         return None
     def clone(self):
         return copy.deepcopy(self)
+    
 class SubTask:
-    def __init__(self, subtask_type):
-        self.subtask_type = subtask_type
+    def __init__(self):
         self.state = 'pending'  # or 'in_progress', 'waiting_for_info', 'completed'
-        self.variables = {}
         self.response = None
 
     def update_state(self, state):
         self.state = state
 
-    def add_variable(self, key, value):
-        self.variables[key] = value
-
-    def get_variable(self, key):
-        return self.variables.get(key)
-    
     def set_response(self, response):
         self.response = response
 

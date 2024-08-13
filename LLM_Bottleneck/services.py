@@ -77,6 +77,7 @@ class LLM_Bottleneck:
         # print(response) # este print es solo para probar
         # print(response)
         self.tasks.clear()
+        print("LLM_Bottleneck -> generate response:  ")
         print(response)
         return response
 

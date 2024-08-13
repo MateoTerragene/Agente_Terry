@@ -85,7 +85,8 @@ class ModuleManager:
             task = self.tasks[0]  # Siempre obtenemos la primera tarea
 
             self.handle_task(task,thread)
-
+            print("estado task dentro de process_task")
+            print(task.get_state())
             if task.get_state() == 'completed':
                 self.tasks.pop(0)  # Eliminar la tarea completada de la lista
 
@@ -94,7 +95,8 @@ class ModuleManager:
         if task.task_type == "fileRequest":
             print("Resolviendo solicitud de documentos...")
             self.file_manager.resolve_task(self.query,task,thread)
-           
+            print("estado de la task FM")
+            print(task.get_state())
             self.LLM_BN.receive_task(task.clone())
  
 
