@@ -18,6 +18,7 @@ class LLM_Bottleneck:
             )
             self.tasks = []
             self.task_responses = ""
+            self.assistant_id = os.getenv('LLM_BOTTLENECK_ASSISTANT_ID')
         except FileNotFoundError:
             return JsonResponse({'error': "The file 'data.json' was not found."}, status=404)
         except json.JSONDecodeError:
@@ -29,23 +30,54 @@ class LLM_Bottleneck:
         user_prompt = f"Query: {query}, Responses: {responses}"
         return user_prompt
 
-    def generate_response(self, user_prompt):             # Esta funcion se puede llamar dentro de una funcion que saque una respuesta por el chat
-        response = self.client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": self.prompt},
-                {"role": "user", "content": user_prompt}
-            ]
+    def generate_response(self, user_prompt,thread):             # Esta funcion se puede llamar dentro de una funcion que saque una respuesta por el chat
+        # response = self.client.chat.completions.create(
+        #     model="gpt-4o-mini",
+        #     messages=[
+        #         {"role": "system", "content": self.prompt},
+        #         {"role": "user", "content": user_prompt}
+        #     ]
+        # )
+        # classification = response.choices[0].message.content
+        chat = self.client.beta.threads.messages.create(
+            thread_id=thread.thread_id,
+            role="user", content=user_prompt
+        
+            )
+        chat = self.client.beta.threads.messages.create(
+            thread_id=thread.thread_id,
+            role="assistant", content=self.prompt
+        
+            )
+        run = self.client.beta.threads.runs.create_and_poll(
+        thread_id=thread.thread_id,
+        assistant_id=self.assistant_id,
         )
-        classification = response.choices[0].message.content
+        if run.status == 'completed': 
+            messages_response = self.client.beta.threads.messages.list(
+                thread_id=thread.thread_id                     )
+        else:
+            print(run.status)
+        messages = messages_response.data
+        latest_message = messages[0]    
+        if messages and hasattr(latest_message, 'content'):
+            content_blocks = messages[0].content
+            if isinstance(content_blocks, list) and len(content_blocks) > 0:
+                text_block = content_blocks[0]
+                if hasattr(text_block, 'text') and hasattr(text_block.text, 'value'):
+                    classification=   text_block.text.value
+                    
+                                                
+    
         return classification
 
-    def generate_tasks_response(self, query):      #esta funcion deberia llamarse al final de Module_Manager/services classify_query
+    def generate_tasks_response(self, query,thread):      #esta funcion deberia llamarse al final de Module_Manager/services classify_query
         user_prompt = self.generate_prompt_tasks(query)
-        response = self.generate_response(user_prompt)
+        response = self.generate_response(user_prompt,thread)
         # print(response) # este print es solo para probar
         # print(response)
         self.tasks.clear()
+        print("LLM_Bottleneck -> generate response:  ")
         print(response)
         return response
 

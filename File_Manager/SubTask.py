@@ -4,5 +4,9 @@ from Module_Manager.Tasks import SubTask
 
 
 class FMSubTask(SubTask):
-    def __init__(self, subtask_type):
-        super().__init__(subtask_type)
+    def __init__(self):
+        super().__init__()
+        self.documento=None
+        self.producto=None
+        self.lote=None
+        
