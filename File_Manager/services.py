@@ -36,7 +36,7 @@ class FileManager:
             self.prompt = (
                 "Eres un experto en la extracción de información de conversaciones. Extrae las variables importantes y devuélvelas en formato JSON, "
                 "únicamente cuando hayas extraído toda la información requerida para cada tipo de documento. Para los Certificates of Analysis (COA), "
-                "extrae el PRODUCT y el LOT. Para las Instructions for Use (IFU), Product descriptions or technical data sheet (DP), Safety Data Sheet (SDS), "
+                "extrae el PRODUCT y el LOT. Para las Instructions for Use (IFU), Product Description or technical data sheet (DP), Safety Data Sheet (SDS), "
                 "Color Charts (CC) y FDA certificates 510K (FDA), extrae solo el PRODUCT. Devuelve un JSON por CADA documento solicitado solo si se ha extraído toda la información requerida. "
                 "Retorna 'documento: ','producto: ' y 'lote: ' si es necesario. Tu rol NO es devolver documentos. Documento solo puede ser igual a "
                 f"{self.document_types_string}. Producto solo puede ser igual a {self.products_string}. Si no puedes extraer alguna variable dejala vacia. Si el usuario solicita un COA y quiere el ultimo LOTE disponible, en 'lote' devuelve 'last' "
