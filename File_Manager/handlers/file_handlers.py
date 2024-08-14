@@ -218,3 +218,89 @@ class file_handlers:
                 print(f"Error al acceder a {url}: {e}")
 
         return f"No se pudo encontrar el CC de {best_match_product}"
+    
+    def get_sds_file(self, product):
+        document_type = 'Safetydatasheet'
+        best_match_product = self.best_match(product, self.products)
+        
+        if not best_match_product:
+            print(f"No se encontró una coincidencia para el producto: {product}")
+            return None
+        
+        # Diccionarios de excepciones: producto -> archivo PDF específico
+        excepciones = {
+            # Químicos
+            "CD": "SDS%20Chemical%20Indicators%20-%20BD,%20CD,%20CS,%20CT,%20IT,%20PCD.pdf",
+            "IT": "SDS%20Chemical%20Indicators%20-%20BD,%20CD,%20CS,%20CT,%20IT,%20PCD.pdf",
+            "PCD": "SDS%20Chemical%20Indicators%20-%20BD,%20CD,%20CS,%20CT,%20IT,%20PCD.pdf",
+            "CT": "SDS%20Chemical%20Indicators%20-%20BD,%20CD,%20CS,%20CT,%20IT,%20PCD.pdf",
+            "BD": "SDS%20Chemical%20Indicators%20-%20BD,%20CD,%20CS,%20CT,%20IT,%20PCD.pdf",
+            "CDPCD2X": "SDS%20Chemical%20Indicators%20-%20Helix.pdf",
+            "KH2X": "SDS%20Chemical%20Indicators%20-%20Helix.pdf",
+            "MK": "SDS%20Chemical%20Indicators%20-%20Markers.pdf",
+            # Biológicos
+            "MC": "SDS%20Biological%20Indicators%20-%20Culture%20media.pdf",
+            "BT10S": "SDS%20Biological%20Indicators%20-%20Spore%20Suspensions.pdf",
+            "BT20S": "SDS%20Biological%20Indicators%20-%20Spore%20Suspensions.pdf",
+            "BT24S": "SDS%20Biological%20Indicators%20-%20Spore%20Suspensions.pdf",
+            "BT70S": "SDS%20Biological%20Indicators%20-%20Spore%20Suspensions.pdf",
+            "BT": "SDS%20Biological%20Indicators%20-%20SCBI,%20PCD.pdf",
+            "PCD": "SDS%20Biological%20Indicators%20-%20SCBI,%20PCD.pdf",
+            "KPCD": "SDS%20Biological%20Indicators%20-%20SCBI,%20PCD.pdf",
+            "BT40": "SDS%20Biological%20Indicators%20-%20Spores%20strips,%20discs,%20sutures,%20coupons.pdf",
+            "BT400": "SDS%20Biological%20Indicators%20-%20Spores%20strips,%20discs,%20sutures,%20coupons.pdf",
+            "BT50": "SDS%20Biological%20Indicators%20-%20Spores%20strips,%20discs,%20sutures,%20coupons.pdf",
+            "BT60": "SDS%20Biological%20Indicators%20-%20Spores%20strips,%20discs,%20sutures,%20coupons.pdf",
+            "BT70": "SDS%20Biological%20Indicators%20-%20Spores%20strips,%20discs,%20sutures,%20coupons.pdf",
+            "KBT400": "SDS%20Biological%20Indicators%20-%20Spores%20strips,%20discs,%20sutures,%20coupons.pdf",
+            "BTM": "SDS%20Biological%20Indicators%20-%20Spores%20strips,%20discs,%20sutures,%20coupons.pdf",
+            "BTC": "SDS%20Biological%20Indicators%20-%20Spores%20strips,%20discs,%20sutures,%20coupons.pdf",
+            "BTD": "SDS%20Biological%20Indicators%20-%20Spores%20strips,%20discs,%20sutures,%20coupons.pdf",
+            "WP90": "SDS%20Biological%20Indicators%20-%20Spores%20strips,%20discs,%20sutures,%20coupons.pdf",
+            # Electrónica - usando nombres completos
+            "IC1020": "SDS%20Accessories.pdf",
+            "IC1020FR": "SDS%20Accessories.pdf",
+            "IC1020FRLCD": "SDS%20Accessories.pdf",
+            "MiniBio": "SDS%20Accessories.pdf",
+            "MiniPro": "SDS%20Accessories.pdf",
+            "TBIC1020": "SDS%20Accessories.pdf",
+            "ICTP": "SDS%20Accessories.pdf",
+            "CG3": "SDS%20Accessories.pdf",
+            "IRCG3": "SDS%20Accessories.pdf",
+            "Wilink": "SDS%20Accessories.pdf",
+            # Lavado
+            "CCDER": "SDS%20Cleaning%20Indicators%20-%20LUMENIA-LUMENIA%20SIXFLOW.pdf",
+            "L": "SDS%20Cleaning%20Indicators%20-%20LUMENIA-LUMENIA%20SIXFLOW.pdf",
+        }
+        
+        # Verifica si el producto coincide con alguna excepción
+        for key, filename in excepciones.items():
+            if best_match_product == key or best_match_product.startswith(key):
+                subfolder = "Quimicos" if key in ["CD", "IT", "PCD", "CT", "BD", "CDPCD2X", "KH2X", "MK"] else \
+                            "Biologicos" if key in ["MC", "BT", "PCD", "KPCD", "BT40", "BT400", "BT50", "BT60", "BT70", "KBT400", "BTM", "BTC", "BTD", "WP90"] else \
+                            "Electronica" if key in ["Bionova IC10/20 Incubator", "Bionova IC10/20FR", "Bionova IC10/20FRLCD Auto-Reader Incubators", "Bionova MiniBio Auto-Reader Incubator", "Bionova MiniPro Auto-Reader Incubator", "Bionova TBIC1020 Thermometer for Bionova Incubators", "Bionova ICTP and ICTP Mini Incubator thermal papers", "Chemdye CG3 3-line labeler", "Chemdye IRCG3 Ink roller", "Bionova Wilink Wifi connectivity accessory for Bionova incubators"] else \
+                            "Lavado" if key in ["CCDER", "L"] else ""
+                return f"https://terragene.com/wp-content/uploads/{document_type}/{subfolder}/{filename}"
+        
+        base_url = "https://terragene.com/wp-content/uploads"
+        subfolders = ["Biologicos", "Electronica", "Lavado", "Quimicos"]
+
+        for subfolder in subfolders:
+            url = f"{base_url}/{document_type}/{subfolder}/"
+            
+            try:
+                response = requests.get(url)
+                if response.status_code == 200:
+                    soup = BeautifulSoup(response.text, 'html.parser')
+                    links = soup.find_all('a')
+                    for link in links:
+                        href = link.get('href')
+                        if href and href.endswith('.pdf') and best_match_product in href:
+                            # Devuelve la URL completa del archivo PDF que coincide
+                            return f"{url}{href}"
+                else:
+                    print(f"No se pudo acceder a la URL: {url}")
+            except requests.RequestException as e:
+                print(f"Error al acceder a {url}: {e}")
+
+        return f"No se pudo encontrar el SDS de {best_match_product}"
