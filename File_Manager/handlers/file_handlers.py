@@ -77,8 +77,32 @@ class file_handlers:
 
         return  f"No se pudo encontrar el IFU de {best_match_product}"
 
+    
     def get_coa_file(self, product, lot):
-        if product not in self.products or lot == 'N/A' or lot ==None or lot=="":
-            return  None  # Mejor usar None para indicarque no se encontró el archivo
-        else:
-            return  f"Este es el COA simulado de {product}, lote: {lot}"
+        document_type = 'COA'
+        best_match_product = self.best_match(product, self.products)
+        
+        if not best_match_product:
+            print(f"No se encontró una coincidencia para el producto: {product}")
+            return None
+        
+        base_url = "https://terragene.com/wp-content/uploads"
+        subfolders = ["biologico", "electronica", "lavado", "quimico"]
+        for subfolder in subfolders:
+            url = f"{base_url}/{document_type}/{subfolder}/{best_match_product}/"
+            try:
+                response = requests.get(url)
+                if response.status_code == 200:
+                    soup = BeautifulSoup(response.text, 'html.parser')
+                    links = soup.find_all('a')
+                    for link in links:
+                        href = link.get('href')
+                        if href and href.endswith('.pdf'):
+                            nombre_archivo_limpio = self.limpiar_texto(href)
+                            lote_limpio = self.limpiar_texto(lot) if lot else ""
+                            if not lot or lote_limpio in nombre_archivo_limpio:
+                                return url + href
+            except requests.RequestException as e:
+                print(f"Error accessing {url}: {e}")
+
+        raise FileNotFoundError(f"No PDF found for producto '{product}' y lote '{lot}'.")
