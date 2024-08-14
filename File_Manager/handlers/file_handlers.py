@@ -101,7 +101,9 @@ class file_handlers:
                             nombre_archivo_limpio = self.limpiar_texto(href)
                             lote_limpio = self.limpiar_texto(lot) if lot else ""
                             if not lot or lote_limpio in nombre_archivo_limpio:
-                                return url + href
+                                devolver= f"{document_type} - {best_match_product} : URL:{url} + HREF: {href} "
+                                print(devolver)
+                                return devolver
             except requests.RequestException as e:
                 print(f"Error accessing {url}: {e}")
 

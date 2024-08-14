@@ -333,13 +333,6 @@ class FileManager:
             if lote:  # "lote" es opcional, por lo que solo se asigna si está presente
                 first_subtask.lote = lote
 
-
-        
-        
-
-
-
-
         except json.JSONDecodeError as e:
             print(f"Error al parsear JSON en fill_fields: {e}")
 
@@ -384,25 +377,6 @@ class FileManager:
             else:
                 index += 1  # Solo incrementas si no se elimina nada
 
-        # for index in range(len(self.task.subtasks)):
-        #     subtask = self.task.subtasks[index]
-        #     missing_str, completed_str = self.check_what_is_empty()
-        #     print("missing parameters: ")
-        #     print(missing_str)
-        #     print("completed param")
-        #     print(completed_str)
-            
-        #     if not missing_str:
-        #         # print("entro aca como si no le falta nada!")
-        #         # Verificar si la subtask está completada
-        #         file_link = self.get_file()
-        #         if self.task.response:
-        #             self.task.response = str(file_link) + ", " + str(self.task.response)
-        #         else:
-        #             self.task.response = str(file_link)
-                    
-        #         print(f"response: {self.task.response}") 
-        #         del self.task.subtasks[index]
         self.task.update_state()
         print(self.task.update_state())
         task.update_state(self.task.state)                
@@ -419,6 +393,7 @@ class FileManager:
         self.clear_historial()
         # Establecer la respuesta en la tarea
         task.set_response(self.task.response)
+        self.task.response=""
         
  ########################################################################
     # def handle_file_request(self,query,task,thread):
