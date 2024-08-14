@@ -304,3 +304,21 @@ class file_handlers:
                 print(f"Error al acceder a {url}: {e}")
 
         return f"No se pudo encontrar el SDS de {best_match_product}"
+
+
+    def get_fda_file(self, product):
+        # Diccionarios de excepciones: prefijos y productos específicos -> archivo PDF específico
+        fda_files = {
+            "K163646": ["BT220", "BT221", "BT222", "BT223", "PCD220-C", "PCD220-2", "PCD222-C", "PCD222-2", "IC10/20FR"],
+            "K191021": ["BT95", "BT96", "BT110", "BT224", "PCD224-C", "PCD224-2", "IC10/20FRLCD", "Mini-Bio", 
+                        "IT12", "IT26-1YS", "IT26-C", "PCD26-C", "PCD26-2", "CD16", "CD29", "CD40", "CD42", "CT22", "CT40"],
+            "K200272": ["BD125X/1", "BD8948X/1", "BDA4/1"],
+            "K221641": ["BT98", "BHY", "BNB"]
+        }
+        
+        # Verifica si el producto está en alguna de las listas
+        for key, products in fda_files.items():
+            if product in products:
+                return f"https://terragene.com/wp-content/uploads/Archivos/FDA/{key}.pdf"
+        
+        return "No se encontró un archivo FDA correspondiente para el producto especificado."
