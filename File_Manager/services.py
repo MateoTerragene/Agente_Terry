@@ -39,7 +39,7 @@ class FileManager:
                 "extrae el PRODUCT y el LOT. Para las Instructions for Use (IFU), Product descriptions or technical data sheet (DP), Safety Data Sheet (SDS), "
                 "Color Charts (CC) y FDA certificates 510K (FDA), extrae solo el PRODUCT. Devuelve un JSON por CADA documento solicitado solo si se ha extraído toda la información requerida. "
                 "Retorna 'documento: ','producto: ' y 'lote: ' si es necesario. Tu rol NO es devolver documentos. Documento solo puede ser igual a "
-                f"{self.document_types_string}. Producto solo puede ser igual a {self.products_string}. Si no puedes extraer alguna variable dejala vacia. "
+                f"{self.document_types_string}. Producto solo puede ser igual a {self.products_string}. Si no puedes extraer alguna variable dejala vacia. Si el usuario solicita un COA y quiere el ultimo LOTE disponible, en 'lote' devuelve 'last' "
                 "Utiliza el historial de la conversación para completar cualquier información faltante. NO PIDAS CONFIRMACIÓN."
                 "{ 'documento': '','producto':'','lote':''}"
             )
@@ -338,6 +338,7 @@ class FileManager:
 
  ############################################# Nueva Version de Resolve_task ###################################
     def resolve_task(self, query, task, thread):
+        self.task.response=""
         self.task = task
         parameters = self.extract_variables(query, self.historial)
         
@@ -371,7 +372,7 @@ class FileManager:
                 else:
                     self.task.response = str(file_link)
 
-                print(f"response: {self.task.response}")
+                
                 del self.task.subtasks[index]
                 # No incrementas el índice porque la lista se acorta
             else:
@@ -392,8 +393,9 @@ class FileManager:
             self.task.response = str(generated_question) + ", " + str(self.task.response)
         self.clear_historial()
         # Establecer la respuesta en la tarea
+        print(f"response: {self.task.response}")
         task.set_response(self.task.response)
-        self.task.response=""
+        
         
  ########################################################################
     # def handle_file_request(self,query,task,thread):
