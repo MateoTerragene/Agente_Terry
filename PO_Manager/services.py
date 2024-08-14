@@ -66,6 +66,7 @@ class PurchaseOpportunity:
             generated_text = response.choices[0].message.content
             logger.debug(f"Generated text: {generated_text}")
             return generated_text
+        
         except Exception as e:
             logger.error(f"Error during API call: {str(e)}")
             return JsonResponse({'error': f"Error during API call: {str(e)}"}, status=500)
@@ -103,15 +104,15 @@ class PurchaseOpportunity:
                 missing_params.append("producto")
                 
             if self.state['producto'] == "DIF":
-                task.set_response(parameters)
+                task.set_response(parameters + "por favor rellene el siguiente formulario: https://forms.gle/DuDpWEnx5GTUn5qYA")
                 task.update_state('completed')
                 return
             
             missing_params_str = ", ".join(missing_params)
-            task.set_response(f"Faltan los siguientes parámetros: {missing_params_str}. Por favor, proporcione la información.")
+            task.set_response(f"Faltan los siguientes parámetros: {missing_params_str}. Por favor, proporcione la información. O rellene el siguiente formulario: https://forms.gle/DuDpWEnx5GTUn5qYA")
             task.update_state('incomplete')
         else:
-            additional_context = f"Notificamos a nuestro equipo de tu interes por {self.state['cantidad']} de {self.state['producto']}"
+            additional_context = f"Notificamos a nuestro equipo de tu interes por {self.state['cantidad']} de {self.state['producto']}, pero si quiere puede registrarlo siguiendo el link: https://forms.gle/DuDpWEnx5GTUn5qYA"
             task.set_response(additional_context)
             task.update_state('completed')
             self.reset_state()

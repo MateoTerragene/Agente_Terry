@@ -22,7 +22,7 @@ class TechnicalQueryAssistant:
 
 
         run = self.client.beta.threads.runs.create(
-            thread_id=thread.thread_id,
+            thread_id=chat.thread_id,
             assistant_id=self.assistant_id,
             tool_choice="auto")
         print(f"Run Created: {run.id}")
