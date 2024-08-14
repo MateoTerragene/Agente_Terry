@@ -22,7 +22,7 @@ load_dotenv()  # Cargar las variables de entorno desde el archivo .env
 class ModuleManager:
     def __init__(self):
         try:
-            print("ADENTRO DEL CONSTRUCTOR")
+            # print("ADENTRO DEL CONSTRUCTOR")
             self.client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
             self.docs = "COA = certificado de calidad = certificado de analisis, IFU = Prospecto , PD = Descripcion de producto = Ficha tecnica, SDS = Hoja de seguridad, CC = Color chart, FDA = Certificado FDA = 510K "
             self.prompt = f"""Eres un asistente que clasifica consultas de usuarios e identifica tareas a realizar. Puede haber multiples tareas en una consulta. \
@@ -50,7 +50,7 @@ class ModuleManager:
         
     def classify_query(self, thread, query):
         thread_id = thread.thread_id
-        print(f"ClassQuer Usando el thread ID: {thread_id} para clasificar la consulta.")
+        # print(f"ClassQuer Usando el thread ID: {thread_id} para clasificar la consulta.")
         logger.info(f"Usando el thread ID: {thread_id} para clasificar la consulta.")
         self.query = query
         if not self.tasks or self.tasks[0].get_state() == 'pending':
@@ -85,8 +85,8 @@ class ModuleManager:
             task = self.tasks[0]  # Siempre obtenemos la primera tarea
 
             self.handle_task(task,thread)
-            print("estado task dentro de process_task")
-            print(task.get_state())
+            # print("estado task dentro de process_task")
+            # print(task.get_state())
             if task.get_state() == 'completed':
                 self.tasks.pop(0)  # Eliminar la tarea completada de la lista
 
@@ -95,8 +95,8 @@ class ModuleManager:
         if task.task_type == "fileRequest":
             print("Resolviendo solicitud de documentos...")
             self.file_manager.resolve_task(self.query,task,thread)
-            print("estado de la task FM")
-            print(task.get_state())
+            # print("estado de la task FM")
+            # print(task.get_state())
             self.LLM_BN.receive_task(task.clone())
  
 

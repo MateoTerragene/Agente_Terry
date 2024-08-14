@@ -71,14 +71,14 @@ class file_handlers:
                     for link in links:
                         href = link.get('href')
                         if href and href.endswith('.pdf'):
-                            return 1, str(url + href) #El 1 significa que se devolvio el link 
+                            return  str(url + href) #El 1 significa que se devolvio el link 
             except requests.RequestException as e:
                 print(f"Error al acceder a {url}: {e}")
 
-        return 1, f"No se pudo encontrar el IFU de {best_match_product}"
+        return  f"No se pudo encontrar el IFU de {best_match_product}"
 
     def get_coa_file(self, product, lot):
         if product not in self.products or lot == 'N/A' or lot ==None or lot=="":
-            return 1, None  # Mejor usar None para indicarque no se encontró el archivo
+            return  None  # Mejor usar None para indicarque no se encontró el archivo
         else:
-            return 1, f"Este es el COA simulado de {product}, lote: {lot}"
+            return  f"Este es el COA simulado de {product}, lote: {lot}"

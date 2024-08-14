@@ -77,8 +77,11 @@ class LLM_Bottleneck:
         # print(response) # este print es solo para probar
         # print(response)
         self.tasks.clear()
-        print("LLM_Bottleneck -> generate response:  ")
+        print("  ")
+        print("******************************************************************************")
+        print("Respuesta: LLM_Bottleneck -> generate response:  ")
         print(response)
+        print("******************************************************************************")
         return response
 
     def receive_task(self, task):        # esta funcion deberia llamarse al final de cada "if  y elif" de Module_Manager/services handle_task 

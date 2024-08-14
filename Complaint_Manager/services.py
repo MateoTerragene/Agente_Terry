@@ -163,10 +163,10 @@ class ComplaintManager:
     def filter_response(self, query, complaint_details_form):
         
         ask_for = self.check_what_is_empty(complaint_details_form)
-        print("ask_for: ")
-        print(ask_for)
-        print("query: ")
-        print(query)
+        # print("ask_for: ")
+        # print(ask_for)
+        # print("query: ")
+        # print(query)
         extracted_info = self.extract_fields(query, ask_for)
       
         # Supongamos que extracted_info es un JSON devuelto por el LLM, lo parseamos directamente
@@ -177,8 +177,8 @@ class ComplaintManager:
 
         # Creamos una nueva instancia de ComplaintDetails con la información extraída
         new_details = ComplaintDetails(**filtered_info)
-        print("filtered_info: ")
-        print(filtered_info)
+        # print("filtered_info: ")
+        # print(filtered_info)
         
         self.add_non_empty_details(complaint_details_form, new_details)
 
@@ -192,14 +192,14 @@ class ComplaintManager:
        
         ask_for = self.filter_response(query, self.complaint)
         ai_response = self.ask_for_info(ask_for, thread)
-        print(ai_response)
+        # print(ai_response)
          # Depuración para ver qué se está solicitando
         # print("Campos solicitados: ", ask_for)
         if not ask_for:
                 ai_response = 'Everything gathered, move to next phase'
-                print("AI response: " + ai_response)
-                print(self.complaint)
-                print("")
+                # print("AI response: " + ai_response)
+                # print(self.complaint)
+                # print("")
                 task.update_state('completed')
         task.set_response(ai_response)            
  

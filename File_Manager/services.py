@@ -41,6 +41,7 @@ class FileManager:
                 "Retorna 'documento: ','producto: ' y 'lote: ' si es necesario. Tu rol NO es devolver documentos. Documento solo puede ser igual a "
                 f"{self.document_types_string}. Producto solo puede ser igual a {self.products_string}. Si no puedes extraer alguna variable dejala vacia. "
                 "Utiliza el historial de la conversación para completar cualquier información faltante. NO PIDAS CONFIRMACIÓN."
+                "{ 'documento': '','producto':'','lote':''}"
             )
             # self.state = {
             #     "documento": None,
@@ -90,60 +91,57 @@ class FileManager:
         print(generated_text)
         return generated_text
 
-    
+        
     def update_state(self, extracted_params): 
         try:
-            # Separar múltiples bloques de JSON
-            json_blocks = extracted_params.split('```json')
+            # Separar múltiples bloques de "JSON" (que en realidad son diccionarios de Python)
+            json_blocks = extracted_params.split('}\n{')
+            
+            # Ajustar los bloques para que sean JSON válidos
+            json_blocks = [
+                '{' + block + '}' if not block.startswith('{') and not block.endswith('}') else 
+                '{' + block if not block.startswith('{') else 
+                block + '}' if not block.endswith('}') else 
+                block
+                for block in json_blocks
+            ]
             
             for block in json_blocks:
-                cleaned_params = block.strip().strip('```').strip()
+                # Reemplazar comillas simples con comillas dobles para hacer el bloque un JSON válido
+                cleaned_params = block.strip().replace("'", '"')
+                
                 if cleaned_params:
+                    # Convertir la cadena JSON a un objeto Python
                     data = json.loads(cleaned_params)
                     
-                    # Crear una instancia de FMSubTask
-                    fm_subtask = FMSubTask()
-                    
-                    # Asignar los valores extraídos a los atributos de la instancia
-                    fm_subtask.documento = data.get("documento")
-                    fm_subtask.producto = data.get("producto")
-                    fm_subtask.lote = data.get("lote")
-                    
-                    # # Verificar si los valores son válidos antes de añadir la tarea
-                    # if fm_subtask.documento in self.document_types and fm_subtask.producto in self.products:
-                    #     self.tasks.append(fm_subtask)
-                    # else:
-                    #     print(f"Valores inválidos: documento='{fm_subtask.documento}', producto='{fm_subtask.producto}'")
-                    self.task.subtasks.append(fm_subtask)         
-            print("self.tasks adentro del update_state: ")
-            print(self.task.subtasks)
+                    # Procesar cada bloque JSON
+                    self._process_json_item(data)
 
         except json.JSONDecodeError as e:
             print(f"La respuesta no es un JSON válido: {e}")
             print(f"Contenido inválido: {cleaned_params}")
 
-                        # # Verificar que 'documento' y 'producto' estén en los conjuntos permitidos
-                        # if task["documento"] in self.document_types and task["producto"] in self.products:
-                        #     self.tasks.append(task)
-                        # else:
-                        #     print(f"El documento '{task['documento']}' o el producto '{task['producto']}' no son válidos.")
-                        
-        except json.JSONDecodeError as e:
-            print(f"La respuesta no es un JSON válido: {e}")
-            print(f"Contenido inválido: {cleaned_params}")
-            # self.state = {
-            #     "documento": None,
-            #     "producto": None,
-            #     "lote": None
-            # }
+
+
+    def _process_json_item(self, data):
+        # Crear una instancia de FMSubTask
+        fm_subtask = FMSubTask()
+        
+        # Asignar los valores extraídos a los atributos de la instancia
+        fm_subtask.documento = data.get("documento")
+        fm_subtask.producto = data.get("producto")
+        fm_subtask.lote = data.get("lote")
+        print("adentro de _process_json_item")
+        print(f"creo la {fm_subtask}")
+        
+        # Verificar si los valores son válidos antes de añadir la tarea
+        if fm_subtask.documento in self.document_types and fm_subtask.producto in self.products:
+            self.task.subtasks.append(fm_subtask)
+        else:
+            print(f"Valores inválidos: documento='{fm_subtask.documento}', producto='{fm_subtask.producto}'")
+
             
-    def reset_state(self):
-        # self.state = {
-        #     "documento": None,
-        #     "producto": None,
-        #     "lote": None
-        # }
-        return 0
+
 
     def clear_historial(self):
         self.historial = []
@@ -151,128 +149,238 @@ class FileManager:
     
         
     def get_file(self):
-        self.task.response = ""
-        indices_to_remove = []
+        # self.task.response = ""
 
-        for index, subtask in enumerate(self.task.subtasks):
-            print("Tratando esta subtask:")
-            print(subtask)
-            print("*************")
-            
-            # Acceder a los atributos de la instancia FMSubTask
-            document = subtask.documento
-            product = subtask.producto
-            
-            state = 0
-            if document == "IFU":
-                state, subtask.response = self.file_handler.get_ifu_file(product)
-                if state == 1:
-                    subtask.state = 'completed'
-                    indices_to_remove.append(index)
-            elif document == "COA":
-                lot = subtask.lote  # Acceder al atributo 'lote'
-                state, subtask.response = self.file_handler.get_coa_file(product, lot)
-                if state == 1:
-                    subtask.state = 'completed'
-                    indices_to_remove.append(index)
-            elif document == "DP":
-                state, subtask.response = self.file_handler.get_dp_file(product)
-                if state == 1:
-                    subtask.state = 'completed'
-                    indices_to_remove.append(index)
-            elif document == "SDS":
-                state, subtask.response = self.file_handler.get_sds_file(product)
-                if state == 1:
-                    subtask.state = 'completed'
-                    indices_to_remove.append(index)
-            elif document == "CC":
-                state, subtask.response = self.file_handler.get_cc_file(product)
-                if state == 1:
-                    subtask.state = 'completed'
-                    indices_to_remove.append(index)
-            elif document == "FDA":
-                state, subtask.response = self.file_handler.get_fda_file(product)
-                if state == 1:
-                    subtask.state = 'completed'
-                    indices_to_remove.append(index)
-            else:
-                print(f"Tipo de documento no reconocido: {document}")
-            
-            # Acumular la respuesta en task.response
-            if subtask.response:
-                self.task.response += subtask.response
+        if not self.task.subtasks:
+            return self.task.response  # Retorna vacío si no hay subtareas
 
-        # Eliminar las subtasks completadas de self.task.subtasks
-        for index in sorted(indices_to_remove, reverse=True):
-            del self.task.subtasks[index]
+        first_subtask = self.task.subtasks[-1]
+        document = first_subtask.documento
+        product = first_subtask.producto
+        lot = first_subtask.lote
 
+        # Procesar según el tipo de documento
+        if document == "IFU":
+            first_subtask.response = self.file_handler.get_ifu_file(product)
+            first_subtask.state = 'completed'
+
+        elif document == "COA":
+            first_subtask.response = self.file_handler.get_coa_file(product, lot)
+            first_subtask.state = 'completed'
+
+        elif document == "DP":
+            first_subtask.response = self.file_handler.get_dp_file(product)
+            first_subtask.state = 'completed'
+
+        elif document == "SDS":
+            first_subtask.response = self.file_handler.get_sds_file(product)
+            first_subtask.state = 'completed'
+
+        elif document == "CC":
+            first_subtask.response = self.file_handler.get_cc_file(product)
+            first_subtask.state = 'completed'
+
+        elif document == "FDA":
+            first_subtask.response = self.file_handler.get_fda_file(product)
+            first_subtask.state = 'completed'
+
+        else:
+            print(f"Tipo de documento no reconocido: {document}")
+
+        # Acumular la respuesta en task.response
+        # if first_subtask.response:
+        #     self.task.response = first_subtask.response
+        # print("respuesta de get_file")
+        # print(self.task.response)
         # Retornar la respuesta acumulada
-        return self.task.response
+        return first_subtask.response
 
 
-
-        
-
-    
-
-        
-    
     #####################################################################
-    def gather_parameters(self,query,task,thread):
-        chat = self.client.beta.threads.messages.create(
-            thread_id=thread.thread_id,
-            role="user", content=query
-        
-            )
-        chat = self.client.beta.threads.messages.create(
-            thread_id=thread.thread_id,
-            role="assistant", content="You are an AI Product Specialist Assistant. Your primary role is to gather the specific parameters required for different document types based on user requests. Guidelines: COA (Certificates of Analysis): Gather both PRODUCT and LOT. DP (Product Descriptions/Technical Data Sheets): Gather only the PRODUCT . IFU (Instructions for use / prospecto): Gather only the PRODUCT. SDS (Safety Data Sheets): Gather only the PRODUCT. CC (Color Charts): Gather only the PRODUCT. FDA (510K Certificates): Gather only the PRODUCT. Important Notes: Do not return the documents themselves. Your task is strictly to gather and provide the necessary parameters. If the query is unclear or does not explicitly request a file, respond appropriately or ask the user for more specific details. Remember: Delivering documents is handled by another assistant. Your responsibility is solely to gather the required parameters for each document type. You are prohibited from asking for confirmation of the provided data. You are prohibited from answering technical or any other type of questions."
-            # self.prompt_gather_parameters
-        
-            )
-        run = self.client.beta.threads.runs.create_and_poll(
-        thread_id=thread.thread_id,
-        assistant_id=self.assistant_id,
+    def gather_parameters(self, missing_parameters, completed_parameters, thread):
+        # Crear el contenido del mensaje del usuario basado en lo que ya se ha proporcionado y lo que falta
+        user_content = (
+            f"He proporcionado los siguientes detalles: {completed_parameters}. "
+            f"Pero aún necesito proporcionar: {missing_parameters}."
         )
-        if run.status == 'completed': 
+
+        # Enviar el mensaje del usuario
+        chat = self.client.beta.threads.messages.create(
+            thread_id=thread.thread_id,
+            role="user", content=user_content
+        )
+
+        # Crear el contenido del mensaje del asistente para guiar al usuario
+        assistant_content = (
+            "You are an AI Product Specialist Assistant. Your primary role is to gather the specific parameters required for different document types based on user requests. "
+            "The user has already provided some details: "
+            f"{completed_parameters}. "
+            "Now, you need to gather the remaining information: "
+            f"{missing_parameters}. "
+            "Please request these missing parameters from the user in a clear and concise manner. Remember: Your task is strictly to gather and provide the necessary parameters, not to deliver documents or provide technical assistance."
+            f"documents can be: {self.document_types_string} and products can be: {self.products_string}."
+        )
+
+        # Enviar el mensaje del asistente
+        chat = self.client.beta.threads.messages.create(
+            thread_id=thread.thread_id,
+            role="assistant", content=assistant_content
+        )
+
+        # Ejecutar el run del asistente y esperar la respuesta
+        run = self.client.beta.threads.runs.create_and_poll(
+            thread_id=thread.thread_id,
+            assistant_id=self.assistant_id,
+        )
+
+        if run.status == 'completed':
             messages_response = self.client.beta.threads.messages.list(
-                thread_id=thread.thread_id                     )
+                thread_id=thread.thread_id
+            )
+            messages = messages_response.data
+            latest_message = messages[0]
+
+            if messages and hasattr(latest_message, 'content'):
+                content_blocks = latest_message.content
+                if isinstance(content_blocks, list) and len(content_blocks) > 0:
+                    text_block = content_blocks[0]
+                    if hasattr(text_block, 'text') and hasattr(text_block.text, 'value'):
+                        classification = text_block.text.value
+                        return classification
         else:
             print(run.status)
-        messages = messages_response.data
-        latest_message = messages[0]    
-        if messages and hasattr(latest_message, 'content'):
-            content_blocks = messages[0].content
-            if isinstance(content_blocks, list) and len(content_blocks) > 0:
-                text_block = content_blocks[0]
-                if hasattr(text_block, 'text') and hasattr(text_block.text, 'value'):
-                    classification=   text_block.text.value
+
+        return None
+        
+
+
+
+    def check_what_is_empty(self):
+        """
+        Verifica qué parámetros faltan y cuáles están completados en la primera subtarea 
+        (self.task.subtasks[0]) y devuelve dos strings: uno con los parámetros vacíos 
+        y otro con los parámetros completos, concatenados en formato de cadena.
+        """
+        missing_parameters = []
+        completed_parameters = []
+
+        if self.task.subtasks:
+            first_subtask = self.task.subtasks[-1]
+
+            if not first_subtask.documento:
+                missing_parameters.append("documento")
+            else:
+                completed_parameters.append("documento")
+            
+            if not first_subtask.producto:
+                missing_parameters.append("producto")
+            else:
+                completed_parameters.append("producto")
+            
+            if first_subtask.documento == "COA":
+                if not first_subtask.lote:
+                    missing_parameters.append("lote")
+                else:
+                    completed_parameters.append("lote")
+        
+        # Convertir las listas en cadenas de texto
+        missing_str = ", ".join(missing_parameters)
+        completed_str = ", ".join(completed_parameters)
+        print(f"missing parameters: {missing_str}")
+        return missing_str, completed_str
+    
+    def fill_fields(self, parameters):
+        """
+        Rellena los campos de la primera subtarea (self.task.subtasks[0]) con los parámetros extraídos,
+        siempre que los parámetros estén completos en el JSON recibido.
+        """
+        try:
+            json_data = json.loads(parameters)
+            
+            if self.task.subtasks:
+                first_subtask = self.task.subtasks[-1]
+
+                # Mapeo solo si los valores están presentes y no están vacíos en el JSON
+                if json_data.get("documento"):
+                    first_subtask.documento = json_data["documento"]
+                if json_data.get("producto"):
+                    first_subtask.producto = json_data["producto"]
+                if json_data.get("lote"):
+                    first_subtask.lote = json_data["lote"]
+
+        except json.JSONDecodeError as e:
+            print(f"Error al parsear JSON en fill_fields: {e}")
+
+ ############################################# Nueva Version de Resolve_task ###################################
+    def resolve_task(self, query, task, thread):
+        self.task = task
+        parameters = self.extract_variables(query, self.historial)
+        
+        # Verificar si no hay subtareas y actualizar el estado si es necesario
+        if self.task.state=='pending':
+            self.update_state(parameters)
+            print(f"creo la subtask:{self.task.subtasks}")
+            self.task.update_state('in_progress')
+        else:
+            # Llenar los campos de la primera subtarea con los parámetros extraídos
+            self.fill_fields(parameters)
+
+        
+            
+
+            # Iterar sobre las subtareas para manejar los archivos
+        for index in reversed(range(len(self.task.subtasks))):
+            subtask = self.task.subtasks[index]
+            missing_str, completed_str = self.check_what_is_empty()
+
+            if not missing_str:
+                # Verificar si la subtask está completada
+                file_link = self.get_file()
+                if self.task.response:
+                    self.task.response = str(file_link) + ", " + str(self.task.response)
+                else:
+                    self.task.response = str(file_link)
                     
-                                                
-    
-        return classification
-    
-    # def handle_file_request(self,query,task,thread):
-    def resolve_task(self,query,task,thread):    
-        self.task=task
-        task.update_state('in_progress')
-        self.historial.append({"role": "user", "content": query})
-        response=self.gather_parameters(query,task,thread)
-        self.historial.append({"role": "assistant", "content": response})
-        parameters = self.extract_variables(query,self.historial)
-        self.update_state(parameters)
-        file_link = self.get_file()
+                print(f"response: {self.task.response}") 
+                del self.task.subtasks[index]
+                        
+
+        
         task.update_state()
+        # Verificar qué parámetros están vacíos y cuáles están completos
+        missing_parameters, completed_parameters = self.check_what_is_empty()
+
+        # Generar la pregunta para recopilar los parámetros que faltan
+        generated_question = self.gather_parameters(missing_parameters, completed_parameters,thread)
+
+        # Construir la respuesta final
+        self.task.response = str(generated_question) + ", " + str(self.task.response)
+        self.clear_historial()
+        # Establecer la respuesta en la tarea
+        task.set_response(self.task.response)
+
+ ########################################################################
+    # def handle_file_request(self,query,task,thread):
+    # def resolve_task(self,query,task,thread):    
+    #     self.task=task
+    #     task.update_state('in_progress')
+    #     self.historial.append({"role": "user", "content": query})
+    #     response=self.gather_parameters(query,task,thread)
+    #     self.historial.append({"role": "assistant", "content": response})
+    #     parameters = self.extract_variables(query,self.historial)
+    #     self.update_state(parameters)
+    #     file_link = self.get_file()
+    #     task.update_state()
        
-        print("estado de la task al final de resolve_task")
-        print(self.task.get_state())  
-                                                        #si se obtuvo el enlace se concatena en una variable y se cambia el estado de la bandera a 1                   
-        response = file_link + ", " + response 
+    #     # print("estado de la task al final de resolve_task")
+    #     # print(self.task.get_state())  
+    #                                                     #si se obtuvo el enlace se concatena en una variable y se cambia el estado de la bandera a 1                   
+    #     response = file_link + ", " + response 
             
-        self.clear_historial() 
+    #     self.clear_historial() 
             
-        task.set_response(response)
-        print(response)
+    #     task.set_response(response)
+    #     # print(response)
         
     #####################################################################################
     # def resolve_task(self,task,entry):
