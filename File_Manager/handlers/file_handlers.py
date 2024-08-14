@@ -187,3 +187,34 @@ class file_handlers:
                 print(f"Error al acceder a {url}: {e}")
 
         return  f"No se pudo encontrar la DP de {best_match_product}"
+    
+    def get_cc_file(self, product):
+        document_type = 'ColorChart'
+        best_match_product = self.best_match(product, self.products)
+        
+        if not best_match_product:
+            print(f"No se encontró una coincidencia para el producto: {product}")
+            return None
+        
+        base_url = "https://terragene.com/wp-content/uploads"
+        subfolders = ["biologicos", "Pro1", "lavado", "quimico"]
+
+        for subfolder in subfolders:
+            url = f"{base_url}/{document_type}/{subfolder}/"
+            
+            try:
+                response = requests.get(url)
+                if response.status_code == 200:
+                    soup = BeautifulSoup(response.text, 'html.parser')
+                    links = soup.find_all('a')
+                    for link in links:
+                        href = link.get('href')
+                        if href and href.endswith('.pdf') and best_match_product in href:
+                            # Devuelve la URL completa del archivo PDF que coincide
+                            return f"{url}{href}"
+                else:
+                    print(f"No se pudo acceder a la URL: {url}")
+            except requests.RequestException as e:
+                print(f"Error al acceder a {url}: {e}")
+
+        return f"No se pudo encontrar el CC de {best_match_product}"
