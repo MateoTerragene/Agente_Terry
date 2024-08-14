@@ -322,3 +322,8 @@ class file_handlers:
                 return f"https://terragene.com/wp-content/uploads/Archivos/FDA/{key}.pdf"
         
         return "No se encontró un archivo FDA correspondiente para el producto especificado."
+
+    def get_iso_file(self):
+        devolver="""ISO Certification (English): https://terragene.com/wp-content/uploads/Archivos/ISO/243953-2017-AQ-ARG-NA-PS%20Rev%204.0-20230707-20230707084216.pdf
+                    Certificado ISO (Español): https://terragene.com/wp-content/uploads/Archivos/ISO/243953-2017-AQ-ARG-NA-PS%20Rev.%204.0%20Spanish-20230707-20230707084303.pdf """
+        return devolver

@@ -37,7 +37,7 @@ class FileManager:
                 "Eres un experto en la extracción de información de conversaciones. Extrae las variables importantes y devuélvelas en formato JSON, "
                 "únicamente cuando hayas extraído toda la información requerida para cada tipo de documento. Para los Certificates of Analysis (COA), "
                 "extrae el PRODUCT y el LOT. Para las Instructions for Use (IFU), Product Description or technical data sheet (DP), Safety Data Sheet (SDS), "
-                "Color Charts (CC) y FDA certificates 510K (FDA), extrae solo el PRODUCT. Devuelve un JSON por CADA documento solicitado solo si se ha extraído toda la información requerida. "
+                "Color Charts (CC) y FDA certificates 510K (FDA), extrae solo el PRODUCT. Para los certificados ISO DNV(ISO) no se necesitan otras variables. Devuelve un JSON por CADA documento solicitado solo si se ha extraído toda la información requerida. "
                 "Retorna 'documento: ','producto: ' y 'lote: ' si es necesario. Tu rol NO es devolver documentos. Documento solo puede ser igual a "
                 f"{self.document_types_string}. Producto solo puede ser igual a {self.products_string}. Si no puedes extraer alguna variable dejala vacia. Si el usuario solicita un COA y quiere el ultimo LOTE disponible, en 'lote' devuelve 'last' "
                 "Utiliza el historial de la conversación para completar cualquier información faltante. NO PIDAS CONFIRMACIÓN."
@@ -194,7 +194,9 @@ class FileManager:
         elif document == "FDA":
             first_subtask.response = self.file_handler.get_fda_file(product)
             first_subtask.state = 'completed'
-
+        elif document == "ISO":
+            first_subtask.response = self.file_handler.get_iso_file()
+            first_subtask.state = 'completed'
         else:
             print(f"Tipo de documento no reconocido: {document}")
 
@@ -293,7 +295,9 @@ class FileManager:
                     missing_parameters.append("lote")
                 else:
                     completed_parameters.append("lote")
-        
+            if first_subtask.documento == "ISO":
+                missing_parameters=[]
+                
         # Convertir las listas en cadenas de texto
         missing_str = ", ".join(missing_parameters)
         completed_str = ", ".join(completed_parameters)
