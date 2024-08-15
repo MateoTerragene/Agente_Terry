@@ -6,10 +6,7 @@ from Module_Manager.Tasks import Task
 from File_Manager.SubTask import FMSubTask
 import json
 import os
-
-
 import re
-
 from .handlers.file_handlers import file_handlers
 
 class FileManager:
