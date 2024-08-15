@@ -158,7 +158,7 @@ class FileManager:
         
     def get_file(self):
         if not self.task.subtasks:
-            return self.task.response  # Retorna vacío si no hay subtareas
+            return str(self.task.response)  # Retorna vacío si no hay subtareas
 
         first_subtask = self.task.subtasks[0]
         document = first_subtask.documento
