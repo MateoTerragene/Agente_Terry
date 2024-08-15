@@ -157,8 +157,6 @@ class FileManager:
     
         
     def get_file(self):
-        # self.task.response = ""
-
         if not self.task.subtasks:
             return self.task.response  # Retorna vacío si no hay subtareas
 
@@ -167,42 +165,24 @@ class FileManager:
         product = first_subtask.producto
         lot = first_subtask.lote
 
-        # Procesar según el tipo de documento
-        if document == "IFU":
-            first_subtask.response = self.file_handler.get_ifu_file(product)
-            first_subtask.state = 'completed'
+        document_handlers = {
+            "IFU": lambda: self.file_handler.get_ifu_file(product),
+            "COA": lambda: self.file_handler.get_coa_file(product, lot),
+            "DP": lambda: self.file_handler.get_dp_file(product),
+            "SDS": lambda: self.file_handler.get_sds_file(product),
+            "CC": lambda: self.file_handler.get_cc_file(product),
+            "FDA": lambda: self.file_handler.get_fda_file(product),
+            "ISO": lambda: self.file_handler.get_iso_file()
+        }
 
-        elif document == "COA":
-            first_subtask.response = self.file_handler.get_coa_file(product, lot)
-            first_subtask.state = 'completed'
+        handler = document_handlers.get(document)
 
-        elif document == "DP":
-            first_subtask.response = self.file_handler.get_dp_file(product)
-            first_subtask.state = 'completed'
-
-        elif document == "SDS":
-            first_subtask.response = self.file_handler.get_sds_file(product)
-            first_subtask.state = 'completed'
-
-        elif document == "CC":
-            first_subtask.response = self.file_handler.get_cc_file(product)
-            first_subtask.state = 'completed'
-
-        elif document == "FDA":
-            first_subtask.response = self.file_handler.get_fda_file(product)
-            first_subtask.state = 'completed'
-        elif document == "ISO":
-            first_subtask.response = self.file_handler.get_iso_file()
+        if handler:
+            first_subtask.response = handler()
             first_subtask.state = 'completed'
         else:
             print(f"Tipo de documento no reconocido: {document}")
 
-        # Acumular la respuesta en task.response
-        # if first_subtask.response:
-        #     self.task.response = first_subtask.response
-        # print("respuesta de get_file")
-        # print(self.task.response)
-        # Retornar la respuesta acumulada
         return first_subtask.response
 
 
