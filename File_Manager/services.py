@@ -69,7 +69,7 @@ class FileManager:
             return JsonResponse({'error': f"An error occurred while loading data: {str(e)}"}, status=500)
         
     def extract_variables(self, conversation, historial):
-        messages = historial + [{"role": "user", "content": str(conversation)}]
+        messages = self.historial.append({"role": "user", "content": str(conversation)})
         response = self.client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
@@ -321,7 +321,7 @@ class FileManager:
     def resolve_task(self, query, task, thread):
         task.response=""
         # task = task
-        parameters = self.extract_variables(query, self.historial)
+        parameters = self.extract_variables(query)
         
         # Verificar si no hay subtareas y actualizar el estado si es necesario
         if task.state=='pending':
@@ -372,7 +372,7 @@ class FileManager:
 
             # Construir la respuesta final
             task.response = str(generated_question) + ", " + str(task.response)
-        self.clear_historial()
+        #self.clear_historial()
         # Establecer la respuesta en la tarea
         print(f"response: {task.response}")
         task.set_response(task.response)
