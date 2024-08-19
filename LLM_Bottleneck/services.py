@@ -1,4 +1,5 @@
 import os
+import re
 from openai import OpenAI
 from Module_Manager import Tasks
 from django.http import JsonResponse
@@ -7,6 +8,7 @@ class LLM_Bottleneck:
     def __init__(self):
         try:
             self.client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+            self.abort_signal=False
             self.prompt = (
                 "I am an assistant designed to merge and organize the responses provided to me. "
                 "My role is to combine the responses from various tasks given by the user into a cohesive and well-structured summary. "
@@ -16,6 +18,7 @@ class LLM_Bottleneck:
                 "I will detect the language of the query and always respond in the same language unless explicitly asked to switch languages. "
                 "If I do not understand the query or do not have enough information to generate a response, I will simply ask for more details."
                 "If it is the first message greet the user as Terry, the AI expert in biotechnology. Only greet the user on the first messages, do not greet the user on the rest of the messages"
+                "If I detect in {query} any intention to end the conversation or abort the task, I will disregard the content of {responses}, return the sequence '#-#-#-#-#-#-', inform the user that the task has been aborted and was not completed, and make myself available for further assistance. "
             )
             self.tasks = []
             self.task_responses = ""
@@ -32,19 +35,13 @@ class LLM_Bottleneck:
         return user_prompt
 
     def generate_response(self, user_prompt,thread):             # Esta funcion se puede llamar dentro de una funcion que saque una respuesta por el chat
-        # response = self.client.chat.completions.create(
-        #     model="gpt-4o-mini",
-        #     messages=[
-        #         {"role": "system", "content": self.prompt},
-        #         {"role": "user", "content": user_prompt}
-        #     ]
-        # )
-        # classification = response.choices[0].message.content
+      
         chat = self.client.beta.threads.messages.create(
             thread_id=thread.thread_id,
             role="user", content=user_prompt
         
             )
+        print(f"LLM_BN user prompt: {user_prompt}")
         chat = self.client.beta.threads.messages.create(
             thread_id=thread.thread_id,
             role="assistant", content=self.prompt
@@ -71,14 +68,27 @@ class LLM_Bottleneck:
                                                 
     
         return classification
-
+    def detect_abort_signal(self, response):
+        pattern = r"(#-)+"
+        if re.search(pattern, response):
+            self.abort_signal = True
+        
+            # Eliminar el patrón de response
+            cleaned_response = re.sub(pattern, "", response)
+            return cleaned_response.strip()
+        self.abort_signal = False
+        return response
+    
     def generate_tasks_response(self, query,thread):      #esta funcion deberia llamarse al final de Module_Manager/services classify_query
         user_prompt = self.generate_prompt_tasks(query)
         response = self.generate_response(user_prompt,thread)
+        
+        response= self.detect_abort_signal(response)
         # print(response) # este print es solo para probar
         # print(response)
         self.tasks.clear()
         print("  ")
+        print(f"abort signal: {self.abort_signal}")
         print("******************************************************************************")
         print("Respuesta: LLM_Bottleneck -> generate response:  ")
         print(response)

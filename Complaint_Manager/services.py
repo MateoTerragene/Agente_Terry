@@ -201,6 +201,8 @@ class ComplaintManager:
                 # print(self.complaint)
                 # print("")
                 task.update_state('completed')
+        print("AI response en el complaint manager: " + ai_response)
+      
         task.set_response(ai_response)            
  
         # task.set_response(ai_response)
