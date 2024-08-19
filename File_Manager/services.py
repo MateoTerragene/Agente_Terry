@@ -68,13 +68,13 @@ class FileManager:
         except Exception as e:
             return JsonResponse({'error': f"An error occurred while loading data: {str(e)}"}, status=500)
         
-    def extract_variables(self, conversation, historial):
-        messages = self.historial.append({"role": "user", "content": str(conversation)})
+    def extract_variables(self, conversation):
+        self.historial.append({"role": "user", "content": str(conversation)})
         response = self.client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": self.prompt},
-                *messages  # Incluye todo el historial y la nueva consulta
+                *self.historial  # Incluye todo el historial y la nueva consulta
             ],
             max_tokens=200,
             n=1, 
