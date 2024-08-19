@@ -18,10 +18,12 @@ class LLM_Bottleneck:
                 "I will detect the language of the query and always respond in the same language unless explicitly asked to switch languages. "
                 "If I do not understand the query or do not have enough information to generate a response, I will simply ask for more details."
                 "If it is the first message greet the user as Terry, the AI expert in biotechnology. Only greet the user on the first messages, do not greet the user on the rest of the messages"
-                "If I detect in {query} any intention to end the conversation or abort the task, I will disregard the content of {responses}, return the sequence '#-#-#-#-#-#-', inform the user that the task has been aborted and was not completed, and make myself available for further assistance. "
-            )
+                "If I detect any explicit intention to end the conversation or abort the task in the user input, I will return the sequence '#-#-#-#-#-#-', inform the user that the task has been aborted and was not completed, and make myself available for further assistance. "
+                )
+            # "If I detect any explicit intention to end the conversation or abort the task in the user input, I will return the sequence '#-#-#-#-#-#-', inform the user that the task has been aborted and was not completed, and make myself available for further assistance. "
+            
             self.tasks = []
-            self.task_responses = ""
+            # self.task_responses = ""
             self.assistant_id = os.getenv('LLM_BOTTLENECK_ASSISTANT_ID')
         except FileNotFoundError:
             return JsonResponse({'error': "The file 'data.json' was not found."}, status=404)
@@ -29,7 +31,11 @@ class LLM_Bottleneck:
             return JsonResponse({'error': "The file 'data.json' contains invalid JSON."}, status=400)
         except Exception as e:
             return JsonResponse({'error': f"An error occurred while loading data: {str(e)}"}, status=500)
-    def generate_prompt_tasks(self, query):             # esta funcion nunca se llama, solamente dentro de generate_tasks_response
+    def generate_prompt_tasks(self, query):  
+
+        for task in self.tasks:
+            print(f"task responsesdentreo de generate prompt: {task.get_response()}")
+        # esta funcion nunca se llama, solamente dentro de generate_tasks_response
         responses = ". ".join([task.get_response() for task in self.tasks])
         user_prompt = f"Query: {query}, Responses: {responses}"
         return user_prompt
@@ -66,29 +72,34 @@ class LLM_Bottleneck:
                     classification=   text_block.text.value
                     
                                                 
-    
+        print(f"classification dentro de generate_response: {classification}")
         return classification
     def detect_abort_signal(self, response):
         pattern = r"(#-)+"
         if re.search(pattern, response):
-            self.abort_signal = True
+            self.abort_signal = True ### SOLO PARA PROBAR
         
             # Eliminar el patrón de response
             cleaned_response = re.sub(pattern, "", response)
             return cleaned_response.strip()
-        self.abort_signal = False
-        return response
+        else:
+            self.abort_signal = False
+            return response
     
     def generate_tasks_response(self, query,thread):      #esta funcion deberia llamarse al final de Module_Manager/services classify_query
+        response=""
         user_prompt = self.generate_prompt_tasks(query)
+        print(f"response antes de generarla: {response}")
         response = self.generate_response(user_prompt,thread)
         
+        print(f"abort signal antes de detectar: {self.abort_signal}")
+        print(f"response antes de detectar: {response}")
         response= self.detect_abort_signal(response)
         # print(response) # este print es solo para probar
         # print(response)
         self.tasks.clear()
         print("  ")
-        print(f"abort signal: {self.abort_signal}")
+        print(f"abort signal despues de detectar: {self.abort_signal}")
         print("******************************************************************************")
         print("Respuesta: LLM_Bottleneck -> generate response:  ")
         print(response)

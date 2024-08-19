@@ -54,6 +54,7 @@ class ModuleManager:
         logger.info(f"Usando el thread ID: {thread_id} para clasificar la consulta.")
         self.query = query
         if self.LLM_BN.abort_signal:
+            self.LLM_BN.abort_signal=False
             self.tasks.clear()
         if not self.tasks or self.tasks[0].get_state() == 'pending':
             print("entro a clasificar")

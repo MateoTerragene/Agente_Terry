@@ -50,4 +50,13 @@ class ClassifyQueryView(View):
 @method_decorator(login_required, name='dispatch')
 class ChatView(View):
     def get(self, request):
-        return render(request, 'chat.html')
+        user = request.user
+        try:
+            logger.debug(f"User: {user.username}")
+            thread_manager_instance.delete_thread(user)  # Desactivar threads activos anteriores
+            thread, _ = thread_manager_instance.create_thread(user)  # Crear un nuevo thread
+            logger.debug(f"New thread created with ID: {thread.thread_id}")
+            return render(request, 'chat.html', context={'thread_id': thread.thread_id})
+        except Exception as e:
+            logger.error(f"Error in ChatView: {str(e)}")
+            return JsonResponse({'error': str(e)}, status=500)

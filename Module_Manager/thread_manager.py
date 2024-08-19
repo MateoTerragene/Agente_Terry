@@ -35,7 +35,7 @@ class ThreadManager:
             # Inicializar ModuleManager para el nuevo thread
             # self.module_manager = ModuleManager()
 
-            return thread
+            return thread, self.module_manager
         except Exception as e:
             logger.error(f"Error creando thread para usuario {user.username}: {str(e)}")
             raise
