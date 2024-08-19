@@ -12,16 +12,16 @@ from .handlers.file_handlers import file_handlers
 class FileManager:
     def __init__(self):
         try:
-            self.prompt_extract_parameters = None
+            # self.prompt_extract_parameters = None
             self.products = None
             self.document_types = None
-            self.prompt_gather_parameters = None
+            # self.prompt_gather_parameters = None
             self.historial = []
-            self.task=Task()
+            # task=Task()
             self.client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
             self.document_types
             self.document_types_string = ""
-            self.products
+            # self.products
             self.products_string = ""
             self.prompt = None  
             self.assistant_id = os.getenv('FILE_MANAGER_ASSISTANT_ID')
@@ -38,7 +38,7 @@ class FileManager:
                 "Retorna 'documento: ','producto: ' y 'lote: ' si es necesario. Tu rol NO es devolver documentos. Documento solo puede ser igual a "
                 f"{self.document_types_string}. Producto solo puede ser igual a {self.products_string}. Si no puedes extraer alguna variable dejala vacia. Si el usuario solicita un COA y quiere el ultimo LOTE disponible, en 'lote' devuelve 'last' "
                 "Utiliza el historial de la conversación para completar cualquier información faltante. NO PIDAS CONFIRMACIÓN."
-                "{ 'documento': '','producto':'','lote':''}"
+                """{ "documento": "" ,"producto":"","lote":""}"""
             )
             # self.state = {
             #     "documento": None,
@@ -53,12 +53,12 @@ class FileManager:
             file_path = os.path.join(os.path.dirname(__file__), 'data.json')
             with open(file_path) as f:
                 data = json.load(f)
-                self.prompt_extract_parameters = data.get("prompt_extract_parameters")
+                # self.prompt_extract_parameters = data.get("prompt_extract_parameters")
                 self.products = data.get("products")
                 self.products_string = ", ".join(self.products)
                 self.document_types = data.get("document_types")
                 self.document_types_string = ", ".join(self.document_types)
-                self.prompt_gather_parameters = data.get("prompt_gather_parameters")
+                # self.prompt_gather_parameters = data.get("prompt_gather_parameters")
             self.historial = [{"role": "system", "content": "Eres un asistente que reune parámetros."}]
             return None
         except FileNotFoundError:
@@ -77,7 +77,7 @@ class FileManager:
                 *messages  # Incluye todo el historial y la nueva consulta
             ],
             max_tokens=200,
-            n=1,
+            n=1, 
             stop=None,
             temperature=0.5,
         )
@@ -89,7 +89,7 @@ class FileManager:
         return generated_text
 
         
-    def update_state(self, extracted_params): 
+    def update_state(self,task, extracted_params): 
         try:
             # Separar múltiples bloques de "JSON" (que en realidad son diccionarios de Python)
             json_blocks = extracted_params.split('}\n{')
@@ -112,7 +112,7 @@ class FileManager:
                     data = json.loads(cleaned_params)
                     
                     # Procesar cada bloque JSON
-                    self._process_json_item(data)
+                    self._process_json_item(task, data)
 
         except json.JSONDecodeError as e:
             print(f"La respuesta no es un JSON válido: {e}")
@@ -120,7 +120,7 @@ class FileManager:
 
 
 
-    def _process_json_item(self, data):
+    def _process_json_item(self, task, data):
         # Crear una instancia de FMSubTask
         fm_subtask = FMSubTask()
         fm_subtask.state = 'in_progress'
@@ -144,7 +144,7 @@ class FileManager:
             fm_subtask.lote = lote
             
             # Agregar la subtarea a la lista de subtareas
-        self.task.subtasks.append(fm_subtask)
+        task.subtasks.append(fm_subtask)
         print("Subtarea creada y añadida:", fm_subtask)
         
 
@@ -156,11 +156,11 @@ class FileManager:
 
     
         
-    def get_file(self):
-        if not self.task.subtasks:
-            return str(self.task.response)  # Retorna vacío si no hay subtareas
+    def get_file(self,task):
+        if not task.subtasks:
+            return str(task.response)  # Retorna vacío si no hay subtareas
 
-        first_subtask = self.task.subtasks[0]
+        first_subtask = task.subtasks[0]
         document = first_subtask.documento
         product = first_subtask.producto
         lot = first_subtask.lote
@@ -208,7 +208,7 @@ class FileManager:
             "Now, you need to gather the remaining information: "
             f"{missing_parameters}. "
             "Please request these missing parameters from the user in a clear and concise manner. Remember: Your task is strictly to gather and provide the necessary parameters, not to deliver documents or provide technical assistance."
-            f"documents can be: {self.document_types_string} and products can be: {self.products_string}."
+            f"documents can be: {self.document_types_string} and products can be: {self.products_string}. Do not return the list of products unless explicitly requested.."
         )
 
         # Enviar el mensaje del asistente
@@ -245,17 +245,17 @@ class FileManager:
 
 
 
-    def check_what_is_empty(self):
+    def check_what_is_empty(self,task):
         """
         Verifica qué parámetros faltan y cuáles están completados en la primera subtarea 
-        (self.task.subtasks[0]) y devuelve dos strings: uno con los parámetros vacíos 
+        (task.subtasks[0]) y devuelve dos strings: uno con los parámetros vacíos 
         y otro con los parámetros completos, concatenados en formato de cadena.
         """
         missing_parameters = []
         completed_parameters = []
 
-        if self.task.subtasks:
-            first_subtask = self.task.subtasks[0]
+        if task.subtasks:
+            first_subtask = task.subtasks[0]
 
             if not first_subtask.documento:
                 missing_parameters.append("documento")
@@ -281,9 +281,9 @@ class FileManager:
         
         return missing_str, completed_str
     
-    def fill_fields(self, parameters):
+    def fill_fields(self,task, parameters):
         """
-        Rellena los campos de la primera subtarea (self.task.subtasks[0]) con los parámetros extraídos,
+        Rellena los campos de la primera subtarea (task.subtasks[0]) con los parámetros extraídos,
         siempre que los parámetros estén completos en el JSON recibido.
         """
         documento=None
@@ -293,8 +293,8 @@ class FileManager:
             parameters = parameters.replace("'", '"')
             json_data = json.loads(parameters)
             print(json_data)
-            if self.task.subtasks:
-                first_subtask = self.task.subtasks[0]
+            if task.subtasks:
+                first_subtask = task.subtasks[0]
             print("paso el if subtask")
                 # Verificar si "documento" y "producto" están presentes y son válidos antes de asignarlos
             if json_data.get("documento"):
@@ -319,69 +319,69 @@ class FileManager:
 
  ############################################# Nueva Version de Resolve_task ###################################
     def resolve_task(self, query, task, thread):
-        self.task.response=""
-        self.task = task
+        task.response=""
+        # task = task
         parameters = self.extract_variables(query, self.historial)
         
         # Verificar si no hay subtareas y actualizar el estado si es necesario
         if task.state=='pending':
-            self.update_state(parameters)
-            print(f"creo la subtask:{self.task.subtasks}")
-            self.task.update_state()
-            task.update_state(self.task.state)
+            self.update_state(task, parameters)
+            print(f"creo la subtask:{task.subtasks}")
+            task.update_state()
+            # task.update_state(task.state)
         else:
             # Llenar los campos de la primera subtarea con los parámetros extraídos
-            self.fill_fields(parameters)
+            self.fill_fields(task, parameters)
             print("entro al else")
 
         
             
 
         index = 0
-        while index < len(self.task.subtasks):
-            subtask = self.task.subtasks[index]
-            missing_str, completed_str = self.check_what_is_empty()
+        while index < len(task.subtasks):
+            subtask = task.subtasks[index]
+            missing_str, completed_str = self.check_what_is_empty(task)
             print("missing parameters: ")
             print(missing_str)
             print("completed param")
             print(completed_str)
 
             if not missing_str:
-                file_link = self.get_file()
-                if self.task.response:
-                    self.task.response = str(file_link) + ", " + str(self.task.response)
+                file_link = self.get_file(task)
+                if task.response:
+                    task.response = str(file_link) + ", " + str(task.response)
                 else:
-                    self.task.response = str(file_link)
+                    task.response = str(file_link)
 
                 
-                del self.task.subtasks[index]
+                del task.subtasks[index]
                 # No incrementas el índice porque la lista se acorta
             else:
                 index += 1  # Solo incrementas si no se elimina nada
 
-        self.task.update_state()
-        print(self.task.update_state())
-        task.update_state(self.task.state)                
+        task.update_state()
+        print(task.update_state())
+        # task.update_state(task.state)                
 
         if task.state!='completed' :
             # Verificar qué parámetros están vacíos y cuáles están completos
-            missing_parameters, completed_parameters = self.check_what_is_empty()
+            missing_parameters, completed_parameters = self.check_what_is_empty(task)
 
             # Generar la pregunta para recopilar los parámetros que faltan
             generated_question = self.gather_parameters(missing_parameters, completed_parameters,thread)
 
             # Construir la respuesta final
-            self.task.response = str(generated_question) + ", " + str(self.task.response)
+            task.response = str(generated_question) + ", " + str(task.response)
         self.clear_historial()
         # Establecer la respuesta en la tarea
-        print(f"response: {self.task.response}")
-        task.set_response(self.task.response)
+        print(f"response: {task.response}")
+        task.set_response(task.response)
         
         
  ########################################################################
     # def handle_file_request(self,query,task,thread):
     # def resolve_task(self,query,task,thread):    
-    #     self.task=task
+    #     task=task
     #     task.update_state('in_progress')
     #     self.historial.append({"role": "user", "content": query})
     #     response=self.gather_parameters(query,task,thread)
@@ -392,7 +392,7 @@ class FileManager:
     #     task.update_state()
        
     #     # print("estado de la task al final de resolve_task")
-    #     # print(self.task.get_state())  
+    #     # print(task.get_state())  
     #                                                     #si se obtuvo el enlace se concatena en una variable y se cambia el estado de la bandera a 1                   
     #     response = file_link + ", " + response 
             

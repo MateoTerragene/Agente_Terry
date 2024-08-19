@@ -82,49 +82,49 @@ class ModuleManager:
     def process_tasks(self,thread):
        
         for i in range(len(self.tasks)):
-            task = self.tasks[0]  # Siempre obtenemos la primera tarea
+            # task = self.tasks[0]  # Siempre obtenemos la primera tarea
 
-            self.handle_task(task,thread)
+            self.handle_task(thread)
             # print("estado task dentro de process_task")
             # print(task.get_state())
-            if task.get_state() == 'completed':
+            if self.tasks[0].get_state() == 'completed':
                 self.tasks.pop(0)  # Eliminar la tarea completada de la lista
 
          
-    def handle_task(self,task,thread):
-        if task.task_type == "fileRequest":
+    def handle_task(self,thread):
+        if self.tasks[0].task_type == "fileRequest":
             print("Resolviendo solicitud de documentos...")
-            self.file_manager.resolve_task(self.query,task,thread)
+            self.file_manager.resolve_task(self.query,self.tasks[0],thread)
             # print("estado de la task FM")
             # print(task.get_state())
-            self.LLM_BN.receive_task(task.clone())
+            self.LLM_BN.receive_task(self.tasks[0].clone())
  
 
-        elif task.task_type == "technical_query":
+        elif self.tasks[0].task_type == "technical_query":
             print("Resolviendo consulta técnica...")
 
-            self.technical_query_assistant.handle_technical_query(self.query,task,thread)
+            self.technical_query_assistant.handle_technical_query(self.query,self.tasks[0],thread)
            
-            self.LLM_BN.receive_task(task.clone())
+            self.LLM_BN.receive_task(self.tasks[0].clone())
     
             
-        elif task.task_type == "complaint":
+        elif self.tasks[0].task_type == "complaint":
             print("Resolviendo reclamo...")
-            self.complaint_manager.handle_complaint(self.query,task,thread)
+            self.complaint_manager.handle_complaint(self.query,self.tasks[0],thread)
            
-            self.LLM_BN.receive_task(task.clone())
+            self.LLM_BN.receive_task(self.tasks[0].clone())
             # task.update_state('completed')
             # Lógica para resolver reclamo
 
 
-        elif task.task_type == "purchase_opportunity":
+        elif self.tasks[0].task_type == "purchase_opportunity":
             print("Resolviendo oportunidad de compra...")
-            self.PO_manager.resolve_task(task,self.query)
+            self.PO_manager.resolve_task(self.tasks[0],self.query)
            
-            self.LLM_BN.receive_task(task.clone())
+            self.LLM_BN.receive_task(self.tasks[0].clone())
  
         else:
-            print(f"Tarea desconocida: {task.task_type}")
-            if task.state == 'completed':
+            print(f"Tarea desconocida: {self.tasks[0].task_type}")
+            if self.tasks[0].state == 'completed':
                 self.tasks.pop(0)  # Eliminar la tarea completada
         
