@@ -328,8 +328,11 @@ class FileManager:
         # print(f"thread : {self.client.beta.threads.messages.list(thread_id=thread.thread_id).data[0].content[0].text.value }")
         task.response=""
         if task.state=='pending':
-            self.historial.append({"role": "user", "content": str(self.client.beta.threads.messages.list(thread_id=thread.thread_id).data[4].content[0].text.value )})
-            self.historial.append({"role": "assistant", "content": str(self.client.beta.threads.messages.list(thread_id=thread.thread_id).data[0].content[0].text.value )})
+            messages = self.client.beta.threads.messages.list(thread_id=thread.thread_id).data
+
+            if len(messages) > 4:
+                self.historial.append({"role": "user", "content": str(messages[4].content[0].text.value)})
+                self.historial.append({"role": "assistant", "content": str(self.client.beta.threads.messages.list(thread_id=thread.thread_id).data[0].content[0].text.value )})
         # task = task
         parameters = self.extract_variables(query,thread)
         
