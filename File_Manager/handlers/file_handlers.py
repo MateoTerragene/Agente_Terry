@@ -135,7 +135,7 @@ class file_handlers:
                         most_recent_pdf = self.get_most_recent_pdf(url)
                         if most_recent_pdf:
                             devolver = f"{document_type} - {best_match_product} : {most_recent_pdf}"
-                            print(devolver)
+                            # print(devolver)
                             return devolver
                         else:
                             print(f"No se encontró un PDF reciente para el producto: {product}")
@@ -148,7 +148,7 @@ class file_handlers:
                             lote_limpio = self.limpiar_texto(lot) if lot else ""
                             if not lot or lote_limpio in nombre_archivo_limpio:
                                 devolver = f"{document_type} - {best_match_product} : {url}{href}"
-                                print(devolver)
+                                # print(devolver)
                                 return devolver
                 else:
                     print(f"No se pudo acceder a la página: {url}")

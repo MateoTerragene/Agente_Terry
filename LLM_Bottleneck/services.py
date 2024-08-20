@@ -33,8 +33,8 @@ class LLM_Bottleneck:
             return JsonResponse({'error': f"An error occurred while loading data: {str(e)}"}, status=500)
     def generate_prompt_tasks(self, query):  
 
-        for task in self.tasks:
-            print(f"task responsesdentreo de generate prompt: {task.get_response()}")
+        # for task in self.tasks:
+        #     print(f"task responsesdentreo de generate prompt: {task.get_response()}")
         # esta funcion nunca se llama, solamente dentro de generate_tasks_response
         responses = ". ".join([task.get_response() for task in self.tasks])
         user_prompt = f"Query: {query}, Responses: {responses}"
@@ -89,11 +89,11 @@ class LLM_Bottleneck:
     def generate_tasks_response(self, query,thread):      #esta funcion deberia llamarse al final de Module_Manager/services classify_query
         response=""
         user_prompt = self.generate_prompt_tasks(query)
-        print(f"response antes de generarla: {response}")
+        # print(f"response antes de generarla: {response}")
         response = self.generate_response(user_prompt,thread)
         
         print(f"abort signal antes de detectar: {self.abort_signal}")
-        print(f"response antes de detectar: {response}")
+        # print(f"response antes de detectar: {response}")
         response= self.detect_abort_signal(response)
         # print(response) # este print es solo para probar
         # print(response)

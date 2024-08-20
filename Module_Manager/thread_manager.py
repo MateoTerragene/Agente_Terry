@@ -59,7 +59,7 @@ class ThreadManager:
             # Verificar si el thread es reciente o necesita uno nuevo
             if thread.last_activity < timezone.now() - timedelta(minutes=10):
                 logger.info(f"Thread antiguo encontrado para el usuario {user.username}. Creando nuevo thread.")
-                thread = self.create_thread(user)
+                thread, _ = self.create_thread(user)
             else:
                 # Reutilizar el thread existente
                 logger.info(f"Thread reciente encontrado para el usuario {user.username}. Reutilizando thread.")

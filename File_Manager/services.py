@@ -68,8 +68,13 @@ class FileManager:
         except Exception as e:
             return JsonResponse({'error': f"An error occurred while loading data: {str(e)}"}, status=500)
         
-    def extract_variables(self, conversation):
+    def extract_variables(self, conversation,thread):
+        # print("el mensaje anterior: ")
+        # print(self.client.beta.threads.messages.list(thread_id=thread.thread_id).data[-1].content[-1].text.value )
+        
         self.historial.append({"role": "user", "content": str(conversation)})
+        
+        print(f"historial: {self.historial}")
         response = self.client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
@@ -152,7 +157,7 @@ class FileManager:
 
 
     def clear_historial(self):
-        self.historial = []
+        self.historial.clear()
 
     
         
@@ -292,17 +297,17 @@ class FileManager:
         try:
             parameters = parameters.replace("'", '"')
             json_data = json.loads(parameters)
-            print(json_data)
+            # print(json_data)
             if task.subtasks:
                 first_subtask = task.subtasks[0]
-            print("paso el if subtask")
+            # print("paso el if subtask")
                 # Verificar si "documento" y "producto" están presentes y son válidos antes de asignarlos
             if json_data.get("documento"):
                 documento = json_data.get("documento")
             if json_data.get("producto"):
                 producto = json_data.get("producto")
-                print("producto FF")
-                print(producto)
+                # print("producto FF")
+                # print(producto)
             if json_data.get("lote"):
                 lote = json_data.get("lote")
 
@@ -319,20 +324,26 @@ class FileManager:
 
  ############################################# Nueva Version de Resolve_task ###################################
     def resolve_task(self, query, task, thread):
+        # print(f"thread : {self.client.beta.threads.messages.list(thread_id=thread.thread_id).data[4].content[0].text.value }")
+        # print(f"thread : {self.client.beta.threads.messages.list(thread_id=thread.thread_id).data[0].content[0].text.value }")
         task.response=""
+        if task.state=='pending':
+            self.historial.append({"role": "user", "content": str(self.client.beta.threads.messages.list(thread_id=thread.thread_id).data[4].content[0].text.value )})
+            self.historial.append({"role": "assistant", "content": str(self.client.beta.threads.messages.list(thread_id=thread.thread_id).data[0].content[0].text.value )})
         # task = task
-        parameters = self.extract_variables(query)
+        parameters = self.extract_variables(query,thread)
         
         # Verificar si no hay subtareas y actualizar el estado si es necesario
         if task.state=='pending':
+
             self.update_state(task, parameters)
-            print(f"creo la subtask:{task.subtasks}")
+            # print(f"creo la subtask:{task.subtasks}")
             task.update_state()
             # task.update_state(task.state)
         else:
             # Llenar los campos de la primera subtarea con los parámetros extraídos
             self.fill_fields(task, parameters)
-            print("entro al else")
+            # print("entro al else")
 
         
             
@@ -360,7 +371,7 @@ class FileManager:
                 index += 1  # Solo incrementas si no se elimina nada
 
         task.update_state()
-        print(task.update_state())
+        # print(task.update_state())
         # task.update_state(task.state)                
 
         if task.state!='completed' :
@@ -369,12 +380,15 @@ class FileManager:
 
             # Generar la pregunta para recopilar los parámetros que faltan
             generated_question = self.gather_parameters(missing_parameters, completed_parameters,thread)
-
+            self.clear_historial()
             # Construir la respuesta final
             task.response = str(generated_question) + ", " + str(task.response)
         #self.clear_historial()
         # Establecer la respuesta en la tarea
         print(f"response: {task.response}")
+        self.historial.append({"role": "assistant", "content": task.response})
+        if task.state=='completed':
+            self.clear_historial()
         task.set_response(task.response)
         
         
