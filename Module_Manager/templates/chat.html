@@ -12,8 +12,9 @@
         .input-container input { flex: 1; padding: 10px; }
         .input-container button { padding: 10px; }
         .loading { font-style: italic; color: #999; }
+        .user-id-container { margin-bottom: 20px; }
+        .user-id-container input { padding: 10px; width: 100%; }
     </style>
-    <!-- Load the marked.js library before your script -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script type="text/javascript">
         MathJax = {
@@ -26,7 +27,6 @@
                 fontCache: 'global'
             }
         };
-
     </script>
     <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script>
@@ -35,6 +35,9 @@
 </head>
 <body>
     <div class="chat-container">
+        <div class="user-id-container">
+            <input type="text" id="user_id" placeholder="Ingrese el ID de usuario">
+        </div>
         <div id="messages"></div>
         <div class="input-container">
             <input type="text" id="query" placeholder="Escribe tu consulta..." onkeypress="handleKeyPress(event)">
@@ -43,44 +46,42 @@
     </div>
     <script>
         async function sendQuery() {
+            const userId = document.getElementById('user_id').value.trim();
             const query = document.getElementById('query').value.trim();
-            if (query === '') return; // Do not send empty queries
-        
+            if (userId === '' || query === '') return;
+
             const sendButton = document.getElementById('sendButton');
-            sendButton.disabled = true; // Disable button while processing
-        
+            sendButton.disabled = true;
+
             const messages = document.getElementById('messages');
             messages.innerHTML += `<div class="message user">${query}</div>`;
             messages.innerHTML += `<div class="message ai loading">Procesando...</div>`;
-            document.getElementById('query').value = ''; // Clear input
-        
+            document.getElementById('query').value = '';
+
             try {
-                const response = await fetch(`/module_manager/`, {
+                const response = await fetch(`/module_manager/`, {  // Apunta a ClassifyQueryView
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRFToken': getCookie('csrftoken')
                     },
-                    body: JSON.stringify({ query })
+                    body: JSON.stringify({ user_id: userId, query })
                 });
-        
+
                 const data = await response.json();
-        
-                // Remove loading indicator
+
                 const loadingElement = messages.querySelector('.loading');
                 if (loadingElement) {
                     loadingElement.remove();
                 }
-        
+
                 if (response.ok) {
                     let formattedResponse = data.response
-                        .replace(/\n/g, '<br>')  // Replace line breaks with <br> for HTML
+                        .replace(/\n/g, '<br>')
                         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-        
-                    // Insert the LaTeX expression as is, wrapped with $$ for display math mode
+
                     messages.innerHTML += `<div class="message ai">${formattedResponse}</div>`;
-        
-                    // Process LaTeX with MathJax
+
                     if (window.MathJax) {
                         MathJax.typesetPromise().then(() => {
                             console.log('MathJax typesetting complete');
@@ -97,14 +98,9 @@
                 }
                 messages.innerHTML += `<div class="message ai">Error al procesar la consulta.</div>`;
             } finally {
-                sendButton.disabled = false; // Re-enable the button
+                sendButton.disabled = false;
             }
         }
-
-
-
-
-
         function handleKeyPress(event) {
             if (event.key === 'Enter') {
                 sendQuery();

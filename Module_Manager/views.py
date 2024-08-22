@@ -7,56 +7,142 @@ from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from .thread_manager import ThreadManager
 from Module_Manager.thread_manager import thread_manager_instance
+from django.contrib.auth.models import User
+from django.views.decorators.csrf import csrf_exempt
+from django.db import connections
+from .whatsapp_handler import WhatsAppHandler
+from .models import UserInteraction
+from Module_Manager.models import ExternalUser
 
 logger = logging.getLogger(__name__)
 
-@method_decorator(login_required, name='dispatch')
+@method_decorator(csrf_exempt, name='dispatch')
 class ClassifyQueryView(View):
-
     def post(self, request):
         try:
-            # thread_manager = ThreadManager()
-            user = request.user
-            thread_manager = thread_manager_instance
-            # Obtener o crear un thread activo para el usuario
-            thread, module_manager = thread_manager.get_or_create_active_thread(user)
-            thread.update_last_activity()
+            body = json.loads(request.body)
+            user_id = body.get('user_id')
+            if not user_id:
+                return JsonResponse({'error': 'No user ID provided'}, status=400)
 
-            # Procesar el cuerpo de la solicitud como JSON
             try:
-                body = json.loads(request.body)
-            except json.JSONDecodeError:
-                return JsonResponse({'error': 'Invalid JSON'}, status=400)
+                with connections['Terragene_Users_Database'].cursor() as cursor:
+                    cursor.execute("SELECT ID, user_login, user_email, display_name FROM wp_users WHERE ID = %s", [user_id])
+                    result = cursor.fetchone()
+
+                    if not result:
+                        return JsonResponse({'error': 'User not found'}, status=404)
+
+                    user_id, user_login, user_email, display_name = result
+
+            except Exception as e:
+                logger.error(f"Database connection error: {str(e)}")
+                return JsonResponse({'error': 'Database connection error'}, status=500)
+
+            # Reutilizar thread existente si es posible
+            thread, module_manager = thread_manager_instance.get_or_create_active_thread(user_id)
 
             query = body.get('query')
             if not query:
                 return JsonResponse({'error': 'No query provided'}, status=400)
 
-            # Clasificar la consulta utilizando el ModuleManager
             try:
-                print("La query es: " + query)
                 response = module_manager.classify_query(thread, query)
-                logger.info(f"Query classified successfully for user {user.username}")
+                # Guardar la interacción en la base de datos
+                UserInteraction.objects.create(
+                    thread_id=thread.thread_id,
+                    endpoint="ClassifyQueryView",
+                    user_id=user_id,
+                    user_login=user_login,
+                    user_email=user_email,
+                    display_name=display_name,
+                    query=query,
+                    response=response
+                )
                 return JsonResponse({'response': response})
             except Exception as e:
                 logger.error(f"Error classifying query: {str(e)}")
                 return JsonResponse({'error': str(e)}, status=501)
 
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
         except Exception as e:
             logger.error(f"Initialization error: {str(e)}")
             return JsonResponse({'error': str(e)}, status=500)
 
-
-@method_decorator(login_required, name='dispatch')
+@method_decorator(csrf_exempt, name='dispatch')
 class ChatView(View):
     def get(self, request):
-        user = request.user
         try:
-            logger.debug(f"User: {user.username}")
-            thread_manager_instance.delete_thread(user)  # Desactivar threads activos anteriores
-            thread, _ = thread_manager_instance.create_thread(user)  # Crear un nuevo thread
-            logger.debug(f"New thread created with ID: {thread.thread_id}")
-            return render(request, 'chat.html', context={'thread_id': thread.thread_id})
+            # Mostrar la página sin intentar procesar JSON
+            return render(request, 'chat.html')
         except Exception as e:
             logger.error(f"Error in ChatView: {str(e)}")
+            return JsonResponse({'error': str(e)}, status=500)
+
+    def post(self, request):
+        try:
+            # Solo manejar JSON cuando se recibe una solicitud POST
+            body = json.loads(request.body)
+            user_id = body.get('user_id')
+            if not user_id:
+                return JsonResponse({'error': 'No user ID provided'}, status=400)
+
+            query = body.get('query')
+            if not query:
+                return JsonResponse({'error': 'No query provided'}, status=400)
+
+            logger.debug(f"User ID: {user_id}")
+            thread, _ = thread_manager_instance.get_or_create_active_thread(user_id)
+            response = thread_manager_instance.process_query(thread, query)
+
+            # Guardar la interacción en la base de datos
+            UserInteraction.objects.create(
+                thread_id=thread.thread_id,
+                endpoint="ChatView",
+                user_id=user_id,
+                query=query,
+                response=response
+            )
+
+            return JsonResponse({'response': response})
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+        except Exception as e:
+            logger.error(f"Error in ChatView POST: {str(e)}")
+            return JsonResponse({'error': str(e)}, status=500)
+        
+@method_decorator(csrf_exempt, name='dispatch')
+class WhatsAppQueryView(View):
+    def post(self, request):
+        try:
+            body = json.loads(request.body)
+            phone_number = body.get('phone_number')
+            if not phone_number:
+                return JsonResponse({'error': 'No phone number provided'}, status=400)
+
+            query = body.get('query')
+            if not query:
+                return JsonResponse({'error': 'No query provided'}, status=400)
+
+            # Reutilizar thread existente si es posible, usando el número de teléfono como ID
+            thread, module_manager = thread_manager_instance.get_or_create_active_thread(phone_number, is_whatsapp=True)
+
+            # Utilizar classify_query en lugar de process_query
+            response = module_manager.classify_query(thread, query)
+
+            # Guardar la interacción en la base de datos
+            UserInteraction.objects.create(
+                thread_id=thread.thread_id,
+                endpoint="WhatsAppQueryView",
+                phone_number=phone_number,
+                query=query,
+                response=response
+            )
+
+            return JsonResponse({'response': response})
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+        except Exception as e:
+            logger.error(f"Error handling WhatsApp query: {str(e)}")
             return JsonResponse({'error': str(e)}, status=500)

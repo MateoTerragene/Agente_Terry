@@ -1,85 +1,86 @@
 from datetime import timedelta
-
 from django.utils import timezone
-from django.conf import settings
 from .models import Thread
 import openai
 from Module_Manager.services import ModuleManager
 import os
 import logging
+from Module_Manager.models import ExternalUser
 import time
-
 logger = logging.getLogger(__name__)
 
 class ThreadManager:
     def __init__(self):
         self.client = openai
         self.client.api_key = os.getenv('OPENAI_API_KEY')
-        self.module_manager=ModuleManager()
-    def create_thread(self, user):
+        self.module_manager = ModuleManager()
+
+    def get_or_create_active_thread(self, user_id, is_whatsapp=False):
         try:
-            # Crear un nuevo thread en OpenAI
-            openai_thread = self.client.beta.threads.create()
-            thread_id = openai_thread.id
-            logger.info(f"Thread creado en OpenAI con ID: {thread_id} para el usuario {user.username}")
-            print(f"Thread creado en OpenAI con ID: {thread_id} para el usuario {user.username}")
-            # Esperar un momento antes de usar el thread
-            time.sleep(1)  # Esperar 1 segundo
+            if is_whatsapp:
+                # Buscar threads activos recientes en SQLite usando phone_number como user_id
+                threads = Thread.objects.using('default').filter(user_id=user_id).order_by('-created_at')
+                logger.info(f"Threads encontrados: {len(threads)} para el número de teléfono {user_id}")
 
-            # Guardar el thread en la base de datos
-            thread = Thread.objects.create(user=user, thread_id=thread_id)
+                for thread in threads:
+                    if thread.last_activity >= timezone.now() - timedelta(minutes=10):
+                        thread.update_last_activity()
+                        return thread, self.module_manager
+
+                # Si no hay threads recientes, crear uno nuevo usando el número de teléfono
+                return self.create_thread(user_id, is_whatsapp=True)
+            else:
+                # Verificar que el usuario existe en la base de datos MySQL usando ExternalUser
+                user = ExternalUser.objects.using('Terragene_Users_Database').get(id=user_id)
+                logger.info(f"Usuario encontrado: {user.user_login} (ID: {user.id})")
+
+                # Buscar threads activos recientes en SQLite usando user_id
+                threads = Thread.objects.using('default').filter(user_id=user.id).order_by('-created_at')
+                logger.info(f"Threads encontrados: {len(threads)}")
+
+                for thread in threads:
+                    if thread.last_activity >= timezone.now() - timedelta(minutes=10):
+                        thread.update_last_activity()
+                        return thread, self.module_manager
+
+                # Si no hay threads recientes, crear uno nuevo
+                return self.create_thread(user)
+
+        except ExternalUser.DoesNotExist:
+            logger.error(f"Usuario con id {user_id} no existe en la base de datos MySQL.")
+            raise
+        except Exception as e:
+            logger.error(f"Error inesperado al obtener o crear thread para usuario {user_id}: {str(e)}")
+            raise
+
+    def create_thread(self, user_id, is_whatsapp=False, retries=3, delay=5):
+        try:
+            for attempt in range(retries):
+                try:
+                    identifier = user_id if is_whatsapp else user_id.id  # Ajuste para cuando es WhatsApp
+                    print(f"Intentando crear un thread en OpenAI para el usuario {identifier}...")
+                    openai_thread = self.client.beta.threads.create()
+                    thread_id = openai_thread.id
+                    print(f"Thread creado en OpenAI con ID: {thread_id}")
+                    break
+                except Exception as e:
+                    print(f"Error al crear thread en OpenAI: {str(e)}")
+                    if attempt < retries - 1:
+                        print(f"Reintentando en {delay} segundos... ({attempt + 1}/{retries})")
+                        time.sleep(delay)
+                    else:
+                        raise e
+
+            # Crear el thread en la base de datos default (SQLite)
+            identifier = user_id if is_whatsapp else user_id.id  # Ajuste para cuando es WhatsApp
+            print(f"Creando thread en la base de datos SQLite para el usuario con identificador {identifier}...")
+            thread = Thread.objects.using('default').create(user_id=identifier, thread_id=thread_id)
             thread.update_last_activity()
-
-            logger.info(f"Thread guardado en la base de datos con ID: {thread.thread_id}")
-
-            # Inicializar ModuleManager para el nuevo thread
-            # self.module_manager = ModuleManager()
+            print(f"Thread guardado en la base de datos SQLite con ID {thread.thread_id}")
 
             return thread, self.module_manager
         except Exception as e:
-            logger.error(f"Error creando thread para usuario {user.username}: {str(e)}")
+            print(f"Error creando thread para usuario {user_id}: {str(e)}")
             raise
 
-###########################################################3333
-    # def get_or_create_active_thread(self, user):
-    #     try:
-    #         # Forzar la creación de un nuevo thread para pruebas
-    #         thread, module_manager = self.create_thread(user)
-    #         return thread, module_manager
-    #     except Exception as e:
-    #         logger.error(f"Error al obtener o crear thread para usuario {user.username}: {str(e)}")
-    #         raise
-
-
-#########################################################33
-    def get_or_create_active_thread(self, user):
-        try:
-            # Intentar obtener el thread más reciente para el usuario
-            thread = Thread.objects.filter(user=user).latest('created_at')
-            # Verificar si el thread es reciente o necesita uno nuevo
-            if thread.last_activity < timezone.now() - timedelta(minutes=10):
-                logger.info(f"Thread antiguo encontrado para el usuario {user.username}. Creando nuevo thread.")
-                thread, _ = self.create_thread(user)
-            else:
-                # Reutilizar el thread existente
-                logger.info(f"Thread reciente encontrado para el usuario {user.username}. Reutilizando thread.")
-                thread.update_last_activity()
-                # module_manager = ModuleManager()
-        except Thread.DoesNotExist:
-            logger.info(f"No se encontró ningún thread para el usuario {user.username}. Creando nuevo thread.")
-            thread= self.create_thread(user)
-        except Exception as e:
-            logger.error(f"Error al obtener o crear thread para usuario {user.username}: {str(e)}")
-            raise
-
-        return thread, self.module_manager
-
-    def delete_thread(self, user):
-        try:
-            # Desactivar todos los threads activos para el usuario
-            Thread.objects.filter(user=user, is_active=True).update(is_active=False)
-            logger.info(f"Todos los threads activos desactivados para el usuario {user.username}.")
-        except Exception as e:
-            logger.error(f"Error al desactivar threads para usuario {user.username}: {str(e)}")
-            raise
 thread_manager_instance = ThreadManager()

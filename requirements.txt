@@ -1,6 +1,6 @@
 beautifulsoup4==4.9.3
-Django==5.0.7
-djangorestframework==3.15.2
+Django==3.2.22
+djangorestframework==3.12.4
 gunicorn==22.0.0
 openai==1.35.13
 requests==2.25.1
@@ -8,3 +8,4 @@ python-dotenv
 psycopg2-binary
 cdifflib
 bs4
+mysqlclient
