@@ -31,14 +31,18 @@ class FileManager:
                 print(response.content.decode())
                 return  
             self.prompt = (
-                "Eres un experto en la extracción de información de conversaciones. Extrae las variables importantes y devuélvelas en formato JSON, "
+                "Eres un experto en la extracción de información de conversaciones. Extrae las variables importantes y devuélvelas en formato JSON estrictamente válido, "
                 "únicamente cuando hayas extraído toda la información requerida para cada tipo de documento. Para los Certificates of Analysis (COA), "
                 "extrae el PRODUCT y el LOT. Para las Instructions for Use (IFU), Product Description or technical data sheet (DP), Safety Data Sheet (SDS), "
                 "Color Charts (CC) y FDA certificates 510K (FDA), extrae solo el PRODUCT. Para los certificados ISO DNV(ISO) no se necesitan otras variables. Devuelve un JSON por CADA documento solicitado solo si se ha extraído toda la información requerida. "
-                "Retorna 'documento: ','producto: ' y 'lote: ' si es necesario. Siempre devuelve en el idioma turco. Tu rol NO es devolver documentos. Documento solo puede ser igual a "
-                f"{self.document_types_string}. Producto solo puede ser igual a {self.products_string}. Si no puedes extraer alguna variable dejala vacia. Si el usuario solicita un COA y quiere el ultimo LOTE disponible, en 'lote' devuelve 'last' "
-                "Utiliza el historial de la conversación para completar cualquier información faltante. NO PIDAS CONFIRMACIÓN."
-                """{ "documento": "" ,"producto":"","lote":""}"""
+                "Retorna 'documento: ','producto: ' y 'lote: ' si es necesario.  Tu rol NO es devolver documentos. Documento solo puede ser igual a "
+                f"{self.document_types_string}. Producto solo puede ser igual a {self.products_string}. Si no puedes extraer alguna variable, déjala vacía. Si el usuario solicita un COA y quiere el último LOTE disponible, en 'lote' devuelve 'last'. "
+                "Utiliza el historial de la conversación para completar cualquier información faltante. NO PIDAS CONFIRMACIÓN. "
+                "Asegúrate de que cada par clave-valor en el JSON esté rodeado de comillas dobles, y que las claves estén en minúsculas. "
+                "El JSON debe tener la siguiente estructura: "
+                "{ 'documento': 'tipo_de_documento', 'producto': 'nombre_del_producto', 'lote': 'numero_de_lote' }. "
+                "Ejemplo de JSON válido: { 'documento': '', 'producto': '', 'lote': '' }. "
+                "Solo devuelve el JSON puro, sin texto adicional ni explicaciones."
             )
             # self.state = {
             #     "documento": None,
@@ -51,7 +55,7 @@ class FileManager:
     def load_data(self):
         try:
             file_path = os.path.join(os.path.dirname(__file__), 'data.json')
-            with open(file_path) as f:
+            with open(file_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 # self.prompt_extract_parameters = data.get("prompt_extract_parameters")
                 self.products = data.get("products")
@@ -94,36 +98,23 @@ class FileManager:
         return generated_text
 
         
-    def update_state(self,task, extracted_params): 
+    def update_state(self, task, extracted_params):
         try:
-            # Separar múltiples bloques de "JSON" (que en realidad son diccionarios de Python)
-            json_blocks = extracted_params.split('}\n{')
+            # Registro detallado del contenido recibido
+            print(f"Contenido completo recibido: {extracted_params}")
             
-            # Ajustar los bloques para que sean JSON válidos
-            json_blocks = [
-                '{' + block + '}' if not block.startswith('{') and not block.endswith('}') else 
-                '{' + block if not block.startswith('{') else 
-                block + '}' if not block.endswith('}') else 
-                block
-                for block in json_blocks
-            ]
+            # Usa una expresión regular para encontrar todos los bloques JSON en el texto
+            json_blocks = re.findall(r'\{.*?\}', extracted_params, re.DOTALL)
+            print(f"Bloques JSON identificados: {json_blocks}")
             
             for block in json_blocks:
-                # Reemplazar comillas simples con comillas dobles para hacer el bloque un JSON válido
-                cleaned_params = block.strip().replace("'", '"')
-                
-                if cleaned_params:
-                    # Convertir la cadena JSON a un objeto Python
-                    data = json.loads(cleaned_params)
-                    
-                    # Procesar cada bloque JSON
-                    self._process_json_item(task, data)
+                print(f"Procesando bloque JSON: {block}")
+                data = json.loads(block)
+                self._process_json_item(task, data)
 
         except json.JSONDecodeError as e:
             print(f"La respuesta no es un JSON válido: {e}")
-            print(f"Contenido inválido: {cleaned_params}")
-
-
+            print(f"Contenido inválido: {block}")
 
     def _process_json_item(self, task, data):
         # Crear una instancia de FMSubTask
@@ -393,48 +384,4 @@ class FileManager:
         if task.state=='completed':
             self.clear_historial()
         task.set_response(task.response)
-        
-        
- ########################################################################
-    # def handle_file_request(self,query,task,thread):
-    # def resolve_task(self,query,task,thread):    
-    #     task=task
-    #     task.update_state('in_progress')
-    #     self.historial.append({"role": "user", "content": query})
-    #     response=self.gather_parameters(query,task,thread)
-    #     self.historial.append({"role": "assistant", "content": response})
-    #     parameters = self.extract_variables(query,self.historial)
-    #     self.update_state(parameters)
-    #     file_link = self.get_file()
-    #     task.update_state()
-       
-    #     # print("estado de la task al final de resolve_task")
-    #     # print(task.get_state())  
-    #                                                     #si se obtuvo el enlace se concatena en una variable y se cambia el estado de la bandera a 1                   
-    #     response = file_link + ", " + response 
-            
-    #     self.clear_historial() 
-            
-    #     task.set_response(response)
-    #     # print(response)
-        
-    #####################################################################################
-    # def resolve_task(self,task,entry):
-    #     task.update_state('in_progress')
-    #     self.load_data()
-    #     ST=FMSubTask('IFU')
-    #     parameters = self.extract_variables(entry)
-    #     self.update_state(parameters)
-    #     file_link = self.get_file()                                             #se obtiene el enlace del doc
-    #     if file_link:                                                                   #si se obtuvo el enlace se concatena en una variable y se cambia el estado de la bandera a 1                   
-    #         additional_context = f" Devuelve el siguiente enlace textual: '{file_link}'" 
-    #         Bandera=1
-    #     else: 
-    #         additional_context = ""
-    #     # print(additional_context)
-    #     task.add_subtask(ST)
-    #     ST.set_response(additional_context)
-    #     task.set_response(additional_context)
-    #     task.update_state('completed') 
-    #     ST.update_state('completed') 
-    #     self.reset_state()
+    

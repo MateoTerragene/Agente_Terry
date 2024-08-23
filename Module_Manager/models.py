@@ -28,7 +28,7 @@ class ExternalUser(models.Model):
     class Meta:
         managed = False  # No permitir que Django gestione la tabla
         db_table = 'wp_users'  # Nombre de la tabla en la base de datos externa
-        app_label = 'Module_Manager'
+        # app_label = 'Module_Manager'
 
 # Definir el modelo WhatsAppUser
 class WhatsAppUser(models.Model):

@@ -33,7 +33,7 @@ class PurchaseOpportunity:
     def load_data(self):
         try:
             file_path = os.path.join(os.path.dirname(__file__), 'data.json')
-            with open(file_path) as f:
+            with open(file_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 self.products = data.get("products", [])
                 self.products_string = ", ".join(self.products)

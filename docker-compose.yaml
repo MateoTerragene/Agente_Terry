@@ -8,7 +8,23 @@ services:
       - .:/code
     ports:
       - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      - db
+
+  db:
+    image: postgres:13
     environment:
-      - DEBUG=1
-      - SECRET_KEY=django-insecure--bsp*si6*rh2z5+=(7t#y2e#$8&h=nbi@)vr)#^mufhl7jv-+=
-    depends_on: []
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      # Añade el siguiente para asegurar que PostgreSQL use el esquema adecuado
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

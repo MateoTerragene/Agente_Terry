@@ -23,7 +23,7 @@ class file_handlers:
         try:
             parent_dir = os.path.dirname(os.path.dirname(__file__))
             file_path = os.path.join(parent_dir, 'data.json')
-            with open(file_path) as f:
+            with open(file_path, 'r', encoding='utf-8') as f:
                 data = json.load(f) 
             self.products = data.get("products", [])
             self.products_string = ", ".join(self.products)
