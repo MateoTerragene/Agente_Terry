@@ -7,7 +7,7 @@ User = get_user_model()
 
 class Thread(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user_id = models.IntegerField(default=-1)
+    user_id = models.CharField(max_length=255)  # Cambiado a CharField
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     last_activity = models.DateTimeField(auto_now=True)
