@@ -73,10 +73,10 @@ class ThreadManager:
 
             # Crear el thread en la base de datos default (SQLite)
             identifier = user_id if is_whatsapp else user_id.id  # Ajuste para cuando es WhatsApp
-            print(f"Creando thread en la base de datos SQLite para el usuario con identificador {identifier}...")
+            print(f"Creando thread en la base de datos Postgres SQL para el usuario con identificador {identifier}...")
             thread = Thread.objects.using('default').create(user_id=identifier, thread_id=thread_id)
             thread.update_last_activity()
-            print(f"Thread guardado en la base de datos SQLite con ID {thread.thread_id}")
+            print(f"Thread guardado en la base de datos Postgres SQL con ID {thread.thread_id}")
 
             return thread, self.module_manager
         except Exception as e:

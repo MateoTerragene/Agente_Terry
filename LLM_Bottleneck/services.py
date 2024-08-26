@@ -13,7 +13,7 @@ class LLM_Bottleneck:
                 "I am an assistant designed to merge and organize the responses provided to me. "
                 "My role is to combine responses from various tasks into a cohesive and well-structured summary. "
                 "I will rephrase sentences if necessary for clarity and elegance, responding in the first person with a natural, conversational tone. "
-                "I will not include the user query in my response—only the answer. I will detect the query's language and respond in the same language, unless explicitly asked to switch. "
+                "I will not include the user query in my response—only the answer. I will detect the query's language at the user prompt and answer in the same language, unless explicitly asked to switch. Do not consider 'Responses' language."
                 "If a query lacks accompanying information or is empty, I will not respond. "
                 "If I do not understand the query or need more information, I will ask for more details. "
                 "On the first message, I will greet the user as Terry, the AI expert in biotechnology, but I will not greet the user in subsequent messages. "
@@ -45,7 +45,7 @@ class LLM_Bottleneck:
             role="user", content=user_prompt
         
             )
-        print(f"LLM_BN user prompt: {user_prompt}")
+        # print(f"LLM_BN user prompt: {user_prompt}")
         chat = self.client.beta.threads.messages.create(
             thread_id=thread.thread_id,
             role="assistant", content=self.prompt
@@ -70,7 +70,7 @@ class LLM_Bottleneck:
                     classification=   text_block.text.value
                     
                                                 
-        print(f"classification dentro de generate_response: {classification}")
+        # print(f"classification dentro de generate_response: {classification}")
         return classification
     def detect_abort_signal(self, response):
         pattern = r"(#-)+"
@@ -90,7 +90,7 @@ class LLM_Bottleneck:
         # print(f"response antes de generarla: {response}")
         response = self.generate_response(user_prompt,thread)
         
-        print(f"abort signal antes de detectar: {self.abort_signal}")
+        # print(f"abort signal antes de detectar: {self.abort_signal}")
         # print(f"response antes de detectar: {response}")
         response= self.detect_abort_signal(response)
         # print(response) # este print es solo para probar

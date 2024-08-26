@@ -79,7 +79,7 @@ class FileManager:
         
         self.historial.append({"role": "user", "content": str(conversation)})
         
-        print(f"historial: {self.historial}")
+        # print(f"historial: {self.historial}")
         response = self.client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
@@ -102,14 +102,14 @@ class FileManager:
     def update_state(self, task, extracted_params):
         try:
             # Registro detallado del contenido recibido
-            print(f"Contenido completo recibido: {extracted_params}")
+            # print(f"Contenido completo recibido: {extracted_params}")
             
             # Usa una expresión regular para encontrar todos los bloques JSON en el texto
             json_blocks = re.findall(r'\{.*?\}', extracted_params, re.DOTALL)
-            print(f"Bloques JSON identificados: {json_blocks}")
+            # print(f"Bloques JSON identificados: {json_blocks}")
             
             for block in json_blocks:
-                print(f"Procesando bloque JSON: {block}")
+                # print(f"Procesando bloque JSON: {block}")
                 data = json.loads(block)
                 self._process_json_item(task, data)
 
@@ -380,7 +380,7 @@ class FileManager:
             task.response = str(generated_question) + ", " + str(task.response)
         #self.clear_historial()
         # Establecer la respuesta en la tarea
-        print(f"response: {task.response}")
+        # print(f"response: {task.response}")
         self.historial.append({"role": "assistant", "content": task.response})
         if task.state=='completed':
             self.clear_historial()
