@@ -13,8 +13,13 @@ from django.db import connections
 from .whatsapp_handler import WhatsAppHandler
 from .models import UserInteraction
 from Module_Manager.models import ExternalUser
+import re
 
 logger = logging.getLogger(__name__)
+
+def convertir_enlaces(texto):
+    url_regex = re.compile(r'(https?://[^\s]+)')
+    return url_regex.sub(r'<a href="\1" target="_blank">\1</a>', texto)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class ClassifyQueryView(View):
@@ -48,6 +53,10 @@ class ClassifyQueryView(View):
 
             try:
                 response = module_manager.classify_query(thread, query)
+                
+                response = convertir_enlaces(response)
+                
+                
                 # Guardar la interacción en la base de datos
                 UserInteraction.objects.create(
                     thread_id=thread.thread_id,

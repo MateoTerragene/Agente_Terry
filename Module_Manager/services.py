@@ -1,9 +1,6 @@
-# module_manager/views.py
-import copy
-import logging
+# module_manager/services.py
 
-from django.http import JsonResponse
-from django.views import View
+import logging
 from dotenv import load_dotenv
 import json
 import os
