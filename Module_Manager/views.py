@@ -142,7 +142,7 @@ class WhatsAppQueryView(View):
             # Reutilizar thread existente si es posible, usando el número de teléfono como ID
             thread, module_manager = thread_manager_instance.get_or_create_active_thread(phone_number, is_whatsapp=True)
             # Utilizar classify_query en lugar de process_query
-            response, task_type = module_manager.classify_query(thread, query)
+            response, task_type = module_manager.classify_query(thread, query, phone_number, is_whatsapp=True)
             
             # Guardar la interacción en la base de datos
             UserInteraction.objects.create(
