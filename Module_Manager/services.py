@@ -45,7 +45,7 @@ class ModuleManager:
         except Exception as e:
             raise RuntimeError(f"An error occurred while loading data: {str(e)}")
         
-    def classify_query(self, thread, query):
+    def classify_query(self, thread, query, user_identifier, is_whatsapp=False):
         thread_id = thread.thread_id
         # print(f"ClassQuer Usando el thread ID: {thread_id} para clasificar la consulta.")
         logger.info(f"Usando el thread ID: {thread_id} para clasificar la consulta.")
@@ -74,18 +74,18 @@ class ModuleManager:
             # self.task = copy.deepcopy(self.tasks[0])
         # else:
         #     self.tasks.clear()    
-        completed_task_type = self.process_tasks(thread)
+        completed_task_type = self.process_tasks(thread, user_identifier, is_whatsapp)
         resp= self.LLM_BN.generate_tasks_response(query,thread)
         
         return resp, completed_task_type 
      
 
-    def process_tasks(self,thread):
+    def process_tasks(self, thread, user_identifier, is_whatsapp=False):
        
         for i in range(len(self.tasks)):
             # task = self.tasks[0]  # Siempre obtenemos la primera tarea
 
-            self.handle_task(thread)
+            self.handle_task(thread, user_identifier, is_whatsapp)
             # print("estado task dentro de process_task")
             # print(task.get_state())
             if self.tasks[0].get_state() == 'completed':
@@ -93,10 +93,11 @@ class ModuleManager:
                 self.tasks.pop(0)  # Eliminar la tarea completada de la lista
                 return completed_task_type
         return None 
-    def handle_task(self,thread):
+    
+    def handle_task(self, thread, user_identifier, is_whatsapp=False):
         if self.tasks[0].task_type == "fileRequest":
             print("Resolviendo solicitud de documentos...")
-            self.file_manager.resolve_task(self.query,self.tasks[0],thread)
+            self.file_manager.resolve_task(self.query,self.tasks[0],thread,user_identifier, is_whatsapp)
             # print("estado de la task FM")
             # print(task.get_state())
             self.LLM_BN.receive_task(self.tasks[0].clone())
