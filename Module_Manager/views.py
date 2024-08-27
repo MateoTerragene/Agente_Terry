@@ -11,9 +11,11 @@ from django.contrib.auth.models import User
 from django.views.decorators.csrf import csrf_exempt
 from django.db import connections
 from .whatsapp_handler import WhatsAppHandler
-from .models import UserInteraction
 from Module_Manager.models import ExternalUser
+from django.http import JsonResponse, HttpResponse
+from twilio.twiml.messaging_response import MessagingResponse
 import re
+from .models import UserInteraction
 
 logger = logging.getLogger(__name__)
 
@@ -126,18 +128,19 @@ class ChatView(View):
 class WhatsAppQueryView(View):
     def post(self, request):
         try:
-            body = json.loads(request.body)
-            phone_number = body.get('phone_number')
-            if not phone_number:
-                return JsonResponse({'error': 'No phone number provided'}, status=400)
+            # Parse incoming message from Twilio
+            phone_number = request.POST.get('From')
+            query = request.POST.get('Body')
 
-            query = body.get('query')
-            if not query:
-                return JsonResponse({'error': 'No query provided'}, status=400)
+            # Log the incoming data
+            logger.info(f"Received phone number: {phone_number} with length: {len(phone_number)}")
+            logger.info(f"Received query: {query} with length: {len(query)}")
+
+            if not phone_number or not query:
+                return HttpResponse(status=400)
 
             # Reutilizar thread existente si es posible, usando el número de teléfono como ID
             thread, module_manager = thread_manager_instance.get_or_create_active_thread(phone_number, is_whatsapp=True)
-            # Utilizar classify_query en lugar de process_query
             response, task_type = module_manager.classify_query(thread, query)
             
             # Guardar la interacción en la base de datos
@@ -150,9 +153,11 @@ class WhatsAppQueryView(View):
                 task_type=task_type if task_type else ''
             )
 
-            return JsonResponse({'response': response})
-        except json.JSONDecodeError:
-            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+            # Respond back to Twilio
+            twilio_response = MessagingResponse()
+            twilio_response.message(response)
+
+            return HttpResponse(str(twilio_response), content_type='text/xml')
         except Exception as e:
             logger.error(f"Error handling WhatsApp query: {str(e)}")
-            return JsonResponse({'error': str(e)}, status=500)
+            return HttpResponse(status=500)

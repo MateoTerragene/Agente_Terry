@@ -32,7 +32,7 @@ class ExternalUser(models.Model):
 
 # Definir el modelo WhatsAppUser
 class WhatsAppUser(models.Model):
-    phone_number = models.CharField(max_length=15, unique=True)  # Número de teléfono como ID único
+    phone_number = models.CharField(max_length=50, unique=True)  # Increased from 20 to 50
     first_name = models.CharField(max_length=255, blank=True, null=True)
     last_name = models.CharField(max_length=255, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -50,7 +50,7 @@ class UserInteraction(models.Model):
     user_login = models.CharField(max_length=255, blank=True, null=True)
     user_email = models.EmailField(blank=True, null=True)
     display_name = models.CharField(max_length=255, blank=True, null=True)
-    phone_number = models.CharField(max_length=15, blank=True, null=True)  # Puede ser None para usuarios registrados
+    phone_number = models.CharField(max_length=50, blank=True, null=True)  # Puede ser None para usuarios registrados
     query = models.TextField()
     response = models.TextField()
     task_type = models.CharField(max_length=50, blank=True, null=True)
