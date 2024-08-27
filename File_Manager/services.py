@@ -8,7 +8,7 @@ import json
 import os
 import re
 from .handlers.file_handlers import file_handlers
-
+from File_Manager.models import DocumentRequest
 class FileManager:
     def __init__(self):
         try:
@@ -153,7 +153,7 @@ class FileManager:
 
     
         
-    def get_file(self,task):
+    def get_file(self, task, user_identifier, thread_id, is_whatsapp=False):
         if not task.subtasks:
             return str(task.response)  # Retorna vacío si no hay subtareas
 
@@ -175,8 +175,21 @@ class FileManager:
         handler = document_handlers.get(document)
 
         if handler:
-            first_subtask.response = handler()
+            file_link = handler()
+            first_subtask.response = file_link
             first_subtask.state = 'completed'
+
+            # Guardar la solicitud en la base de datos
+            DocumentRequest.objects.create(
+                user_id=user_identifier if not is_whatsapp else None,
+                phone_number=user_identifier if is_whatsapp else None,
+                thread_id=thread_id,
+                documento=document,
+                producto=product,
+                lote=lot,
+                link=file_link
+            )
+
         else:
             print(f"Tipo de documento no reconocido: {document}")
 
@@ -315,7 +328,7 @@ class FileManager:
             print(f"Error al parsear JSON en fill_fields: {e}")
 
  ############################################# Nueva Version de Resolve_task ###################################
-    def resolve_task(self, query, task, thread):
+    def resolve_task(self, query, task, thread, user_identifier, is_whatsapp=False):
         # print(f"thread : {self.client.beta.threads.messages.list(thread_id=thread.thread_id).data[4].content[0].text.value }")
         # print(f"thread : {self.client.beta.threads.messages.list(thread_id=thread.thread_id).data[0].content[0].text.value }")
         task.response=""
@@ -353,7 +366,7 @@ class FileManager:
             print(completed_str)
 
             if not missing_str:
-                file_link = self.get_file(task)
+                file_link = self.get_file(task, user_identifier, thread.thread_id, is_whatsapp)
                 if task.response:
                     task.response = str(file_link) + ", " + str(task.response)
                 else:
