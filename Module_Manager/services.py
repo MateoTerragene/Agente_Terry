@@ -74,10 +74,10 @@ class ModuleManager:
             # self.task = copy.deepcopy(self.tasks[0])
         # else:
         #     self.tasks.clear()    
-        self.process_tasks(thread)
+        completed_task_type = self.process_tasks(thread)
         resp= self.LLM_BN.generate_tasks_response(query,thread)
         
-        return resp
+        return resp, completed_task_type 
      
 
     def process_tasks(self,thread):
@@ -89,9 +89,10 @@ class ModuleManager:
             # print("estado task dentro de process_task")
             # print(task.get_state())
             if self.tasks[0].get_state() == 'completed':
+                completed_task_type = self.tasks[0].task_type
                 self.tasks.pop(0)  # Eliminar la tarea completada de la lista
-
-         
+                return completed_task_type
+        return None 
     def handle_task(self,thread):
         if self.tasks[0].task_type == "fileRequest":
             print("Resolviendo solicitud de documentos...")

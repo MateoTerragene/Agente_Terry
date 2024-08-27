@@ -50,9 +50,9 @@ class ClassifyQueryView(View):
             query = body.get('query')
             if not query:
                 return JsonResponse({'error': 'No query provided'}, status=400)
-
+            # task_type = None
             try:
-                response = module_manager.classify_query(thread, query)
+                response, task_type = module_manager.classify_query(thread, query)
                 
                 response = convertir_enlaces(response)
                 
@@ -66,7 +66,8 @@ class ClassifyQueryView(View):
                     user_email=user_email,
                     display_name=display_name,
                     query=query,
-                    response=response
+                    response=response,
+                    task_type=task_type if task_type else '' 
                 )
                 return JsonResponse({'response': response})
             except Exception as e:
@@ -136,17 +137,17 @@ class WhatsAppQueryView(View):
 
             # Reutilizar thread existente si es posible, usando el número de teléfono como ID
             thread, module_manager = thread_manager_instance.get_or_create_active_thread(phone_number, is_whatsapp=True)
-
             # Utilizar classify_query en lugar de process_query
-            response = module_manager.classify_query(thread, query)
-
+            response, task_type = module_manager.classify_query(thread, query)
+            
             # Guardar la interacción en la base de datos
             UserInteraction.objects.create(
                 thread_id=thread.thread_id,
                 endpoint="WhatsAppQueryView",
                 phone_number=phone_number,
                 query=query,
-                response=response
+                response=response,
+                task_type=task_type if task_type else ''
             )
 
             return JsonResponse({'response': response})

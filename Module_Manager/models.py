@@ -53,6 +53,6 @@ class UserInteraction(models.Model):
     phone_number = models.CharField(max_length=15, blank=True, null=True)  # Puede ser None para usuarios registrados
     query = models.TextField()
     response = models.TextField()
-
+    task_type = models.CharField(max_length=50, blank=True, null=True)
     class Meta:
         db_table = 'Module_Manager_userinteraction'  # Nombre de la tabla
