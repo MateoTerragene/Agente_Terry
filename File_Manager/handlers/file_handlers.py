@@ -53,32 +53,55 @@ class file_handlers:
 
     def get_most_recent_pdf(self, url):
         try:
+            print(f"Accediendo a la URL: {url}")
             response = requests.get(url)
+            
             if response.status_code == 200:
+                print(f"Acceso exitoso a {url}")
                 soup = BeautifulSoup(response.text, 'html.parser')
-                links = soup.find_all('a')
+                rows = soup.find_all('tr')
+                print(f"Número de filas encontradas: {len(rows)}")
                 
                 most_recent_url = None
                 most_recent_date = None
 
-                for link in links:
-                    href = link.get('href')
-                    if href and href.endswith('.pdf'):
-                        pdf_url = urljoin(url, href)
-                        head_response = requests.head(pdf_url)
-                        if 'Last-Modified' in head_response.headers:
-                            last_modified = head_response.headers['Last-Modified']
-                            last_modified_date = datetime.strptime(last_modified, '%a, %d %b %Y %H:%M:%S %Z')
-                            
-                            if most_recent_date is None or last_modified_date > most_recent_date:
-                                most_recent_date = last_modified_date
-                                most_recent_url = pdf_url
+                for row in rows:
+                    columns = row.find_all('td')
+                    if len(columns) >= 3:
+                        link = columns[1].find('a')
+                        date_string = columns[2].text.strip()
+                        if link and link.get('href').endswith('.pdf'):
+                            pdf_url = urljoin(url, link.get('href'))
+                            print(f"PDF encontrado: {pdf_url}")
+                            print(f"Fecha encontrada: {date_string}")
 
-                return most_recent_url
+                            try:
+                                last_modified_date = datetime.strptime(date_string, '%Y-%m-%d %H:%M')
+                                print(f"Fecha de modificación parseada: {last_modified_date}")
+                                if most_recent_date is None or last_modified_date > most_recent_date:
+                                    most_recent_date = last_modified_date
+                                    most_recent_url = pdf_url
+                                    print(f"Actualizando PDF más reciente a: {most_recent_url}")
+                            except ValueError as e:
+                                print(f"Error al parsear la fecha: {e}")
+                        else:
+                            print("No es un enlace PDF o no se encontró el enlace.")
+                
+                if most_recent_url:
+                    print(f"PDF más reciente encontrado: {most_recent_url}")
+                    return most_recent_url
+                else:
+                    print("No se encontraron archivos PDF recientes.")
+                    return "No se encontraron archivos PDF recientes."
+            
             else:
+                print(f"No se pudo acceder a la página, código de estado: {response.status_code}")
                 return "No se pudo acceder a la página."
+        
         except requests.RequestException as e:
+            print(f"Error al acceder a {url}: {e}")
             return f"Error al acceder a {url}: {e}"
+
 
 
 
@@ -87,8 +110,7 @@ class file_handlers:
         best_match_product = self.best_match(product, self.products)
         
         if not best_match_product:
-            print(f"No se encontró una coincidencia para el producto: {product}")
-            return None
+            return f"No se encontró una coincidencia para el producto: {product}"
         
         base_url = "https://terragene.com/wp-content/uploads"
         subfolders = ["biologico", "electronica", "lavado", "quimico"]
@@ -104,22 +126,20 @@ class file_handlers:
                     for link in links:
                         href = link.get('href')
                         if href and href.endswith('.pdf'):
-                            devolver=self.get_most_recent_pdf(url)
-                            return  devolver #El 1 significa que se devolvio el link 
-                            # return  str(url + href) #El 1 significa que se devolvio el link 
+                            devolver = self.get_most_recent_pdf(url)
+                            return devolver
             except requests.RequestException as e:
                 print(f"Error al acceder a {url}: {e}")
 
-        return  f"No se pudo encontrar el IFU de {best_match_product}"
+        return f"No se pudo encontrar el {document_type} de {best_match_product}"
 
-    
+
     def get_coa_file(self, product, lot):
         document_type = 'COA'
         best_match_product = self.best_match(product, self.products)
         
         if not best_match_product:
-            print(f"No se encontró una coincidencia para el producto: {product}")
-            return None
+            return f"No se encontró una coincidencia para el producto: {product}"
         
         base_url = "https://terragene.com/wp-content/uploads"
         subfolders = ["biologico", "electronica", "lavado", "quimico"]
@@ -135,12 +155,10 @@ class file_handlers:
                         most_recent_pdf = self.get_most_recent_pdf(url)
                         if most_recent_pdf:
                             devolver = f"{document_type} - {best_match_product} : {most_recent_pdf}"
-                            # print(devolver)
                             return devolver
                         else:
-                            print(f"No se encontró un PDF reciente para el producto: {product}")
-                            return None
-                    
+                            return f"{document_type} - {best_match_product} - {lot} not found"
+
                     for link in links:
                         href = link.get('href')
                         if href and href.endswith('.pdf'):
@@ -148,14 +166,13 @@ class file_handlers:
                             lote_limpio = self.limpiar_texto(lot) if lot else ""
                             if not lot or lote_limpio in nombre_archivo_limpio:
                                 devolver = f"{document_type} - {best_match_product} : {url}{href}"
-                                # print(devolver)
                                 return devolver
                 else:
                     print(f"No se pudo acceder a la página: {url}")
             except requests.RequestException as e:
                 print(f"Error al acceder a {url}: {e}")
 
-        raise FileNotFoundError(f"No PDF found for producto '{product}' y lote '{lot}'.")
+        return f"{document_type} - {best_match_product} - {lot} not found"
 
 
     def get_dp_file(self, product):
@@ -163,8 +180,7 @@ class file_handlers:
         best_match_product = self.best_match(product, self.products)
         
         if not best_match_product:
-            print(f"No se encontró una coincidencia para el producto: {product}")
-            return None
+            return f"No se encontró una coincidencia para el producto: {product}"
         
         base_url = "https://terragene.com/wp-content/uploads"
         subfolders = ["biologicos", "electronica", "lavado", "quimicos"]
@@ -180,21 +196,20 @@ class file_handlers:
                     for link in links:
                         href = link.get('href')
                         if href and href.endswith('.pdf'):
-                            # devolver= f"{document_type} - {best_match_product} :{url}+{href} "
-                            devolver=self.get_most_recent_pdf(url)
-                            return  devolver #El 1 significa que se devolvio el link 
+                            devolver = self.get_most_recent_pdf(url)
+                            return devolver
             except requests.RequestException as e:
                 print(f"Error al acceder a {url}: {e}")
 
-        return  f"No se pudo encontrar la DP de {best_match_product}"
-    
+        return f"No se pudo encontrar la {document_type} de {best_match_product}"
+
+
     def get_cc_file(self, product):
         document_type = 'ColorChart'
         best_match_product = self.best_match(product, self.products)
         
         if not best_match_product:
-            print(f"No se encontró una coincidencia para el producto: {product}")
-            return None
+            return f"No se encontró una coincidencia para el producto: {product}"
         
         base_url = "https://terragene.com/wp-content/uploads"
         subfolders = ["biologicos", "Pro1", "lavado", "quimico"]
@@ -210,24 +225,22 @@ class file_handlers:
                     for link in links:
                         href = link.get('href')
                         if href and href.endswith('.pdf') and best_match_product in href:
-                            # Devuelve la URL completa del archivo PDF que coincide
                             return f"{url}{href}"
                 else:
                     print(f"No se pudo acceder a la URL: {url}")
             except requests.RequestException as e:
                 print(f"Error al acceder a {url}: {e}")
 
-        return f"No se pudo encontrar el CC de {best_match_product}"
-    
+        return f"No se pudo encontrar el {document_type} de {best_match_product}"
+
+
     def get_sds_file(self, product):
         document_type = 'Safetydatasheet'
         best_match_product = self.best_match(product, self.products)
         
         if not best_match_product:
-            print(f"No se encontró una coincidencia para el producto: {product}")
-            return None
+            return f"No se encontró una coincidencia para el producto: {product}"
         
-        # Diccionarios de excepciones: producto -> archivo PDF específico
         excepciones = {
             # Químicos
             "CD": "SDS%20Chemical%20Indicators%20-%20BD,%20CD,%20CS,%20CT,%20IT,%20PCD.pdf",
@@ -273,12 +286,11 @@ class file_handlers:
             "L": "SDS%20Cleaning%20Indicators%20-%20LUMENIA-LUMENIA%20SIXFLOW.pdf",
         }
         
-        # Verifica si el producto coincide con alguna excepción
         for key, filename in excepciones.items():
             if best_match_product == key or best_match_product.startswith(key):
                 subfolder = "Quimicos" if key in ["CD", "IT", "PCD", "CT", "BD", "CDPCD2X", "KH2X", "MK"] else \
                             "Biologicos" if key in ["MC", "BT", "PCD", "KPCD", "BT40", "BT400", "BT50", "BT60", "BT70", "KBT400", "BTM", "BTC", "BTD", "WP90"] else \
-                            "Electronica" if key in ["Bionova IC10/20 Incubator", "Bionova IC10/20FR", "Bionova IC10/20FRLCD Auto-Reader Incubators", "Bionova MiniBio Auto-Reader Incubator", "Bionova MiniPro Auto-Reader Incubator", "Bionova TBIC1020 Thermometer for Bionova Incubators", "Bionova ICTP and ICTP Mini Incubator thermal papers", "Chemdye CG3 3-line labeler", "Chemdye IRCG3 Ink roller", "Bionova Wilink Wifi connectivity accessory for Bionova incubators"] else \
+                            "Electronica" if key in ["IC1020", "IC1020FR", "IC1020FRLCD", "MiniBio", "MiniPro", "TBIC1020", "ICTP", "CG3", "IRCG3", "Wilink"] else \
                             "Lavado" if key in ["CCDER", "L"] else ""
                 return f"https://terragene.com/wp-content/uploads/{document_type}/{subfolder}/{filename}"
         
@@ -296,18 +308,16 @@ class file_handlers:
                     for link in links:
                         href = link.get('href')
                         if href and href.endswith('.pdf') and best_match_product in href:
-                            # Devuelve la URL completa del archivo PDF que coincide
                             return f"{url}{href}"
                 else:
                     print(f"No se pudo acceder a la URL: {url}")
             except requests.RequestException as e:
                 print(f"Error al acceder a {url}: {e}")
 
-        return f"No se pudo encontrar el SDS de {best_match_product}"
+        return f"No se pudo encontrar el {document_type} de {best_match_product}"
 
 
     def get_fda_file(self, product):
-        # Diccionarios de excepciones: prefijos y productos específicos -> archivo PDF específico
         fda_files = {
             "K163646": ["BT220", "BT221", "BT222", "BT223", "PCD220-C", "PCD220-2", "PCD222-C", "PCD222-2", "IC10/20FR"],
             "K191021": ["BT95", "BT96", "BT110", "BT224", "PCD224-C", "PCD224-2", "IC10/20FRLCD", "Mini-Bio", 
@@ -316,14 +326,13 @@ class file_handlers:
             "K221641": ["BT98", "BHY", "BNB"]
         }
         
-        # Verifica si el producto está en alguna de las listas
         for key, products in fda_files.items():
             if product in products:
                 return f"https://terragene.com/wp-content/uploads/Archivos/FDA/{key}.pdf"
         
-        return "No se encontró un archivo FDA correspondiente para el producto especificado."
+        return f"No se encontró un archivo FDA correspondiente para el producto especificado: {product}"
+
 
     def get_iso_file(self):
-        devolver="""ISO Certification (English): https://terragene.com/wp-content/uploads/Archivos/ISO/243953-2017-AQ-ARG-NA-PS%20Rev%204.0-20230707-20230707084216.pdf
-                    Certificado ISO (Español): https://terragene.com/wp-content/uploads/Archivos/ISO/243953-2017-AQ-ARG-NA-PS%20Rev.%204.0%20Spanish-20230707-20230707084303.pdf """
-        return devolver
+        return """ISO Certification (English): https://terragene.com/wp-content/uploads/Archivos/ISO/243953-2017-AQ-ARG-NA-PS%20Rev%204.0-20230707-20230707084216.pdf
+                Certificado ISO (Español): https://terragene.com/wp-content/uploads/Archivos/ISO/243953-2017-AQ-ARG-NA-PS%20Rev.%204.0%20Spanish-20230707-20230707084303.pdf"""
