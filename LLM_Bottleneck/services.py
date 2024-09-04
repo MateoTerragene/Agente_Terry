@@ -18,7 +18,8 @@ class LLM_Bottleneck:
                 "If a query lacks accompanying information or is empty, I will not respond. "
                 "If I do not understand the query or need more information, I will ask for more details. "
                 "On the first message, I will greet the user as Terry, the AI expert in biotechnology, but I will not greet the user in subsequent messages. "
-                "If I detect any explicit intention to end the conversation or abort the task, I will return the sequence '#-#-#-#-#-#-', inform the user that the task has been aborted, and make myself available for further assistance."
+                "An Empty Response does NOT mean that the user wants to abort."
+                "If I detect any explicit intention to end the conversation or abort the task , I will return the sequence '#-#-#-#-#-#-', inform the user that the task has been aborted, and make myself available for further assistance."
             )
             
             self.tasks = []
@@ -37,10 +38,11 @@ class LLM_Bottleneck:
         # esta funcion nunca se llama, solamente dentro de generate_tasks_response
         responses = ". ".join([task.get_response() for task in self.tasks])
         user_prompt = f"Query: {query}, Responses: {responses}"
+        print(f"user_prompt: {user_prompt}")
         return user_prompt
 
     def generate_response(self, user_prompt,thread):             # Esta funcion se puede llamar dentro de una funcion que saque una respuesta por el chat
-      
+        
         chat = self.client.beta.threads.messages.create(
             thread_id=thread.thread_id,
             role="user", content=user_prompt
@@ -71,9 +73,10 @@ class LLM_Bottleneck:
                     classification=   text_block.text.value
                     
                                                 
-        # print(f"classification dentro de generate_response: {classification}")
+        print(f"classification dentro de generate_response: {classification}")
         return classification
     def detect_abort_signal(self, response):
+        #print(f"response: {response}")
         pattern = r"(#-)+"
         if re.search(pattern, response):
             self.abort_signal = True ### SOLO PARA PROBAR
@@ -92,9 +95,9 @@ class LLM_Bottleneck:
         response = self.generate_response(user_prompt,thread)
         
         # print(f"abort signal antes de detectar: {self.abort_signal}")
-        # print(f"response antes de detectar: {response}")
+        print(f"response antes de detectar: {response}")
         response= self.detect_abort_signal(response)
-        # print(response) # este print es solo para probar
+        #print(response) # este print es solo para probar
         # print(response)
         self.tasks.clear()
         print("  ")
