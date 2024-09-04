@@ -1,5 +1,6 @@
 import logging
 import json
+import requests
 from django.http import JsonResponse
 from django.views import View
 from django.shortcuts import render
