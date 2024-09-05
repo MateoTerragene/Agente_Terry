@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-m9ZwoAf3z2vSA+fWxz+M78LZCkFH2zI1FpBvtCOfI5f8LqE4CD8LXMeivW8bRkz" crossorigin="anonymous">
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consulta SQL</title>
+    <style>
+        .container {
+            display: flex;
+        }
+        .sql-query {
+            flex: 2;
+        }
+        .available-tables {
+            flex: 1;
+            margin-left: 20px;
+        }
+        #table-content {
+            margin-top: 20px;
+        }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+
+    <form action="{% url 'show_tables' %}">
+        <button type="submit">Volver</button>
+    </form>
+    <div class="container">
+        <div class="sql-query">
+            <h3>Consulta SQL personalizada</h3>
+            <form method="post" action="{% url 'custom_sql_query' %}">
+                {% csrf_token %}
+                <textarea name="custom_query" rows="5" cols="100" placeholder="Ingrese consulta SQL">{{ custom_query|default:"" }}</textarea><br>
+                <button type="submit">Ejecutar consulta SQL</button>
+                <button type="submit" name="download_excel" value="true">Descargar Excel</button> <!-- Botón para descargar Excel -->
+            </form>
+
+            {% if columns and rows %}
+            <h3>Query Results</h3>
+            <table border="1">
+                <thead>
+                    <tr>
+                        {% for column in columns %}
+                            <th>{{ column }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                        <tr>
+                            {% for value in row %}
+                                <td>{{ value }}</td>
+                            {% endfor %}
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p>Sin resultados.</p>
+            {% endif %}
+        </div>
+
+        <!-- Columna de tablas disponibles -->
+        <div class="available-tables">
+            <h3>Tablas disponibles</h3>
+            <ul>
+                {% for table in tables %}
+                    <li><a href="#" class="table-link" data-table="{{ table }}">{{ table }}</a></li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <!-- Contenedor donde se cargará dinámicamente el contenido de la tabla -->
+    <div id="table-content"></div>
+
+    <script>
+        $(document).ready(function(){
+            // Al hacer clic en un enlace de tabla, cargar el contenido usando AJAX
+            $('.table-link').click(function(e){
+                e.preventDefault();
+                var tableName = $(this).data('table');
+
+                // Hacer una llamada AJAX a la vista actual y obtener solo la tabla
+                $.get("{% url 'custom_sql_query' %}?table_name=" + tableName, function(data) {
+                    $('#table-content').html(data);  // Mostrar solo el contenido de la tabla
+                });
+            });
+        });
+    </script>
+    
+</body>
+</html>

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Viewer</title>
+</head>
+<body>
+
+    <h1>Tablas disponibles</h1>
+    <ul>
+        {% for table in tables %}
+            <li><a href="{% url 'show_table_content' table %}">{{ table }}</a></li>
+        {% endfor %}
+    </ul>
+
+    <hr>
+    
+    <h2>Otras opciones</h2>
+    <ul>
+        <li><a href="{% url 'custom_sql_query' %}">Consulta SQL</a></li>
+        <li><a href="{% url 'intelligent_query' %}">Consulta Inteligente</a></li>
+    </ul>
+
+</body>
+</html>

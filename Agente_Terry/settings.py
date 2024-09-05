@@ -9,7 +9,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY', 'fallback_secret_key')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     'Complaint_Manager',
     'LLM_Bottleneck',
     'rest_framework',
+    'dbviewer',
    
 ]
 
@@ -48,7 +49,10 @@ ROOT_URLCONF = "Agente_Terry.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [os.path.join(BASE_DIR, 'Module_Manager/templates')],
+        "DIRS": [
+            os.path.join(BASE_DIR, 'Module_Manager/templates'),
+            os.path.join(BASE_DIR, 'dbviewer/templates'),
+        ],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -124,3 +128,7 @@ STATIC_URL = "static/"
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+LOGIN_URL = '/login/'
+LOGIN_REDIRECT_URL = '/dbviewer/tables/'
+LOGOUT_REDIRECT_URL = '/login/'
