@@ -253,7 +253,43 @@ class WhatsAppQueryView(View):
                         
                         return HttpResponse('Message processed', status=200)
 
+                    elif message_type == 'image':
+                        image_id = message['image']['id']
+                        print(f"Received image with ID: {image_id}")
+                        phone_number = value['contacts'][0]['wa_id']
+                        phone_number = phone_number.replace("549", "54")
 
+                        # Marcamos el mensaje como leído
+                        mark_read_data = {
+                            "messaging_product": "whatsapp",
+                            "status": "read",
+                            "message_id": message_id
+                        }
+                        mark_read_response = requests.post(WHATSAPP_API_URL, headers=headers, json=mark_read_data)
+
+                        if mark_read_response.status_code == 200:
+                            print("Message marked as read successfully!")
+                        else:
+                            print(f"Failed to mark as read: {mark_read_response.status_code}, {mark_read_response.text}")
+
+                        # Responder a mensajes de imagen
+                        response_text = "Thank you for sending the image. We received it! However, Terry is currently unable to process images. Please provide audio or text based queries for further assistance!"
+                        response_data = {
+                            "messaging_product": "whatsapp",
+                            "to": phone_number,
+                            "type": "text",
+                            "text": {
+                                "body": response_text
+                            }
+                        }
+                        api_response = requests.post(WHATSAPP_API_URL, headers=headers, json=response_data)
+
+                        if api_response.status_code == 200:
+                            print("Response sent successfully!")
+                        else:
+                            print(f"Failed to send response: {api_response.status_code}, {api_response.text}")
+                        
+                        return HttpResponse('Message processed', status=200)    
                     else:
                         print(f"Event type {message_type} not processed.")
                         return HttpResponse('No action needed', status=200)
@@ -271,6 +307,6 @@ class WhatsAppQueryView(View):
             traceback.print_exc()
 
         return HttpResponse('Error', status=500)
-
+    
 
         
