@@ -54,5 +54,6 @@ class UserInteraction(models.Model):
     query = models.TextField()
     response = models.TextField()
     task_type = models.CharField(max_length=50, blank=True, null=True)
+    message_id = models.CharField(max_length=255, blank=True, null=True, unique=True)  # Nuevo campo
     class Meta:
         db_table = 'Module_Manager_userinteraction'  # Nombre de la tabla

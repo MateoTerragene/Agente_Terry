@@ -38,7 +38,7 @@ class LLM_Bottleneck:
         # esta funcion nunca se llama, solamente dentro de generate_tasks_response
         responses = ". ".join([task.get_response() for task in self.tasks])
         user_prompt = f"Query: {query}, Responses: {responses}"
-        print(f"user_prompt: {user_prompt}")
+        # print(f"user_prompt: {user_prompt}")
         return user_prompt
 
     def generate_response(self, user_prompt,thread):             # Esta funcion se puede llamar dentro de una funcion que saque una respuesta por el chat

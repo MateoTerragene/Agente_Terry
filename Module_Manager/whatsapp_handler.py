@@ -1,35 +1,192 @@
+import mimetypes
 import logging
-from .models import WhatsAppUser
+import requests
 from Module_Manager.thread_manager import thread_manager_instance
+from .models import UserInteraction
+from datetime import datetime, timezone
+import os
+from openai import OpenAI
+import hashlib
+import uuid
 
 logger = logging.getLogger(__name__)
+WHATSAPP_API_URL = os.getenv("WHATSAPP_API_URL")
+ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
+PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
 
 class WhatsAppHandler:
-    def __init__(self, phone_number):
-        self.phone_number = phone_number
-        self.user, created = WhatsAppUser.objects.get_or_create(phone_number=phone_number)
-        self.thread, self.module_manager = self.get_or_create_thread()
+    def __init__(self):
+        
+        self.client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+        self.processed_messages = set()  # Keep track of processed messages
+        self.phone_number = None  # Añadido para almacenar el número de teléfono
 
-    def get_or_create_thread(self):
+    def handle_audio_message(self, audio_id, phone_number):
+        print("**************************************************")
+        print("LLAMO A HANDLE_AUDIO_MESSAGE")
+        print("**************************************************")
+
+        self.phone_number = phone_number 
         try:
-            thread, module_manager = thread_manager_instance.get_or_create_active_thread(self.user.id)
-            return thread, module_manager
+            print(f"Handling audio message for audio_id: {audio_id} and phone_number: {phone_number}")
+            if audio_id in self.processed_messages:
+                logger.info(f"Audio {audio_id} has already been processed.")
+                return None, None,None,None,None
+
+            logger.debug(f"Processing audio message for {phone_number}")
+
+            # Descargar el archivo de audio utilizando el audio_id
+            audio_path = self.download_audio(audio_id)
+            if not audio_path:
+                raise ValueError("No se pudo descargar el audio")
+
+            # Transcribir el audio utilizando Whisper
+            with open(audio_path, "rb") as audio_file:
+                transcript = self.client.audio.transcriptions.create(
+                    model="whisper-1",
+                    file=audio_file
+                )
+            transcribed_text = transcript.text
+
+            if not transcribed_text:
+                raise ValueError("Error en la transcripción de audio")
+             # Eliminar el archivo después de procesar
+            if os.path.exists(audio_path):
+                os.remove(audio_path)
+                print(f"Archivo de audio {audio_path} eliminado exitosamente.")
+            else:
+                print(f"El archivo de audio {audio_path} no existe.")
+            # Procesar el texto transcrito como un mensaje de texto
+            thread, task_type, response_text = self.handle_text_message(transcribed_text, phone_number)
+
+            # Generar respuesta de audio usando TTS
+            tts_audio_path = self.generate_tts_audio(thread,response_text)
+            if not tts_audio_path:
+                raise ValueError("Error generando audio de respuesta TTS")
+
+            # Subir el archivo de audio a WhatsApp
+            media_id = self.upload_audio(tts_audio_path)
+            if not media_id:
+                raise ValueError("Error subiendo el archivo de audio")
+
+            # Marcar el audio como procesado
+            self.processed_messages.add(audio_id)
+
+            return transcribed_text,thread, task_type, response_text, media_id
+
         except Exception as e:
-            logger.error(f"Error al obtener o crear thread para el número {self.phone_number}: {str(e)}")
-            raise
+            logger.error(f"Error procesando audio para {phone_number}: {str(e)}")
+            return None, None, None, None,None
 
-    def handle_text_message(self, message):
+    def download_audio(self, media_id, save_path='/tmp/audio.ogg'):
         try:
-            response = self.module_manager.classify_query(self.thread, message)
-            logger.info(f"Mensaje procesado para {self.phone_number}")
-            return response
+            url = f"https://graph.facebook.com/v20.0/{media_id}?access_token={ACCESS_TOKEN}"
+            headers = {"Authorization": f"Bearer {ACCESS_TOKEN}"}
+
+            response = requests.get(url, headers=headers)
+            if response.status_code == 200:
+                media_url = response.json().get("url")
+                audio_response = requests.get(media_url, headers=headers, stream=True)
+                if audio_response.status_code == 200:
+                    with open(save_path, 'wb') as f:
+                        for chunk in audio_response.iter_content(chunk_size=8192):
+                            f.write(chunk)
+                    return save_path
+            logger.error(f"Error descargando el archivo de audio: {response.status_code}")
+        except Exception as e:
+            logger.error(f"Error en download_audio: {str(e)}")
+        return None
+
+    def generate_tts_audio(self, thread, text, output_audio_path='/tmp/response_audio.ogg'):
+        # Define las voces disponibles
+        VOICES = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
+        
+        def get_voice_for_thread(thread_id):
+            # Calcula un hash del thread_id y toma un valor entre 0 y len(VOICES) - 1
+            hash_value = int(hashlib.md5(thread_id.encode()).hexdigest(), 16)
+            return VOICES[hash_value % len(VOICES)]
+        
+        try:
+            # Asegúrate de que `thread.id` sea una cadena
+            if not isinstance(thread.id, uuid.UUID):
+                raise TypeError("El identificador del hilo debe ser un UUID.")
+            
+            # Convierte el UUID a una cadena hexadecimal
+            thread_id_str = thread.id.hex
+            
+            # Obtén la voz basada en el thread
+            voice = get_voice_for_thread(thread_id_str)
+            
+            response = self.client.audio.speech.create(
+                model="tts-1",
+                voice=voice,
+                input=text
+            )
+            if response and response.content:
+                with open(output_audio_path, 'wb') as f:
+                    f.write(response.content)
+                return output_audio_path
+            raise ValueError("No se pudo generar el archivo de audio.")
+        except Exception as e:
+            logger.error(f"Error generando TTS audio: {str(e)}")
+            return None
+    def upload_audio(self, file_path):
+        try:
+            url = f"https://graph.facebook.com/v20.0/{PHONE_NUMBER_ID}/media"
+            headers = {
+                "Authorization": f"Bearer {ACCESS_TOKEN}"
+            }
+
+            if os.path.exists(file_path):
+                print(f"Archivo encontrado en {file_path}.")
+                with open(file_path, 'rb') as audio_file:
+                    content = audio_file.read()
+                    if len(content) > 0:
+                        print(f"El archivo tiene {len(content)} bytes.")
+                    else:
+                        print("El archivo está vacío.")
+            else:
+                print(f"El archivo {file_path} no existe.")
+                return None
+
+            # Cambiamos el tipo de archivo a 'audio/mpeg' para MP3
+            files = {
+                'file': ('audio.mp3', open(file_path, 'rb'), 'audio/mpeg')
+            }
+            data = {
+                'messaging_product': 'whatsapp',
+                'type': 'audio/mpeg'
+            }
+
+            print(f"Enviando solicitud POST a {url} con tipo MIME audio/mpeg (MP3)")
+
+            response = requests.post(url, headers=headers, files=files, data=data)
+
+            print(f"POST response status: {response.status_code}, response: {response.text}")
+
+            if response.status_code == 200:
+                media_id = response.json().get("id")
+                if media_id:
+                    print(f"Audio subido exitosamente con media_id: {media_id}")
+                    return media_id
+                else:
+                    print("No se pudo obtener el media_id después de subir el archivo.")
+            else:
+                print(f"Error subiendo el archivo de audio: {response.status_code} - {response.text}")
+            return None
+
+        except Exception as e:
+            print(f"Error en upload_audio: {str(e)}")
+            return None
+
+    def handle_text_message(self, message, phone_number):
+        self.phone_number = phone_number 
+        try:
+            thread, module_manager = thread_manager_instance.get_or_create_active_thread(phone_number, is_whatsapp=True)
+            response, task_type = module_manager.classify_query(thread, message, phone_number, is_whatsapp=True)
+
+            # Defer saving to DB until after sending the response
+            return thread, task_type, response
         except Exception as e:
             logger.error(f"Error procesando mensaje de texto para {self.phone_number}: {str(e)}")
-            return str(e)
-
-    # Métodos futuros para manejar imágenes, audios, etc.
-    # def handle_image(self, image):
-    #     pass
-
-    # def handle_audio(self, audio):
-    #     pass
+            return  str(e)

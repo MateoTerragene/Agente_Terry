@@ -97,37 +97,6 @@ class ChatView(View):
             logger.error(f"Error in ChatView: {str(e)}")
             return JsonResponse({'error': str(e)}, status=500)
 
-    def post(self, request):
-        try:
-            # Solo manejar JSON cuando se recibe una solicitud POST
-            body = json.loads(request.body)
-            user_id = body.get('user_id')
-            if not user_id:
-                return JsonResponse({'error': 'No user ID provided'}, status=400)
-
-            query = body.get('query')
-            if not query:
-                return JsonResponse({'error': 'No query provided'}, status=400)
-
-            logger.debug(f"User ID: {user_id}")
-            thread, _ = thread_manager_instance.get_or_create_active_thread(user_id)
-            response = thread_manager_instance.process_query(thread, query)
-
-            # Guardar la interacción en la base de datos
-            UserInteraction.objects.create(
-                thread_id=thread.thread_id,
-                endpoint="ChatView",
-                user_id=user_id,
-                query=query,
-                response=response
-            )
-
-            return JsonResponse({'response': response})
-        except json.JSONDecodeError:
-            return JsonResponse({'error': 'Invalid JSON'}, status=400)
-        except Exception as e:
-            logger.error(f"Error in ChatView POST: {str(e)}")
-            return JsonResponse({'error': str(e)}, status=500)
         
 WHATSAPP_API_URL = os.getenv("WHATSAPP_API_URL")
 ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
@@ -135,9 +104,9 @@ VERIFY_TOKEN = os.getenv("VERIFY_TOKEN")
 
 @method_decorator(csrf_exempt, name='dispatch')
 class WhatsAppQueryView(View):
-    
+    processed_messages = set()  # Conjunto para almacenar IDs de mensajes ya procesados
+    whatsapp_handler = WhatsAppHandler()
     def get(self, request):
-        
         token_sent = request.GET.get('hub.verify_token')
         challenge = request.GET.get('hub.challenge')
 
@@ -145,119 +114,163 @@ class WhatsAppQueryView(View):
             return HttpResponse(challenge)
         else:
             return HttpResponse('Invalid verification token', status=403)
-    
+        
     def post(self, request):
         try:
+            body=None
+            # Parse the incoming request
             body = json.loads(request.body)
-            # print(f"Received JSON body: {json.dumps(body, indent=2)}")  # Imprime el JSON completo recibido
 
-            # Verificar que 'entry' y 'changes' existen y tienen contenido
-            if not body.get('entry'):
-                print("No 'entry' found in JSON body.")
-                return HttpResponse('No entry found', status=400)
-            
-            entry = body['entry'][0]
-
-            if not entry.get('changes'):
-                print("No 'changes' found in entry.")
-                return HttpResponse('No changes found', status=400)
-            
-            changes = entry['changes'][0]
-
-            value = changes.get('value', {})
-
-            if 'contacts' in value and 'messages' in value:
-                # Procesar mensajes entrantes
-                contacts = value.get('contacts', [])
-                messages = value.get('messages', [])
+            # Verifica que haya un mensaje entrante
+            if 'entry' in body:
+                entry = body['entry'][0]
+                changes = entry.get('changes', [])[0]
+                value = changes.get('value', {})
                 
-                if not contacts:
-                    print("No 'contacts' found in value.")
-                    return HttpResponse('No contacts found', status=400)
-                
-                if not messages:
-                    print("No 'messages' found in value.")
-                    return HttpResponse('No messages found', status=400)
-                
-                phone_number = contacts[0].get('wa_id')
-                phone_number = phone_number.replace("549", "54")  # Modificación temporal para probar
-                query = messages[0].get('text', {}).get('body')
-                timestamp = int(messages[0].get('timestamp', 0))  # Obtener el timestamp del mensaje
 
-                if not phone_number or not query:
-                    print("Phone number or query missing in the message.")
-                    return HttpResponse('Phone number or query missing', status=400)
+                # Verifica si hay mensajes entrantes
+                if 'messages' in value:
+                    message = value['messages'][0]
+                    message_id = message.get('id')
+                    # Verifica si el mensaje ya ha sido procesado
+                    if UserInteraction.objects.filter(message_id=message_id).exists():
+                        print(f"Message with ID {message_id} has already been processed.")
+                        return JsonResponse({'status': 'already processed'}, status=200)
+                    
+                    message_type = message.get('type')
+                    
+                    headers = {
+                            "Authorization": f"Bearer {ACCESS_TOKEN}",
+                            "Content-Type": "application/json"
+                        }
+                    
+                    # Procesa mensajes de texto
+                    if message_type == 'text':
+                        text_body = message['text']['body']
+                        print(f"es un mensaje de texto: {text_body}")
+                        phone_number = value['contacts'][0]['wa_id']
+                        phone_number = phone_number.replace("549", "54")
 
-                # Convertir timestamp a datetime
-                message_time = datetime.fromtimestamp(timestamp, tz=timezone.utc)
+                        # Marcamos el mensaje como leído
+                        
+                        mark_read_data = {
+                            "messaging_product": "whatsapp",
+                            "status": "read",
+                            "message_id": message['id']
+                        }
+                        mark_read_response = requests.post(WHATSAPP_API_URL, headers=headers, json=mark_read_data)
 
-                # Verificar si el mensaje fue enviado hace más de 24 horas
-                time_difference = (datetime.now(timezone.utc) - message_time).total_seconds()
-                if time_difference > 86400:
-                    print("Message is older than 24 hours, cannot respond.")
-                    return HttpResponse('Message older than 24 hours', status=400)
+                        if mark_read_response.status_code == 200:
+                            print("Message marked as read successfully!")
+                        else:
+                            print(f"Failed to mark as read: {mark_read_response.status_code}, {mark_read_response.text}")
 
-                # Reutilizar thread existente si es posible, usando el número de teléfono como ID
-                thread, module_manager = thread_manager_instance.get_or_create_active_thread(phone_number, is_whatsapp=True)
+                        # Responder mensaje de texto
+                        thread, task_type, response_text = self.whatsapp_handler.handle_text_message(text_body, phone_number)
+                        response_data = {
+                            "messaging_product": "whatsapp",
+                            "to": phone_number,
+                            "type": "text",
+                            "text": {
+                                "body": response_text
+                            }
+                        }
+                        api_response = requests.post(WHATSAPP_API_URL, headers=headers, json=response_data)
 
-                # Utilizar classify_query en lugar de process_query
-                response, task_type = module_manager.classify_query(thread, query, phone_number, is_whatsapp=True)
-                
-                # Guardar la interacción en la base de datos
-                UserInteraction.objects.create(
-                    thread_id=thread.thread_id,
-                    endpoint="WhatsAppQueryView",
-                    phone_number=phone_number,
-                    query=query,
-                    response=response,
-                    task_type=task_type if task_type else ''
-                )
+                        if api_response.status_code == 200:
+                            print("Message sent successfully!")
+                        else:
+                            print(f"Failed with status {api_response.status_code}: {api_response.text}")
+                        UserInteraction.objects.create(
+                            thread_id=thread.thread_id,
+                            endpoint="WhatsAppQueryView",
+                            phone_number=phone_number,
+                            query=text_body if message_type == 'text' else f'Audio message: {text_body}',
+                            response=response_text,
+                            task_type=task_type if task_type else '',
+                            message_id=message_id)
+                        return HttpResponse('Message processed', status=200)
 
-                # Enviar respuesta a WhatsApp
-                headers = {
-                    "Authorization": f"Bearer {ACCESS_TOKEN}",
-                    "Content-Type": "application/json"
-                }
+                    # Procesa mensajes de audio
+                    elif message_type == 'audio':
+                        audio_id = message['audio']['id']
+                        phone_number = value['contacts'][0]['wa_id']
+                        phone_number = phone_number.replace("549", "54")
+                        
+                        mark_read_data = {
+                            "messaging_product": "whatsapp",
+                            "status": "read",
+                            "message_id": message['id']
+                        }
+                        mark_read_response = requests.post(WHATSAPP_API_URL, headers=headers, json=mark_read_data)
 
-                data = {
-                    "messaging_product": "whatsapp",
-                    "to": phone_number,
-                    "text": {
-                        "body": response
-                    }
-                }
+                        if mark_read_response.status_code == 200:
+                            print("Message marked as read successfully!")
+                        else:
+                            print(f"Failed to mark as read: {mark_read_response.status_code}, {mark_read_response.text}")
+                        trabscribed_text_body,thread, task_type, response_text, response_audio_url = self.whatsapp_handler.handle_audio_message(audio_id, phone_number)
+                        print(f"es un mensaje de audio: {trabscribed_text_body}")
+                        # Enviar respuesta de audio
+                        if response_audio_url:
+                            audio_data = {
+                                "messaging_product": "whatsapp",
+                                "to": phone_number,
+                                "type": "audio",
+                                "audio": {
+                                    "id": response_audio_url
+                                }
+                            }
+                            audio_response = requests.post(WHATSAPP_API_URL, headers=headers, json=audio_data)
 
-                api_response = requests.post(WHATSAPP_API_URL, headers=headers, json=data)
-                print(f"WhatsApp API Response: {api_response.status_code}, {api_response.text}")
-                
-                # Manejar la respuesta de la API de WhatsApp
-                if api_response.status_code == 200:
-                    print("Message sent successfully.")
-                    return JsonResponse({'status': 'Message sent successfully'})
+                            if audio_response.status_code == 200:
+                                print("Audio TTS enviado exitosamente.")
+                            else:
+                                print(f"Error sending audio response: {audio_response.status_code}")
+                        # Enviar respuesta de texto
+                        if response_text:
+                            text_data = {
+                                "messaging_product": "whatsapp",
+                                "to": phone_number,
+                                "type": "text",
+                                "text": {
+                                    "body": response_text
+                                }
+                            }
+                            text_response = requests.post(WHATSAPP_API_URL, headers=headers, json=text_data)
+                            UserInteraction.objects.create(
+                                thread_id=thread.thread_id,
+                                endpoint="WhatsAppQueryView",
+                                phone_number=phone_number,
+                                query=text_body if message_type == 'text' else f'Audio message: {trabscribed_text_body}',
+                                response=response_text,
+                                task_type=task_type if task_type else '',
+                                message_id=message_id)
+                            if text_response.status_code == 200:
+                                print("Texto transcrito enviado exitosamente.")
+                            else:
+                                print(f"Error sending text response: {text_response.status_code}")
+
+                        
+                        return HttpResponse('Message processed', status=200)
+
+
+                    else:
+                        print(f"Event type {message_type} not processed.")
+                        return HttpResponse('No action needed', status=200)
+
                 else:
-                    print(f"Error sending message: {api_response.text}")
-                    return JsonResponse({'error': 'Failed to send message'}, status=500)
+                    print("No message to process or event not relevant.")
+                    return HttpResponse('No action needed', status=200)
 
-            elif 'statuses' in value:
-                # Procesar eventos de estado de mensaje
-                statuses = value.get('statuses', [])
-                if not statuses:
-                    print("No 'statuses' found in value.")
-                    return HttpResponse('No statuses found', status=400)
-
-                status_info = statuses[0]
-                message_status = status_info.get('status')
-                recipient_id = status_info.get('recipient_id')
-                print(f"Message status update received: {message_status} for recipient {recipient_id}")
-
-                # No realizar ninguna acción específica aquí, ya que solo se está procesando un evento de estado
-
-                return HttpResponse('Status received', status=200)
-
-            else:
-                print("No recognized keys in 'value'.")
-                return HttpResponse('Unrecognized event', status=400)
+            return HttpResponse('Unrecognized event', status=400)
 
         except Exception as e:
-            print(f"Error handling WhatsApp query: {str(e)}")
-            return HttpResponse(status=500)
+            # Print the full error traceback for debugging
+            import traceback
+            print(f"Unexpected error: {str(e)}")
+            traceback.print_exc()
+
+        return HttpResponse('Error', status=500)
+
+
+        

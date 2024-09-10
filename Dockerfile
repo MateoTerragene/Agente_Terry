@@ -1,5 +1,8 @@
 FROM python:3.11
 
+# # Instala ffmpeg
+# RUN apt-get update && apt-get install -y ffmpeg
+
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
