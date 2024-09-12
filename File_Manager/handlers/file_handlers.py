@@ -53,14 +53,14 @@ class file_handlers:
 
     def get_most_recent_pdf(self, url):
         try:
-            print(f"Accediendo a la URL: {url}")
+            # print(f"Accediendo a la URL: {url}")
             response = requests.get(url)
             
             if response.status_code == 200:
-                print(f"Acceso exitoso a {url}")
+                # print(f"Acceso exitoso a {url}")
                 soup = BeautifulSoup(response.text, 'html.parser')
                 rows = soup.find_all('tr')
-                print(f"Número de filas encontradas: {len(rows)}")
+                # print(f"Número de filas encontradas: {len(rows)}")
                 
                 most_recent_url = None
                 most_recent_date = None
@@ -72,20 +72,20 @@ class file_handlers:
                         date_string = columns[2].text.strip()
                         if link and link.get('href').endswith('.pdf'):
                             pdf_url = urljoin(url, link.get('href'))
-                            print(f"PDF encontrado: {pdf_url}")
-                            print(f"Fecha encontrada: {date_string}")
+                            # print(f"PDF encontrado: {pdf_url}")
+                            # print(f"Fecha encontrada: {date_string}")
 
                             try:
                                 last_modified_date = datetime.strptime(date_string, '%Y-%m-%d %H:%M')
-                                print(f"Fecha de modificación parseada: {last_modified_date}")
+                                # print(f"Fecha de modificación parseada: {last_modified_date}")
                                 if most_recent_date is None or last_modified_date > most_recent_date:
                                     most_recent_date = last_modified_date
                                     most_recent_url = pdf_url
-                                    print(f"Actualizando PDF más reciente a: {most_recent_url}")
+                                    # print(f"Actualizando PDF más reciente a: {most_recent_url}")
                             except ValueError as e:
                                 print(f"Error al parsear la fecha: {e}")
                         else:
-                            print("No es un enlace PDF o no se encontró el enlace.")
+                            pass
                 
                 if most_recent_url:
                     print(f"PDF más reciente encontrado: {most_recent_url}")
@@ -95,7 +95,7 @@ class file_handlers:
                     return "No se encontraron archivos PDF recientes."
             
             else:
-                print(f"No se pudo acceder a la página, código de estado: {response.status_code}")
+                # print(f"No se pudo acceder a la página, código de estado: {response.status_code}")
                 return "No se pudo acceder a la página."
         
         except requests.RequestException as e:

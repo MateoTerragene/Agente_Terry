@@ -120,7 +120,7 @@ class WhatsAppQueryView(View):
             body=None
             # Parse the incoming request
             body = json.loads(request.body)
-
+            
             # Verifica que haya un mensaje entrante
             if 'entry' in body:
                 entry = body['entry'][0]
@@ -138,7 +138,9 @@ class WhatsAppQueryView(View):
                         return JsonResponse({'status': 'already processed'}, status=200)
                     
                     message_type = message.get('type')
-                    
+                    print("##############################################################")
+                    print(body)
+                    print("##############################################################")
                     headers = {
                             "Authorization": f"Bearer {ACCESS_TOKEN}",
                             "Content-Type": "application/json"
@@ -208,6 +210,21 @@ class WhatsAppQueryView(View):
                             print("Message marked as read successfully!")
                         else:
                             print(f"Failed to mark as read: {mark_read_response.status_code}, {mark_read_response.text}")
+                        #########marcar como escuchado
+                        # mark_listened_data = {
+                        #     "messaging_product": "whatsapp",
+                        #     "status": "listened",
+                        #     "message_id": message['id']
+                        # }
+                        # mark_listened_response = requests.post(WHATSAPP_API_URL, headers=headers, json=mark_listened_data)
+
+                        # if mark_listened_response.status_code == 200:
+                        #     print("Message marked as listened successfully!")
+                        # else:
+                        #     print(f"Failed to mark as listened: {mark_listened_response.status_code}, {mark_listened_response.text}")
+
+
+
                         trabscribed_text_body,thread, task_type, response_text, response_audio_url = self.whatsapp_handler.handle_audio_message(audio_id, phone_number)
                         print(f"es un mensaje de audio: {trabscribed_text_body}")
                         # Enviar respuesta de audio
@@ -271,9 +288,15 @@ class WhatsAppQueryView(View):
                             print("Message marked as read successfully!")
                         else:
                             print(f"Failed to mark as read: {mark_read_response.status_code}, {mark_read_response.text}")
+                        # Llamar a la función handle_image_message para manejar la imagen
+                        thread, task_type,response_text,saved_image_path  = self.whatsapp_handler.handle_image_message(image_id, phone_number)
 
-                        # Responder a mensajes de imagen
-                        response_text = "Thank you for sending the image. We received it! However, Terry is currently unable to process images. Please provide audio or text based queries for further assistance!"
+                        # if saved_image_path:
+                        #     print(f"Imagen guardada en: {saved_image_path}")
+                        #     # Puedes enviar una respuesta si lo deseas o continuar el procesamiento  
+                        #     text_body= saved_image_path
+                        #     # Responder a mensajes de imagen
+                            
                         response_data = {
                             "messaging_product": "whatsapp",
                             "to": phone_number,
@@ -285,18 +308,22 @@ class WhatsAppQueryView(View):
                         api_response = requests.post(WHATSAPP_API_URL, headers=headers, json=response_data)
 
                         if api_response.status_code == 200:
-                            print("Response sent successfully!")
+                            print("Message sent successfully!")
                         else:
-                            print(f"Failed to send response: {api_response.status_code}, {api_response.text}")
-                        
-                        return HttpResponse('Message processed', status=200)    
+                            print(f"Failed with status {api_response.status_code}: {api_response.text}")
+                        UserInteraction.objects.create(
+                            thread_id=thread.thread_id,
+                            endpoint="WhatsAppQueryView",
+                            phone_number=phone_number,
+                            query=f'Image: {saved_image_path}',
+                            response=response_text,
+                            task_type=task_type if task_type else '',
+                            message_id=message_id)
+                        return HttpResponse('Message processed', status=200)
+                   
                     else:
-                        print(f"Event type {message_type} not processed.")
+                        # print("No message to process or event not relevant.")
                         return HttpResponse('No action needed', status=200)
-
-                else:
-                    print("No message to process or event not relevant.")
-                    return HttpResponse('No action needed', status=200)
 
             return HttpResponse('Unrecognized event', status=400)
 

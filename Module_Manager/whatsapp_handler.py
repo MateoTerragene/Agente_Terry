@@ -8,11 +8,19 @@ import os
 from openai import OpenAI
 import hashlib
 import uuid
+from dotenv import load_dotenv
+import boto3
+# Cargar las variables de entorno desde el archivo .env
+load_dotenv()
 
+AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
+AWS_REGION = os.getenv('AWS_REGION')
 logger = logging.getLogger(__name__)
 WHATSAPP_API_URL = os.getenv("WHATSAPP_API_URL")
 ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
 PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
+
 
 class WhatsAppHandler:
     def __init__(self):
@@ -190,3 +198,108 @@ class WhatsAppHandler:
         except Exception as e:
             logger.error(f"Error procesando mensaje de texto para {self.phone_number}: {str(e)}")
             return  str(e)
+    def handle_image_message(self, image_id, phone_number):
+        print("**************************************************")
+        print("LLAMO A HANDLE_IMAGE_MESSAGE")
+        print("**************************************************")
+
+        self.phone_number = phone_number
+        try:
+            print(f"Handling image message for image_id: {image_id} and phone_number: {phone_number}")
+            if image_id in self.processed_messages:
+                logger.info(f"Image {image_id} has already been processed.")
+                return None, None, None
+
+            logger.debug(f"Processing image message for {phone_number}")
+
+            # Descargar el archivo de imagen utilizando el image_id desde la API de WhatsApp
+            image_path = self.download_image(image_id, phone_number)
+            if not image_path:
+                raise ValueError("No se pudo descargar la imagen")
+
+            # Verificar si el archivo existe
+            if not os.path.exists(image_path):
+                raise ValueError(f"El archivo de imagen {image_path} no existe.")
+
+            # Guardar la imagen en S3
+            saved_image_path = self.save_image_to_s3(image_path, phone_number, image_id)
+            if not saved_image_path:
+                raise ValueError("Error guardando la imagen en S3")
+
+            # Procesar la URL de la imagen en S3 como un mensaje de texto
+            thread, task_type, response_text = self.handle_text_message(saved_image_path, phone_number)
+
+            # Marcar la imagen como procesada
+            self.processed_messages.add(image_id)
+
+            # Retornar la URL de la imagen guardada en S3, el thread, task_type, response_text y el id de la imagen
+            return thread, task_type, response_text, saved_image_path
+
+        except Exception as e:
+            logger.error(f"Error procesando imagen para {phone_number}: {str(e)}")
+            return None, None, None
+
+
+    def save_image_to_s3(self, image_path, phone_number, image_id):
+        try:
+            # Crear un cliente de S3 usando las credenciales del .env
+            s3 = boto3.client(
+                's3',
+                aws_access_key_id=AWS_ACCESS_KEY_ID,
+                aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+                region_name=AWS_REGION
+            )
+
+            # Definir el nombre del archivo en S3 basado en phone_number, thread_id e image_id
+            s3_file_name = f"images/{phone_number}_{image_id}.jpg"
+            
+            # Nombre del bucket
+            bucket_name = 'agente-terry'
+
+            # Subir el archivo a S3 en la carpeta 'images'
+            s3.upload_file(image_path, bucket_name, s3_file_name)
+
+            # Generar una URL pública del archivo en S3 (opcional, si el bucket tiene permisos públicos)
+            file_url = f"https://{bucket_name}.s3.amazonaws.com/{s3_file_name}"
+            
+            print(f"Archivo subido exitosamente a S3. URL: {file_url}")
+            return file_url
+
+        except Exception as e:
+            print(f"Error subiendo la imagen a S3: {str(e)}")
+            return None
+        
+    def download_image(self, image_id, phone_number, save_path='/tmp'):
+        try:
+            # URL para obtener el archivo de imagen
+            url = f"https://graph.facebook.com/v20.0/{image_id}?access_token={ACCESS_TOKEN}"
+            headers = {"Authorization": f"Bearer {ACCESS_TOKEN}"}
+
+            # Solicitud para obtener la URL del archivo de imagen
+            response = requests.get(url, headers=headers)
+            if response.status_code == 200:
+                media_url = response.json().get("url")
+                
+                # Descargar el archivo de imagen desde la URL obtenida
+                image_response = requests.get(media_url, headers=headers, stream=True)
+                if image_response.status_code == 200:
+                    # Crear un nombre de archivo basado en phone_number e image_id
+                    image_name = f"{phone_number}_{image_id}.jpg"
+                    temp_image_path = os.path.join(save_path, image_name)
+
+                    # Guardar la imagen descargada
+                    with open(temp_image_path, 'wb') as f:
+                        for chunk in image_response.iter_content(chunk_size=8192):
+                            f.write(chunk)
+
+                    print(f"Imagen descargada exitosamente en: {temp_image_path}")
+                    return temp_image_path
+                else:
+                    logger.error(f"Error descargando la imagen. Código de estado: {image_response.status_code}")
+            else:
+                logger.error(f"Error obteniendo la URL de la imagen: {response.status_code}")
+            return None
+
+        except Exception as e:
+            logger.error(f"Error en download_image: {str(e)}")
+            return None

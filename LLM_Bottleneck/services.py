@@ -73,7 +73,7 @@ class LLM_Bottleneck:
                     classification=   text_block.text.value
                     
                                                 
-        print(f"classification dentro de generate_response: {classification}")
+        # print(f"classification dentro de generate_response: {classification}")
         return classification
     def detect_abort_signal(self, response):
         #print(f"response: {response}")
@@ -95,15 +95,16 @@ class LLM_Bottleneck:
         response = self.generate_response(user_prompt,thread)
         
         # print(f"abort signal antes de detectar: {self.abort_signal}")
-        print(f"response antes de detectar: {response}")
+        # print(f"response antes de detectar: {response}")
         response= self.detect_abort_signal(response)
         #print(response) # este print es solo para probar
         # print(response)
         self.tasks.clear()
-        print("  ")
-        print(f"abort signal despues de detectar: {self.abort_signal}")
+        # print("  ")
+        
         print("******************************************************************************")
-        print("Respuesta: LLM_Bottleneck -> generate response:  ")
+        print(f"abort signal: {self.abort_signal}")
+        print("Respuesta del LLM_Bottleneck:  ")
         print(response)
         print("******************************************************************************")
         return response
