@@ -67,10 +67,10 @@ class ComplaintDetails(BaseModel):
     #     0,
     #     description="Total amount of units used (including defective and not-defective units)"
     # )
-    # photographic_evidence: str = Field(
-    #     "",
-    #     description="Photographic evidence"
-    # )
+    photographic_evidence: list[str] = Field(
+        default_factory=list,  # Inicializa como una lista vacía
+        description="List of photographic evidence URLs"
+    )
     # file_attachments: str = Field(
     #     "",
     #     description="Field or button to attach files (except videos)"
@@ -85,7 +85,7 @@ class ComplaintDetails(BaseModel):
     )
 
     def __init__(self, **data):
-        super().__init__(**{**{field: "" if field != "defective_units" and field != "total_units" else 0 for field in self.__fields__}, **data})
+        super().__init__(**{**{field: [] if field == "photographic_evidence" else "" if field != "defective_units" and field != "total_units" else 0 for field in self.__fields__}, **data})
 
 class ComplaintManager:
     def __init__(self):
@@ -111,6 +111,25 @@ class ComplaintManager:
  
 
     def extract_fields(self,query,ask_for):
+            # Verificar si la query contiene una imagen
+        if "https://agente-terry.s3.amazonaws.com" in query:
+            # Extraer la URL de la imagen
+            start_index = query.find("Image: ")
+            end_index = query.find(" ", start_index)
+            if end_index == -1:  # Si no hay espacio al final, tomar el resto de la cadena
+                end_index = len(query)
+            image_url = query[start_index + len("Image: "):end_index]
+
+            # Agregar la nueva imagen a la lista existente de photographic_evidence
+            self.complaint.photographic_evidence.append(image_url)
+            
+            # Crear un diccionario que simule el JSON que devolvería el LLM
+            extracted_info = {
+                "photographic_evidence": self.complaint.photographic_evidence
+            }
+
+            # Convertir el diccionario a JSON y devolverlo
+            return json.dumps(extracted_info)
         fields_text = ", ".join(ask_for)
 
         prompt = (
@@ -132,7 +151,11 @@ class ComplaintManager:
         return extracted_info
     
     def ask_for_info(self, ask_for, thread):
-
+            # Verificar si ya hay un run activo en el thread
+        run_status = self.client.beta.threads.runs.list(thread_id=thread.thread_id)
+        if any(run.status == 'in_progress' for run in run_status.data):
+            print(f"Run activo detectado para el thread {thread.thread_id}. Esperando a que termine.")
+            return  # No continuar si ya hay un run activo
         chat = self.client.beta.threads.messages.create(
             thread_id=thread.thread_id,
             role="user", content=f"Below are some things to ask the user for in a conversational way. You should only ask one question at a time even if you don't get all the info. Don't ask as a list! Don't greet the user! Don't say Hi. Explain you need to get some info. If the ask_for list is empty then thank them and ask how you can help them. ask_for list: {ask_for}"
@@ -177,8 +200,8 @@ class ComplaintManager:
 
         # Creamos una nueva instancia de ComplaintDetails con la información extraída
         new_details = ComplaintDetails(**filtered_info)
-        # print("filtered_info: ")
-        # print(filtered_info)
+        print("filtered_info: ")
+        print(filtered_info)
         
         self.add_non_empty_details(complaint_details_form, new_details)
 
@@ -201,8 +224,11 @@ class ComplaintManager:
                 # print(self.complaint)
                 # print("")
                 task.update_state('completed')
+        print("Evidencia fotográfica:")
+        for idx, photo in enumerate(self.complaint.photographic_evidence, 1):
+            print(f"{idx}. {photo}")
         print("AI response en el complaint manager: " + ai_response)
-      
+
         task.set_response(ai_response)            
  
         # task.set_response(ai_response)

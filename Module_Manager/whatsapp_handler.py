@@ -191,6 +191,12 @@ class WhatsAppHandler:
         self.phone_number = phone_number 
         try:
             thread, module_manager = thread_manager_instance.get_or_create_active_thread(phone_number, is_whatsapp=True)
+            
+            run_status = self.client.beta.threads.runs.list(thread_id=thread.thread_id)
+            if any(run.status == 'in_progress' for run in run_status.data):
+                print(f"Run activo detectado para el thread {thread.thread_id}. Esperando a que termine.")
+                return None, None, None  # Detener si ya hay un run activo
+            
             response, task_type = module_manager.classify_query(thread, message, phone_number, is_whatsapp=True)
 
             # Defer saving to DB until after sending the response
@@ -208,7 +214,7 @@ class WhatsAppHandler:
             print(f"Handling image message for image_id: {image_id} and phone_number: {phone_number}")
             if image_id in self.processed_messages:
                 logger.info(f"Image {image_id} has already been processed.")
-                return None, None, None
+                return None, None, None,None
 
             logger.debug(f"Processing image message for {phone_number}")
 
@@ -237,7 +243,7 @@ class WhatsAppHandler:
 
         except Exception as e:
             logger.error(f"Error procesando imagen para {phone_number}: {str(e)}")
-            return None, None, None
+            return None, None, None,None
 
 
     def save_image_to_s3(self, image_path, phone_number, image_id):

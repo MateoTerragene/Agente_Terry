@@ -182,7 +182,7 @@ def process_message(changes):
 
         # Handle the text message
         thread, task_type, response_text = whatsapp_handler.handle_text_message(text_body, phone_number)
-
+        
         # Optionally, send a response back via WhatsApp (if needed)
         headers = {
             "Authorization": f"Bearer {ACCESS_TOKEN}",
