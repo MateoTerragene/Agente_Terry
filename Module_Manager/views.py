@@ -120,12 +120,17 @@ class WhatsAppQueryView(View):
     def post(self, request):
         try:
             body = json.loads(request.body)
-
+            # print(f"body: {body}")
             if 'entry' in body:
                 entry = body['entry'][0]
                 changes = entry.get('changes', [])[0]
                 value = changes.get('value', {})
-
+                 #Verifica si es un estado de entrega y no un mensaje de texto/audio
+                if 'statuses' in value: 
+                    status = value.get('statuses', [])[0]  # Obtenemos el primer estado en la lista
+                    status_type = status.get('status')  # Extraemos el valor de 'status'
+                    print(f"Status received: {status_type}")  # Solo imprimimos 'sent', 'delivered', etc.
+                    return HttpResponse('Status update received', status=200)
                 if 'messages' in value:
                     message = value['messages'][0]
                     message_id = message.get('id')
@@ -154,7 +159,7 @@ class WhatsAppQueryView(View):
                     # Start a new thread to process the message in the background
                     processing_thread = Thread(target=process_message, args=(changes,))
                     processing_thread.start()
-                    print("*************HTTP 200************")
+                    # print("*************HTTP 200************")
                     return HttpResponse('Message received and being processed', status=200)
 
             return HttpResponse('Unrecognized event', status=400)
@@ -182,7 +187,7 @@ def process_message(changes):
 
         # Handle the text message
         thread, task_type, response_text = whatsapp_handler.handle_text_message(text_body, phone_number)
-        
+
         # Optionally, send a response back via WhatsApp (if needed)
         headers = {
             "Authorization": f"Bearer {ACCESS_TOKEN}",
