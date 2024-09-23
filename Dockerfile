@@ -1,19 +1,13 @@
 FROM python:3.11
 
-# # Instala ffmpeg
-# RUN apt-get update && apt-get install -y ffmpeg
-
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-WORKDIR /code
+WORKDIR /app
 
-COPY requirements.txt /code/
-RUN pip install --upgrade pip
-RUN pip install -r requirements.txt
+COPY requirements.txt /app/
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the entire project
-COPY . /code/
+COPY . /app/
 
-# Expose the port the app runs on
-EXPOSE 8000
+EXPOSE 8001

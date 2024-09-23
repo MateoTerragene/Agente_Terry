@@ -1,12 +1,13 @@
-version: '3.8'
+version: '3'
 
 services:
   web:
     build: .
     command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8001"
     volumes:
-      - .:/code
+      - .:/app
     ports:
       - "8001:8001"
     env_file:
       - .env
+    restart: always  # Ensure the container restarts automatically
