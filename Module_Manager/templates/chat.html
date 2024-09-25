@@ -1,44 +1,91 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Chat with AI</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat with Terry</title>
     {% load static %} <!-- Cargar las etiquetas 'static' de Django -->
 
     <!-- Incluir el archivo de estilos CSS desde la carpeta 'static/styles.css' -->
     <link rel="stylesheet" href="{% static 'styles.css' %}">
-
-    <!-- MathJax para fórmulas matemáticas -->
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script type="text/javascript">
-        MathJax = {
-            tex: {
-                inlineMath: [['\\(', '\\)']],
-                displayMath: [['\\[', '\\]']],
-                processEscapes: true,
-            },
-            svg: {
-                fontCache: 'global'
-            }
-        };
-    </script>
-    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Gotham:wght@400;500;700&display=swap"
+    />
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 </head>
 <body>
-    <div class="chat-container">
-        <!-- El ID de usuario se pasa automáticamente desde el backend -->
-        <input type="hidden" id="user_id" value="{{ user_id }}">
-        
-        <div id="messages"></div>
-        
-        <!-- Formulario para logout -->
-        <form action="{% url 'logout' %}" method="post">
-            {% csrf_token %}
-            <button type="submit" class="logout-button">Logout</button>
-        </form>
 
-        <div class="input-container">
-            <input type="text" id="query" placeholder="Escribe tu consulta...">
-            <button id="sendButton">Enviar</button>
+    <!-- Contenedor del chat -->
+    <div class="grupo-707">
+        <!-- Información del usuario -->
+        <div class="user">
+            <img class="user-icon" alt="user" src="{% static 'img/grupo-247@2x.png' %}" />
+            <div class="user-name">User Name</div>
+        </div>
+
+        <img class="grupo-179-icon" alt="icon" src="{% static 'img/grupo-179.svg' %}" />
+        <img class="expand-icon" alt="expand" src="{% static 'img/grupo-641.svg' %}" />
+        <img class="grupo-409-icon" alt="icon" src="{% static 'img/grupo-409@2x.png' %}" />
+
+        <!-- Frase de bienvenida -->
+        <div class="frase">
+            <b class="tell-me">Tell me,</b>
+            <b class="can-i-help">Can I help you with anything?</b>
+        </div>
+
+        <!-- Shortcuts -->
+        <div class="shortcuts">
+            <div class="caja_blanca">
+                <div class="frame1">
+                    <!-- Agregar id único para el primer ícono -->
+                    <img id="coa-icon" class="clip-path-group2" alt="expand icon" src="{% static 'img/clip-path-group2.svg' %}" />
+                </div>
+                <div class="COA">
+                    <b class="find1">Find</b>
+                    <b class="Coas">COAs</b>
+                </div>
+            </div>
+            <div class="caja_blanca">
+                <div class="frame1">
+                    <!-- Agregar id único para el segundo ícono -->
+                    <img id="ifu-icon" class="clip-path-group3" alt="" src="{% static 'img/clip-path-group3.svg' %}" />
+                </div>
+                <div class="IFU">
+                    <b class="find1">Find</b>
+                    <b class="ifus">IFUs</b>
+                </div>
+            </div>
+            <div class="caja_blanca">
+                <div class="frame1">
+                    <!-- Agregar id único para el tercer ícono -->
+                    <img id="product-icon" class="clip-path-group3" alt="" src="{% static 'img/frame@2x.png' %}" />
+                </div>
+                <div class="Products">
+                    <b class="find1">Search</b>
+                    <b class="Products">Products</b>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat box -->
+        <div class="chat-box">
+            <!-- Mensajes del chat -->
+            <div class="messages" id="messages"></div>
+            <input type="hidden" id="user_id" value="{{ user_id }}">
+            <!-- Input para el chat -->
+            <div class="input-container">
+                <input type="text" id="query" placeholder="Escribe tu consulta...">
+                <button id="sendButton">Enviar</button>
+            </div>
+
+            <!-- Formulario para logout -->
+            <form action="{% url 'logout' %}" method="post" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" style="background:none;border:none;padding:0;margin:0;">
+                    <img class="grupo-179-icon" alt="Logout" src="{% static 'img/grupo-179.svg' %}" />
+                </button>
+            </form>
         </div>
     </div>
 

@@ -8,18 +8,47 @@
 
     <!-- Incluir el archivo de estilos CSS desde la carpeta 'static/styles.css' -->
     <link rel="stylesheet" href="{% static 'styles.css' %}">
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Gotham:wght@400;500;700&display=swap"
+    />
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 </head>
 <body>
-    <div class="login-container">
-        <h2>Login</h2>
-        <form method="POST">
-            {% csrf_token %}
-            <label for="username">Username:</label>
-            <input type="text" id="username" name="username" required><br><br>
-            <label for="password">Password:</label>
-            <input type="password" id="password" name="password" required><br><br>
-            <button type="submit">Login</button>
-        </form>
+    <div class="frase-circ">
+        <h2 id="circulo">Hi There, can I help you?</h2>
+        <!-- Ícono de la mano que al hacer clic mostrará el formulario de login -->
+        <img class="hand-01" alt="Hand" src="{% static 'img/hand.svg' %}" id="hand-icon" />
+    </div>
+
+    <!-- Contenedor del formulario de login que está oculto inicialmente -->
+    <div class="grupo-707 hidden" id="login-container">
+        <img class="grupo-179-icon" alt="Icon" src="{% static 'img/grupo-179.svg' %}" />
+        <img class="expand-icon" alt="Expand" src="{% static 'img/grupo-641.svg' %}" />
+        <img class="hand" alt="Hand" src="{% static 'img/hand.svg' %}" />
+        
+        <div class="frase">
+            <b class="tell-me">Hi there!</b>
+            <b class="can-i-help">I'm Terry.IA</b>
+        </div>
+        <div class="subfrase">
+            Ready to assist you with anything you need, from answering questions to providing recommendations.
+            <b>Please, enter your login details!</b>
+        </div>
+        
+        <!-- Formulario de login -->
+        <div class="chat-box">
+            <div class="form-login">
+                <form method="POST">
+                    {% csrf_token %}
+                    <label for="username">Username:</label>
+                    <input type="text" id="username" name="username" required><br><br>
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" name="password" required><br><br>
+                    <button type="submit">Login</button>
+                </form>
+            </div>
+        </div>
 
         {% if messages %}
             <ul>
@@ -29,5 +58,8 @@
             </ul>
         {% endif %}
     </div>
+
+    <!-- Cargar el archivo JavaScript externo para manejar el evento de clic -->
+    <script src="{% static 'js/chat.js' %}"></script>
 </body>
 </html>
