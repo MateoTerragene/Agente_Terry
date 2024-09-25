@@ -1,9 +1,8 @@
 from django.urls import path
-from .views import ClassifyQueryView, ChatView, WhatsAppQueryView
+from .views import ClassifyQueryView, WhatsAppQueryView, UserView
 
 urlpatterns = [
-    path('', ClassifyQueryView.as_view(), name='classify_query'),
-    path('chat/', ChatView.as_view(), name='chat'),
-    path('whatsapp_query/', WhatsAppQueryView.as_view(), name='whatsapp_query')
-
+    path('', UserView.as_view(), name='home'),  # Si el usuario está autenticado
+    path('whatsapp_query/', WhatsAppQueryView.as_view(), name='whatsapp_query'),
+    path('web-service/', ClassifyQueryView.as_view(), name='web_service'),
 ]
