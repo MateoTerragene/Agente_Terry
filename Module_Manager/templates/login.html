@@ -15,29 +15,32 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 </head>
 <body>
-    <div class="frase-circ">
+    <!-- Frase inicial con la mano en el centro -->
+    <div class="frase-circ" id="welcome-message">
         <h2 id="circulo">Hi There, can I help you?</h2>
-        <!-- Ícono de la mano que al hacer clic mostrará el formulario de login -->
         <img class="hand-01" alt="Hand" src="{% static 'img/hand.svg' %}" id="hand-icon" />
     </div>
 
-    <!-- Contenedor del formulario de login que está oculto inicialmente -->
-    <div class="grupo-707 hidden" id="login-container">
-        <img class="grupo-179-icon" alt="Icon" src="{% static 'img/grupo-179.svg' %}" />
-        <img class="expand-icon" alt="Expand" src="{% static 'img/grupo-641.svg' %}" />
-        <img class="hand" alt="Hand" src="{% static 'img/hand.svg' %}" />
+    <!-- Formulario de login oculto al principio -->
+    <div class="chat-container hidden" id="login-container">
         
-        <div class="frase">
-            <b class="tell-me">Hi there!</b>
-            <b class="can-i-help">I'm Terry.IA</b>
+        <!-- Cabecera del login -->
+        <div class="chat-header">
+            <div class="frase">
+                <b class="tell-me">Hi there!</b>
+                <b class="can-i-help">I'm Terry.IA</b>
+            </div>
         </div>
-        <div class="subfrase">
-            Ready to assist you with anything you need, from answering questions to providing recommendations.
-            <b>Please, enter your login details!</b>
-        </div>
-        
+
         <!-- Formulario de login -->
-        <div class="chat-box">
+        <div class="chat-messages">
+            
+            <div class="subfrase">
+                Ready to assist you with anything you need, from answering questions to providing recommendations.
+                <b>Please, enter your login details!</b>
+            </div>
+
+            <!-- Formulario de login -->
             <div class="form-login">
                 <form method="POST">
                     {% csrf_token %}
@@ -48,18 +51,19 @@
                     <button type="submit">Login</button>
                 </form>
             </div>
-        </div>
 
-        {% if messages %}
+            {% if messages %}
             <ul>
                 {% for message in messages %}
                     <li>{{ message }}</li>
                 {% endfor %}
             </ul>
-        {% endif %}
+            {% endif %}
+        </div>
+
     </div>
 
-    <!-- Cargar el archivo JavaScript externo para manejar el evento de clic -->
+    <!-- Cargar el archivo JavaScript externo -->
     <script src="{% static 'js/chat.js' %}"></script>
 </body>
 </html>

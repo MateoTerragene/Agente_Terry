@@ -1,111 +1,138 @@
 document.addEventListener('DOMContentLoaded', function () {
-    const userId = document.getElementById('user_id').value;
-    
-    // Obtener los íconos
-    const coaIcon = document.getElementById('coa-icon');
-    const ifuIcon = document.getElementById('ifu-icon');
-    const productIcon = document.getElementById('product-icon');
+    const userId = document.getElementById('user_id') ? document.getElementById('user_id').value : null;
 
-    // Modificar sendQuery para aceptar un texto personalizado
+    // Funcionalidad para el botón de logout
+    const logoutButton = document.querySelector('.logout');
+    if (logoutButton) {
+        logoutButton.addEventListener('click', function () {
+            window.location.href = 'http://localhost:8001/logout/'; // Redirige al logout
+        });
+    }
+
+    // Al hacer clic en la mano, ocultar el mensaje de bienvenida y mostrar el login
+    const handIcon = document.getElementById('hand-icon');
+    if (handIcon) {
+        handIcon.addEventListener('click', function () {
+            document.getElementById('welcome-message').style.display = 'none';  // Ocultar el mensaje de bienvenida
+            document.getElementById('login-container').style.display = 'flex';  // Mostrar el login
+        });
+    }
+
+    // Función para enviar consulta con texto personalizado o el input del usuario
     async function sendQuery(prefixedQuery = '') {
-        const userId = document.getElementById('user_id').value.trim();
-        const queryInput = document.getElementById('query').value.trim();
-        const query = prefixedQuery || queryInput;  // Usar el texto prefijado si está disponible, de lo contrario usar el input
-        if (userId === '' || query === '') return;
-    
+        const query = prefixedQuery || document.getElementById('query').value.trim();
+        if (!userId || query === '') return;
+
         const sendButton = document.getElementById('sendButton');
         sendButton.disabled = true;
-    
+
         const messages = document.getElementById('messages');
-        messages.innerHTML += `<div class="message user">${query}</div>`;
-        messages.innerHTML += `<div class="message ai loading">Procesando...</div>`;
-        document.getElementById('query').value = '';  // Limpiar el input solo cuando el usuario escribe manualmente
-    
+
+        // Validación para evitar enviar mensajes vacíos o solo con espacios en blanco
+        if (query.trim()) {
+            const messageContainer = document.createElement("div");
+            messageContainer.classList.add("message", "sent");
+
+            const messageText = document.createElement("p");
+            messageText.textContent = query;
+
+            const timeStamp = document.createElement("span");
+            timeStamp.classList.add("time");
+            timeStamp.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            messageContainer.appendChild(messageText);
+            messageContainer.appendChild(timeStamp);
+
+            messages.appendChild(messageContainer);
+
+            document.getElementById("query").value = ''; // Limpiar el input
+
+            // Scroll automático al final del chat
+            messages.scrollTop = messages.scrollHeight;
+        } else {
+            sendButton.disabled = false;
+            return;
+        }
+
         try {
-            const response = await fetch('/module_manager/web-service/', {  // Apunta al endpoint correcto
+            const response = await fetch('/module_manager/web-service/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ user_id: userId, query })
             });
-    
-            // Verifica si la respuesta es JSON válida
+
             const contentType = response.headers.get('content-type');
             if (contentType && contentType.includes('application/json')) {
                 const data = await response.json();
-                const loadingElement = messages.querySelector('.loading');
-                if (loadingElement) {
-                    loadingElement.remove();
-                }
-    
+
                 if (response.ok) {
                     let formattedResponse = data.response
                         .replace(/\n/g, '<br>')
                         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    
-                    messages.innerHTML += `<div class="message ai">${formattedResponse}</div>`;
-    
-                    if (window.MathJax) {
-                        MathJax.typesetPromise().then(() => {
-                            console.log('MathJax typesetting complete');
-                        }).catch((err) => console.error('MathJax typesetting failed: ', err));
-                    }
+
+                    const messageContainerReceived = document.createElement("div");
+                    messageContainerReceived.classList.add("message", "received");
+
+                    const messageTextReceived = document.createElement("p");
+                    messageTextReceived.innerHTML = formattedResponse;
+
+                    const timeStampReceived = document.createElement("span");
+                    timeStampReceived.classList.add("time");
+                    timeStampReceived.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                    messageContainerReceived.appendChild(messageTextReceived);
+                    messageContainerReceived.appendChild(timeStampReceived);
+
+                    messages.appendChild(messageContainerReceived);
+
+                    // Scroll automático al final del chat
+                    messages.scrollTop = messages.scrollHeight;
                 } else {
-                    messages.innerHTML += `<div class="message ai">Error: ${data.error}</div>`;
+                    messages.innerHTML += `<div class="message received">Error: ${data.error}</div>`;
                 }
             } else {
-                // Si la respuesta no es JSON, es probable que sea HTML (como una página de error o redirección)
-                const loadingElement = messages.querySelector('.loading');
-                if (loadingElement) {
-                    loadingElement.remove();
-                }
-                messages.innerHTML += `<div class="message ai">Error: La respuesta no es válida o es HTML en lugar de JSON.</div>`;
+                messages.innerHTML += `<div class="message received">Error: La respuesta no es válida o es HTML en lugar de JSON.</div>`;
             }
         } catch (error) {
             console.error("Error: ", error);
-            const loadingElement = messages.querySelector('.loading');
-            if (loadingElement) {
-                loadingElement.remove();
-            }
-            messages.innerHTML += `<div class="message ai">Error al procesar la consulta.</div>`;
+            messages.innerHTML += `<div class="message received">Error al procesar la consulta.</div>`;
         } finally {
             sendButton.disabled = false;
         }
     }
-    
+
+    // Manejo del evento "Enter" para enviar mensajes
     function handleKeyPress(event) {
         if (event.key === 'Enter') {
             sendQuery();
         }
     }
 
-    // Asignar eventos a los íconos con consultas prefijadas
-    coaIcon.addEventListener('click', function() {
-        sendQuery("Find COAs");
-    });
+    // Asignar eventos de Enter y click para el input de consulta
+    const queryInput = document.getElementById('query');
+    if (queryInput) {
+        queryInput.addEventListener('keypress', handleKeyPress);
+    }
 
-    ifuIcon.addEventListener('click', function() {
-        sendQuery("Find IFUs");
-    });
+    const sendButton = document.getElementById('sendButton');
+    if (sendButton) {
+        sendButton.addEventListener('click', sendQuery);
+    }
 
-    productIcon.addEventListener('click', function() {
-        sendQuery("Hello, I information about a product");
-    });
-
-    // Escuchar el evento de tecla Enter y el botón Enviar para el input de consulta
-    document.getElementById('query').addEventListener('keypress', handleKeyPress);
-    document.getElementById('sendButton').addEventListener('click', sendQuery);
-});
-
-$(document).ready(function() {
-    // Función para expandir la ventana cuando se hace clic en el ícono de expandir
-    $(".expand-icon").click(function() {
-        $(".grupo-707").toggleClass("expanded");
-    });
-
-    // Función para mostrar el login cuando se haga clic en la mano
-    $("#hand-icon").click(function() {
-        $("#login-container").toggleClass("hidden");  // Mostrar/ocultar el formulario de login
-    });
+    // Funcionalidad para expandir el chat al hacer clic en expand-icon
+    const expandIcon = document.querySelector('.expand-icon');
+    if (expandIcon) {
+        expandIcon.addEventListener('click', function () {
+            const chatContainer = document.querySelector('.chat-container');
+            chatContainer.classList.toggle('expanded');
+            
+            // Ajustar la altura y el scroll de los mensajes cuando se expande
+            const messages = document.getElementById('messages');
+            setTimeout(() => {
+                messages.scrollTop = messages.scrollHeight;  // Mantiene el scroll al final cuando se expande
+            }, 300);
+        });
+    }
 });

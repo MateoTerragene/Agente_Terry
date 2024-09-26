@@ -1,19 +1,20 @@
 document.addEventListener('DOMContentLoaded', function () {
     const userId = document.getElementById('user_id').value;
 
-    async function sendQuery() {
-        const userId = document.getElementById('user_id').value.trim();
-        const query = document.getElementById('query').value.trim();
+    // Función para enviar consulta con texto personalizado o el input del usuario
+    async function sendQuery(prefixedQuery = '') {
+        const query = prefixedQuery || document.getElementById('query').value.trim();  // Usa el texto prefijado o el input
         if (userId === '' || query === '') return;
-    
+
         const sendButton = document.getElementById('sendButton');
         sendButton.disabled = true;
-    
+
         const messages = document.getElementById('messages');
-        messages.innerHTML += `<div class="message user">${query}</div>`;
-        messages.innerHTML += `<div class="message ai loading">Procesando...</div>`;
-        document.getElementById('query').value = '';
-    
+
+        // Muestra el mensaje del usuario en el área de chat
+        messages.innerHTML += `<div class="message sent"><p>${query}</p><span class="time">${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></div>`;
+        document.getElementById('query').value = '';  // Limpiar el input
+
         try {
             const response = await fetch('/module_manager/web-service/', {  // Apunta al endpoint correcto
                 method: 'POST',
@@ -22,8 +23,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 },
                 body: JSON.stringify({ user_id: userId, query })
             });
-    
-            // Verifica si la respuesta es JSON válida
+
             const contentType = response.headers.get('content-type');
             if (contentType && contentType.includes('application/json')) {
                 const data = await response.json();
@@ -31,24 +31,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (loadingElement) {
                     loadingElement.remove();
                 }
-    
+
                 if (response.ok) {
                     let formattedResponse = data.response
                         .replace(/\n/g, '<br>')
                         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    
+
                     messages.innerHTML += `<div class="message ai">${formattedResponse}</div>`;
-    
-                    if (window.MathJax) {
-                        MathJax.typesetPromise().then(() => {
-                            console.log('MathJax typesetting complete');
-                        }).catch((err) => console.error('MathJax typesetting failed: ', err));
-                    }
                 } else {
                     messages.innerHTML += `<div class="message ai">Error: ${data.error}</div>`;
                 }
             } else {
-                // Si la respuesta no es JSON, es probable que sea HTML (como una página de error o redirección)
                 const loadingElement = messages.querySelector('.loading');
                 if (loadingElement) {
                     loadingElement.remove();
@@ -66,27 +59,15 @@ document.addEventListener('DOMContentLoaded', function () {
             sendButton.disabled = false;
         }
     }
-    
 
+    // Manejo del evento "Enter" para enviar mensajes
     function handleKeyPress(event) {
         if (event.key === 'Enter') {
             sendQuery();
         }
     }
 
+    // Asignar eventos de Enter y click para el input de consulta
     document.getElementById('query').addEventListener('keypress', handleKeyPress);
     document.getElementById('sendButton').addEventListener('click', sendQuery);
-});
-
-$(document).ready(function() {
-    $(".expand-icon").click(function() {
-        $(".grupo-707").toggleClass("expanded");
-        
-        // Cambiar ícono al hacer clic
-        if ($(".grupo-707").hasClass("expanded")) {
-            $(this).attr('src', '{% static "img/collapse_icon.svg" %}'); // Cambia al ícono de colapsar
-        } else {
-            $(this).attr('src', '{% static "img/grupo-641.svg" %}'); // Cambia al ícono de expandir
-        }
-    });
 });
