@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
     <title>Terry</title>
     {% load static %}
     <link rel="stylesheet" href="{% static 'styles.css' %}">
@@ -17,7 +19,7 @@
             </div>
             <div class="chat-header-icons">
                 <img class="expand-icon" alt="Expandir" src="{% static 'img/grupo-641.png' %}" />
-                <a href="http://localhost:8001/logout/"> <!-- Enlace para redirigir al logout -->
+                <a href="/logout/"> <!-- Enlace para redirigir al logout -->
                     <img class="logout" alt="Logout" src="{% static 'img/grupo-179.png' %}" />
                 </a>
             </div>
@@ -27,6 +29,7 @@
             <input type="text" id="query" placeholder="Write a message..." />
             <img id="sendButton" src="{% static 'img/sent.png' %}" alt="Enviar" class="send-icon">
         </div>
+        
         <input type="hidden" id="user_id" value="{{ user_id }}">
     </div>
     <script src="{% static 'js/chat.js' %}"></script>

@@ -24,12 +24,12 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!userId || query === '') return;
 
         const sendButton = document.getElementById('sendButton');
-        sendButton.disabled = true;
+        sendButton.style.pointerEvents = 'none';  // Desactiva el botón de enviar temporalmente
 
         const messages = document.getElementById('messages');
 
         // Validación para evitar enviar mensajes vacíos o solo con espacios en blanco
-        if (query.trim()) {
+        if (query) {
             const messageContainer = document.createElement("div");
             messageContainer.classList.add("message", "sent");
 
@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // Scroll automático al final del chat
             messages.scrollTop = messages.scrollHeight;
         } else {
-            sendButton.disabled = false;
+            sendButton.style.pointerEvents = 'auto';  // Reactivar el botón si no hay texto
             return;
         }
 
@@ -99,7 +99,7 @@ document.addEventListener('DOMContentLoaded', function () {
             console.error("Error: ", error);
             messages.innerHTML += `<div class="message received">Error al procesar la consulta.</div>`;
         } finally {
-            sendButton.disabled = false;
+            sendButton.style.pointerEvents = 'auto';  // Reactiva el botón de envío
         }
     }
 
@@ -118,7 +118,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const sendButton = document.getElementById('sendButton');
     if (sendButton) {
-        sendButton.addEventListener('click', sendQuery);
+        sendButton.addEventListener('click', () => sendQuery());
+
     }
 
     // Funcionalidad para expandir el chat al hacer clic en expand-icon

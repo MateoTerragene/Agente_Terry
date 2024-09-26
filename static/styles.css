@@ -144,7 +144,7 @@ body {
     border-top: 1px solid #333;
 }
 
-/* Estilo para el campo de entrada de texto */
+/* Estilo para el campo de entrada de texto en el chat */
 .chat-input input {
     flex: 1;
     padding: 10px;
@@ -153,6 +153,16 @@ body {
     background-color: #1e2a33;
     color: #fff;
     margin-right: 10px;
+    font-size: 16px; /* Ajusta la fuente para evitar el zoom */
+    -webkit-appearance: none; /* Elimina los estilos predeterminados de iOS */
+    caret-color: #fff;
+}
+
+/* Asegura que el campo de entrada no tenga sombras o bordes adicionales en iOS */
+.chat-input input:focus {
+    outline: none;
+    border: 1px solid #fff;
+    box-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
 }
 
 /* Estilo para la imagen del botón de enviar */
@@ -206,15 +216,27 @@ body {
     color: white; /* Texto blanco */
 }
 
+/* Estilos para los campos de entrada en el formulario de login */
 .form-login input {
     width: 100%;
     padding: 10px;
     margin-bottom: 15px;
     border-radius: 5px;
-    border: none;
-    background-color: #1e2a33;
-    color: #fff; /* Texto blanco */
+    border: 1px solid #ccc;
+    background-color: #2c3e50;
+    color: #fff;
+    caret-color: #fff;
+    font-size: 16px; /* Asegúrate de que el tamaño de la fuente sea al menos 16px */
+    -webkit-appearance: none; /* Elimina los estilos predeterminados de iOS */
 }
+
+/* Asegura que el campo de entrada no tenga sombras o bordes adicionales en iOS */
+.form-login input:focus {
+    outline: none;
+    border: 1px solid #fff;
+    box-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+}
+
 
 .form-login button {
     padding: 10px 20px;
