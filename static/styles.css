@@ -1,32 +1,33 @@
-/* Reinicia los márgenes y rellenos de todos los elementos para evitar inconsistencias entre navegadores. */
+/* Reinicia los márgenes y rellenos de todos los elementos para evitar inconsistencias entre navegadores */
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
-/* Estilos del cuerpo de la página. El chat estará centrado y la fuente usada será Arial. */
+/* Estilos del cuerpo de la página. El chat estará centrado y la fuente usada será Arial */
 body {
     font-family: 'Arial', sans-serif;
     background-color: #111b21; /* Color de fondo oscuro típico de WhatsApp */
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh; /* Ocupa toda la altura de la pantalla. */
-    overflow: hidden; /* Evita que haya scroll en la página principal. */
+    height: 100vh; /* Ocupa toda la altura de la pantalla */
+    overflow: hidden; /* Evita que haya scroll en la página principal */
 }
 
-/* El contenedor principal del chat, define el tamaño, bordes y sombra. */
+/* El contenedor principal del chat */
 .chat-container {
     width: 400px;
     height: 600px;
-    background-color: #1e2a33;
+    background-color: transparent; /* Hace transparente el fondo del contenedor */
     border-radius: 8px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     display: flex;
     flex-direction: column;
     overflow: hidden;
     transition: all 0.3s ease-in-out;
+    position: relative; /* Necesario para posicionar el disclaimer */
 }
 
 /* Cuando se expande el chat */
@@ -35,7 +36,7 @@ body {
     height: 90vh;  /* Altura del 90% de la pantalla */
 }
 
-/* Estilos para la cabecera del chat, donde está el avatar y la información del usuario. */
+/* Estilos para la cabecera del chat, donde está el avatar y la información del usuario */
 .chat-header {
     display: flex;
     align-items: center;
@@ -63,7 +64,7 @@ body {
     cursor: pointer;
 }
 
-/* Tamaño y forma del avatar. */
+/* Tamaño y forma del avatar */
 .avatar {
     width: 40px;
     height: 40px;
@@ -174,6 +175,26 @@ body {
     vertical-align: middle;
 }
 
+/* Disclaimer como una burbuja */
+.disclaimer {
+    width: 90%; /* Ajustado para que quede dentro del contenedor */
+    margin: 20px auto;
+    background-color: rgba(255, 255, 255, 0.1); /* Fondo semitransparente solo para el disclaimer */
+    color: #e0e0e0; /* Texto gris claro */
+    text-align: center;
+    padding: 5px;
+    border-radius: 20px; /* Bordes redondeados */
+    font-size: 0.65rem;
+    line-height: 1.5;
+    font-style: italic;
+    z-index: 2; /* Asegura que el disclaimer esté sobre otros elementos */
+    position: absolute; /* Esto lo saca del flujo del documento */
+    top: 50px; /* Ajusta según sea necesario para la ubicación deseada */
+    left: 50%;
+    transform: translateX(-50%); /* Lo centra horizontalmente */
+    background-clip: padding-box; /* Hace que el fondo esté contenido dentro de los bordes redondeados */
+}
+
 /* Estilos del login */
 
 /* Estilo para el contenedor inicial con la frase y la mano */
@@ -237,7 +258,7 @@ body {
     box-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
 }
 
-
+/* Estilos para el botón del formulario de login */
 .form-login button {
     padding: 10px 20px;
     background-color: #005c4b;

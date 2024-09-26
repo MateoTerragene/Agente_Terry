@@ -7,7 +7,8 @@
 
     <title>Terry</title>
     {% load static %}
-    <link rel="stylesheet" href="{% static 'styles.css' %}">
+   
+    <link rel="stylesheet" href="{% static 'styles.css' %}?v=1.0">
 </head>
 <body>
     <div class="chat-container">
@@ -24,6 +25,10 @@
                 </a>
             </div>
         </div>
+        <div class="disclaimer">
+            <p>Terry can make mistakes. Consider checking important information.</p>
+        </div>
+        <script src="{% static 'js/chat.js' %}"></script>
         <div class="chat-messages" id="messages" style="background-image: url('{% static 'img/fondo-wh-oscuro.png' %}');"></div>
         <div class="chat-input">
             <input type="text" id="query" placeholder="Write a message..." />
@@ -32,6 +37,6 @@
         
         <input type="hidden" id="user_id" value="{{ user_id }}">
     </div>
-    <script src="{% static 'js/chat.js' %}"></script>
+    
 </body>
 </html>
