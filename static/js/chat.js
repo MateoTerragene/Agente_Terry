@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const logoutButton = document.querySelector('.logout');
     if (logoutButton) {
         logoutButton.addEventListener('click', function () {
-            window.location.href = 'http://localhost:8001/logout/'; // Redirige al logout
+            window.location.href = '/logout/'; // Redirige al logout
         });
     }
 
