@@ -93,6 +93,36 @@ class ClassifyQueryView(View):
         except Exception as e:
             logger.error(f"Initialization error: {str(e)}")
             return JsonResponse({'error': str(e)}, status=500)
+ 
+
+    def get(self, request):
+        action = request.GET.get('action')  # Verificar si la acción es crear un nuevo thread
+
+        if action == 'create_thread':
+            return self.create_new_thread(request)  # Llamar a la función que creará el thread
+        else:
+            return JsonResponse({'status': 'error', 'message': 'Acción no válida'}, status=400)
+
+    def create_new_thread(self, request):
+        user_id = request.session.get('ID')  # Obtener el ID del usuario de la sesión
+        
+        if not user_id:
+            return JsonResponse({'status': 'error', 'message': 'No se encontró el ID del usuario en la sesión'}, status=400)
+
+        try:
+            # Lógica para crear un nuevo thread
+            print(f"Creando un nuevo thread para el usuario con ID: {user_id}")
+            thread, module_manager = thread_manager_instance.create_thread(user_id)
+
+            # Guardar el thread_id en la sesión
+            request.session['thread_id'] = thread.thread_id
+
+            # Responder con éxito y detalles del thread creado
+            return JsonResponse({'status': 'success', 'message': f'Nuevo thread creado con éxito. ID del Thread: {thread.thread_id}'})
+        except Exception as e:
+            print(f"Error al crear el thread: {e}")
+            return JsonResponse({'status': 'error', 'message': f'Error al crear un nuevo thread: {str(e)}'}, status=500)
+
 
 
         
@@ -328,6 +358,9 @@ class UserView(View):
 
         # Si el login falla, volvemos a mostrar el formulario de login
         return render(request, 'login.html')
+    
+   
+
 
 def logout_view(request):
     # Limpiar la sesión

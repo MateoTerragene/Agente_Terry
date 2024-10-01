@@ -17,6 +17,32 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('login-container').style.display = 'flex';  // Mostrar el login
         });
     }
+  // Seleccionamos el ícono de nuevo thread por su id
+  const newThreadIcon = document.getElementById('new-thread-icon');
+  if (newThreadIcon) {
+      newThreadIcon.addEventListener('click', createNewThread);  // Llamar a la función cuando se haga clic
+  }
+
+  // Función para crear un nuevo thread
+  async function createNewThread() {
+        // Limpiar todos los mensajes del chat
+        const messagesContainer = document.getElementById('messages');
+        if (messagesContainer) {
+            messagesContainer.innerHTML = '';  // Limpia el contenido del contenedor de mensajes
+        }
+        const response = await fetch('/module_manager/web-service/?action=create_thread', {
+            method: 'GET',
+        });
+
+        const data = await response.json();
+        if (data.status === 'success') {
+            console.log('Thread creado con éxito:', data.message);
+        } else {
+            console.error('Error al crear thread:', data.message);
+        }
+    }
+
+
 
     // Función para enviar consulta con texto personalizado o el input del usuario
     async function sendQuery(prefixedQuery = '') {

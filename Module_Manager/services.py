@@ -24,7 +24,9 @@ class ModuleManager:
             self.docs = "COA = certificado de calidad = certificado de analisis, IFU = Prospecto , PD = Descripcion de producto = Ficha tecnica, SDS = Hoja de seguridad, CC = Color chart, FDA = Certificado FDA = 510K "
             self.prompt = f"""Eres un asistente que clasifica consultas de usuarios e identifica tareas a realizar. Puede haber multiples tareas en una consulta. \
                     Tu respuesta debe ser un JSON que indique si has recibido una 'fileRequest' (solicitud de documentos), una 'technical_query' (consulta técnica), \
-                    un 'complaint' (reclamo) o un 'purchase_opportunity' (consulta de compra).  Los documentos que te puede pedir el usuario son: {self.docs}.\
+                    un 'complaint' (reclamo) o un 'purchase_opportunity' (consulta de compra).\
+                    Solo debes clasificar como 'complaint' si el usuario menciona explícitamente intenciones de presentar un reclamo.\
+                    Los documentos que te puede pedir el usuario son: {self.docs}.\
                     Debes responder únicamente en el siguiente formato JSON: \
                     {{
                         "tasks": [

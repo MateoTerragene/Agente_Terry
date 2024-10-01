@@ -1,135 +1,294 @@
-/* Reinicia los márgenes y rellenos de todos los elementos para evitar inconsistencias entre navegadores. */
+/* Reinicia los márgenes y rellenos de todos los elementos para evitar inconsistencias entre navegadores */
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
-/* Estilos del cuerpo de la página. El chat estará centrado y la fuente usada será Arial. */
+/* Estilos del cuerpo de la página. El chat estará centrado y la fuente usada será Arial */
 body {
     font-family: 'Arial', sans-serif;
     background-color: #111b21; /* Color de fondo oscuro típico de WhatsApp */
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh; /* Ocupa toda la altura de la pantalla. */
-    overflow: hidden; /* Evita que haya scroll en la página principal. */
+    height: 100vh; /* Ocupa toda la altura de la pantalla */
+    overflow: hidden; /* Evita que haya scroll en la página principal */
 }
 
-/* El contenedor principal del chat, define el tamaño, bordes y sombra. */
+/* El contenedor principal del chat */
 .chat-container {
-    width: 400px; /* Ancho del chat. */
-    height: 600px; /* Altura fija para que no crezca indefinidamente. */
-    background-color: #1e2a33; /* Fondo oscuro para el área del chat. */
-    border-radius: 8px; /* Bordes redondeados. */
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); /* Sombra suave debajo del contenedor. */
+    width: 400px;
+    height: 600px;
+    background-color: transparent; /* Hace transparente el fondo del contenedor */
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     display: flex;
-    flex-direction: column; /* Organiza el contenido verticalmente. */
-    overflow: hidden; /* Evita que los elementos desborden el contenedor. */
+    flex-direction: column;
+    overflow: hidden;
+    transition: all 0.3s ease-in-out;
+    position: relative; /* Necesario para posicionar el disclaimer */
 }
 
-/* Estilos para la cabecera del chat, donde está el avatar y la información del usuario. */
+/* Cuando se expande el chat */
+.chat-container.expanded {
+    width: 80%;  /* Ancho del 80% de la pantalla */
+    height: 90vh;  /* Altura del 90% de la pantalla */
+}
+
+/* Estilos para la cabecera del chat, donde está el avatar y la información del usuario */
 .chat-header {
-    display: flex; /* Coloca los elementos en una fila. */
-    align-items: center; /* Alinea los elementos verticalmente en el centro. */
+    display: flex;
+    align-items: center;
+    justify-content: space-between; /* Alinea el contenido del header entre extremos */
     padding: 10px;
-    background-color: #2a3942; /* Color de fondo oscuro para la barra superior */
-    color: #fff; /* Color de texto blanco. */
+    background-color: #2a3942; /* Color de fondo para el header */
+    color: #fff;
+    width: 100%; /* Hace que el header ocupe todo el ancho del contenedor del chat */
+    box-sizing: border-box; /* Asegura que el padding no afecte el ancho */
 }
 
-/* Tamaño y forma del avatar. */
+/* Contenedor para los íconos en el lado derecho */
+.chat-header-icons {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end; /* Alinea los íconos a la derecha */
+    flex-grow: 1; /* Ocupa el espacio restante para empujar los íconos a la derecha */
+}
+
+/* Estilos para los íconos del header */
+.expand-icon, .logout , #new-thread-icon {
+    width: 30px; /* Ajusta el tamaño de los íconos */
+    height: 30px;
+    margin-left: 25px; /* Aumenta el espacio entre los íconos */
+    cursor: pointer;
+}
+
+
+/* Tamaño y forma del avatar */
 .avatar {
     width: 40px;
     height: 40px;
-    border-radius: 50%; /* Hace la imagen circular. */
-    margin-right: 10px; /* Espacio entre el avatar y el nombre del usuario. */
+    border-radius: 50%;
+    margin-right: 10px;
 }
 
-/* Estilos para la sección de información del usuario (nombre y estado). */
+/* Estilos para la sección de información del usuario */
 .chat-user-info h3 {
-    font-size: 16px; /* Tamaño de la fuente del nombre del usuario. */
-    margin-bottom: 2px; /* Pequeño margen inferior. */
+    font-size: 16px;
+    margin-bottom: 2px;
+    color: white; /* Asegurar el color blanco */
 }
 
 .chat-user-info p {
-    font-size: 12px; /* Tamaño de la fuente del estado del usuario. */
+    font-size: 12px;
     margin-top: 0;
+    color: white; /* Asegurar el color blanco */
 }
 
-/* Estilos para la ventana de mensajes del chat, donde se muestran todos los mensajes. */
+/* Estilos para la ventana de mensajes del chat */
 .chat-messages {
-    flex: 1; /* Ocupa todo el espacio disponible en el contenedor. */
+    flex: 1;
     padding: 10px;
-    background-image: url("{% static 'img/fondo-wh-oscuro.png' %}"); /* Imagen de fondo de WhatsApp */
-    background-size: cover; /* Asegura que la imagen de fondo cubra toda el área */
+    background-size: cover;
     background-position: center;
-    background-repeat: no-repeat; /* Evita que la imagen se repita */
-    overflow-y: auto; /* Permite el scroll cuando hay muchos mensajes. */
+    background-repeat: no-repeat;
+    overflow-y: auto;
     display: flex;
-    flex-direction: column; /* Organiza los mensajes de arriba hacia abajo. */
+    flex-direction: column;
+    scrollbar-width: thin;
+    scrollbar-color: #888 #1e2a33;
+    transition: all 0.3s ease-in-out;
 }
 
-/* Estilos generales para cada mensaje (tanto enviado como recibido). */
+/* Estilos generales para cada mensaje (enviado o recibido) */
 .message {
-    max-width: 70%; /* El mensaje no puede ocupar más del 70% del ancho total. */
-    word-wrap: break-word; /* Si el texto es largo, pasa a la siguiente línea. */
-    padding: 8px 10px; /* Relleno alrededor del texto. */
-    margin-bottom: 10px; /* Espacio entre los mensajes. */
-    border-radius: 15px; /* Bordes redondeados de las burbujas de mensaje. */
-    position: relative; /* Necesario para posicionar la hora dentro de la burbuja. */
+    max-width: 70%;
+    word-wrap: break-word;
+    padding: 8px 10px;
+    margin-bottom: 10px;
+    border-radius: 15px;
+    position: relative;
     font-size: 14px;
+    color: white; /* Color blanco en los mensajes */
 }
 
-/* Estilo para los mensajes enviados por el usuario. */
+/* Estilo para los mensajes enviados por el usuario */
 .sent {
-    background-color: #005c4b; /* Color verde oscuro típico de WhatsApp para los mensajes enviados. */
-    align-self: flex-end; /* Alinea el mensaje a la derecha. */
-    color: #fff; /* Texto blanco para los mensajes enviados. */
-    border-bottom-right-radius: 0; /* Bordes redondeados en todas las esquinas excepto la inferior derecha. */
+    background-color: #005c4b;
+    align-self: flex-end;
+    color: #fff;
+    border-bottom-right-radius: 0;
 }
 
-/* Estilo para los mensajes recibidos. */
+/* Estilo para los mensajes recibidos */
 .received {
-    background-color: #202c33; /* Fondo gris oscuro para mensajes recibidos. */
-    align-self: flex-start; /* Alinea el mensaje a la izquierda. */
-    color: #fff; /* Texto blanco para los mensajes recibidos. */
-    border-bottom-left-radius: 0; /* Bordes redondeados en todas las esquinas excepto la inferior izquierda. */
+    background-color: #202c33;
+    align-self: flex-start;
+    color: #fff;
+    border-bottom-left-radius: 0;
 }
 
-/* Estilo para la hora del mensaje dentro de la burbuja. */
+/* Estilo para la hora del mensaje */
 .time {
-    font-size: 10px; /* Tamaño pequeño para la hora. */
-    color: #bbb; /* Color gris claro para el texto de la hora. */
-    position: absolute; /* Posiciona la hora dentro del mensaje. */
-    bottom: -15px; /* Posiciona la hora justo debajo del mensaje. */
-    right: 10px; /* Posiciona la hora cerca del borde derecho. */
+    font-size: 10px;
+    color: #bbb;
+    position: absolute;
+    bottom: -15px;
+    right: 10px;
 }
 
-/* Estilo para la barra de entrada de mensajes. */
+/* Estilo para la barra de entrada de mensajes */
 .chat-input {
-    display: flex; /* Organiza el campo de entrada y el botón en una fila. */
+    display: flex;
     padding: 10px;
-    background-color: #2a3942; /* Fondo oscuro para la barra de entrada */
-    border-top: 1px solid #333; /* Línea superior gris oscuro que separa el área de entrada. */
+    background-color: #2a3942;
+    border-top: 1px solid #333;
 }
 
-/* Estilo para el campo de entrada de texto. */
+/* Estilo para el campo de entrada de texto en el chat */
 .chat-input input {
-    flex: 1; /* El campo de entrada ocupa todo el espacio disponible. */
+    flex: 1;
     padding: 10px;
-    border: none; /* Sin bordes. */
-    border-radius: 20px; /* Bordes redondeados como en WhatsApp. */
-    background-color: #1e2a33; /* Fondo gris oscuro para el campo de entrada de texto. */
-    color: #fff; /* Texto blanco en el campo de entrada. */
-    margin-right: 10px; /* Espacio entre el campo de entrada y el botón. */
+    border: none;
+    border-radius: 20px;
+    background-color: #1e2a33;
+    color: #fff;
+    margin-right: 10px;
+    font-size: 16px; /* Ajusta la fuente para evitar el zoom */
+    -webkit-appearance: none; /* Elimina los estilos predeterminados de iOS */
+    caret-color: #fff;
 }
 
-/* Estilo para el botón de enviar mensaje. */
-.chat-input button {
-    background-color: #25d366; /* Color de fondo verde típico de WhatsApp para el botón de enviar. */
-    color: #fff; /* Texto blanco en el botón. */
+/* Asegura que el campo de entrada no tenga sombras o bordes adicionales en iOS */
+.chat-input input:focus {
+    outline: none;
+    border: 1px solid #fff;
+    box-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+}
+
+/* Estilo para la imagen del botón de enviar */
+.send-icon {
+    width: 40px;
+    height: 40px;
+    cursor: pointer;
+    margin-left: 10px;
+    vertical-align: middle;
+}
+
+/* Disclaimer como una burbuja */
+.disclaimer {
+    width: 90%; /* Ajustado para que quede dentro del contenedor */
+    margin: 20px auto;
+    background-color: rgba(255, 255, 255, 0.1); /* Fondo semitransparente solo para el disclaimer */
+    color: #e0e0e0; /* Texto gris claro */
+    text-align: center;
+    padding: 5px;
+    border-radius: 20px; /* Bordes redondeados */
+    font-size: 0.65rem;
+    line-height: 1.5;
+    font-style: italic;
+    z-index: 2; /* Asegura que el disclaimer esté sobre otros elementos */
+    position: absolute; /* Esto lo saca del flujo del documento */
+    top: 50px; /* Ajusta según sea necesario para la ubicación deseada */
+    left: 50%;
+    transform: translateX(-50%); /* Lo centra horizontalmente */
+    background-clip: padding-box; /* Hace que el fondo esté contenido dentro de los bordes redondeados */
+}
+
+/* Estilos del login */
+
+/* Estilo para el contenedor inicial con la frase y la mano */
+.frase-circ {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    color: white; /* Texto blanco */
+}
+
+.hand-01 {
+    width: 80px; /* Tamaño de la imagen de la mano */
+    height: 80px;
+    cursor: pointer;
+    margin-top: 20px;
+}
+
+/* Contenedor principal del formulario de login */
+#login-container {
+    width: 400px;
+    height: auto;
+    background-color: #1e2a33;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    display: none; /* Oculto inicialmente */
+    flex-direction: column;
+    overflow: hidden;
+    transition: all 0.3s ease-in-out;
+    color: white; /* Texto blanco */
+}
+
+/* Estilos para el formulario de login */
+.form-login {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    color: white; /* Texto blanco */
+}
+
+/* Estilos para los campos de entrada en el formulario de login */
+.form-login input {
+    width: 100%;
     padding: 10px;
-    border: none; /* Sin bordes. */
-    border-radius: 50%; /* Botón circular. */
-    cursor: pointer; /* Muestra el ícono de mano al pasar el cursor. */
+    margin-bottom: 15px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    background-color: #2c3e50;
+    color: #fff;
+    caret-color: #fff;
+    font-size: 16px; /* Asegúrate de que el tamaño de la fuente sea al menos 16px */
+    -webkit-appearance: none; /* Elimina los estilos predeterminados de iOS */
+}
+
+/* Asegura que el campo de entrada no tenga sombras o bordes adicionales en iOS */
+.form-login input:focus {
+    outline: none;
+    border: 1px solid #fff;
+    box-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+}
+
+/* Estilos para el botón del formulario de login */
+.form-login button {
+    padding: 10px 20px;
+    background-color: #005c4b;
+    color: white; /* Texto blanco */
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.form-login button:hover {
+    background-color: #007f5f;
+}
+
+/* Otros estilos reutilizados para el login */
+.chat-header {
+    background-color: #2a3942;
+    padding: 10px;
+    color: white;
+    text-align: center;
+}
+
+.frase {
+    text-align: center;
+    margin-bottom: 10px;
+    color: white; /* Texto blanco */
+}
+
+.subfrase {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #bbb;
 }

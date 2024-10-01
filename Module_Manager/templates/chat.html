@@ -14,20 +14,24 @@
     <div class="chat-container">
         <div class="chat-header">
             <img src="{% static 'img/hand.svg' %}" alt="Avatar" class="avatar">
+            
             <div class="chat-user-info">
                 <h3>Terry</h3>
                 <p>Online</p>
             </div>
             <div class="chat-header-icons">
-                <img class="expand-icon" alt="Expandir" src="{% static 'img/grupo-641.png' %}" />
-                <a href="/logout/"> <!-- Enlace para redirigir al logout -->
+                <img id="new-thread-icon" title="Create new thread" data-url="{% url 'create_thread' %}" alt="Nuevo Thread" src="{% static 'img/new-thread.png' %}" />
+                <img class="expand-icon" title="Expand" alt="Expandir" src="{% static 'img/grupo-641.png' %}" />
+                <a href="/logout/" title="Logout"> <!-- Enlace para redirigir al logout -->
                     <img class="logout" alt="Logout" src="{% static 'img/grupo-179.png' %}" />
                 </a>
             </div>
+            
         </div>
         <div class="disclaimer">
             <p>Terry can make mistakes. Consider checking important information.</p>
         </div>
+        
         <script src="{% static 'js/chat.js' %}"></script>
         <div class="chat-messages" id="messages" style="background-image: url('{% static 'img/fondo-wh-oscuro.png' %}');"></div>
         <div class="chat-input">

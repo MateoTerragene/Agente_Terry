@@ -57,12 +57,13 @@ body {
 }
 
 /* Estilos para los íconos del header */
-.expand-icon, .logout {
+.expand-icon, .logout , #new-thread-icon {
     width: 30px; /* Ajusta el tamaño de los íconos */
     height: 30px;
     margin-left: 25px; /* Aumenta el espacio entre los íconos */
     cursor: pointer;
 }
+
 
 /* Tamaño y forma del avatar */
 .avatar {
@@ -194,6 +195,7 @@ body {
     transform: translateX(-50%); /* Lo centra horizontalmente */
     background-clip: padding-box; /* Hace que el fondo esté contenido dentro de los bordes redondeados */
 }
+
 
 /* Estilos del login */
 
