@@ -3,7 +3,7 @@ import json
 import requests
 from django.shortcuts import render, redirect
 from django.views import View
-
+from Module_Manager.web_handler import WebHandler
 import hashlib
 import bcrypt
 from passlib.hash import phpass
@@ -39,11 +39,45 @@ def convertir_enlaces(texto):
 class ClassifyQueryView(View):
     def post(self, request):
         try:
+            # Si se adjunta un archivo, manejarlo con WebHandler
+            if request.FILES:
+                # Crear una instancia de WebHandler
+                web_handler = WebHandler()
+
+                # Obtener el user_id del POST para crear el thread
+                body = request.POST
+                user_id = body.get('user_id')
+                if not user_id:
+                    return JsonResponse({'error': 'No user ID provided'}, status=400)
+
+                # Obtener el usuario de la base de datos
+                try:
+                    with connections['Terragene_Users_Database'].cursor() as cursor:
+                        cursor.execute("SELECT ID, user_login, user_email, display_name FROM wp_users WHERE ID = %s", [user_id])
+                        result = cursor.fetchone()
+
+                        if not result:
+                            return JsonResponse({'error': 'User not found'}, status=404)
+
+                        user_id, user_login, user_email, display_name = result
+
+                except Exception as e:
+                    logger.error(f"Database connection error: {str(e)}")
+                    return JsonResponse({'error': 'Database connection error'}, status=500)
+
+                # Reutilizar thread existente si es posible
+                thread, module_manager = thread_manager_instance.get_or_create_active_thread(user_id)
+
+                # Pasar los argumentos requeridos al método handle_file_upload
+                return web_handler.handle_file_upload(request, module_manager, thread)
+
+            # Manejo de consultas de texto (JSON)
             body = json.loads(request.body)
             user_id = body.get('user_id')
             if not user_id:
                 return JsonResponse({'error': 'No user ID provided'}, status=400)
 
+            # Obtener el usuario de la base de datos
             try:
                 with connections['Terragene_Users_Database'].cursor() as cursor:
                     cursor.execute("SELECT ID, user_login, user_email, display_name FROM wp_users WHERE ID = %s", [user_id])
@@ -61,16 +95,15 @@ class ClassifyQueryView(View):
             # Reutilizar thread existente si es posible
             thread, module_manager = thread_manager_instance.get_or_create_active_thread(user_id)
 
+            # Procesar la consulta de texto
             query = body.get('query')
             if not query:
                 return JsonResponse({'error': 'No query provided'}, status=400)
-            # task_type = None
+
             try:
-                response, task_type = module_manager.classify_query(thread, query,user_id)
-                
+                response, task_type = module_manager.classify_query(thread, query, user_id)
                 response = convertir_enlaces(response)
-                
-                
+
                 # Guardar la interacción en la base de datos
                 UserInteraction.objects.create(
                     thread_id=thread.thread_id,
@@ -81,9 +114,11 @@ class ClassifyQueryView(View):
                     display_name=display_name,
                     query=query,
                     response=response,
-                    task_type=task_type if task_type else '' 
+                    task_type=task_type if task_type else ''
                 )
+
                 return JsonResponse({'response': response})
+
             except Exception as e:
                 logger.error(f"Error classifying query: {str(e)}")
                 return JsonResponse({'error': str(e)}, status=501)
@@ -93,6 +128,7 @@ class ClassifyQueryView(View):
         except Exception as e:
             logger.error(f"Initialization error: {str(e)}")
             return JsonResponse({'error': str(e)}, status=500)
+
  
 
     def get(self, request):

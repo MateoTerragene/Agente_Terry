@@ -167,6 +167,14 @@ body {
     box-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
 }
 
+/* Estilo para el ícono de adjuntar archivo */
+.attach-icon {
+    width: 30px;
+    height: 30px;
+    cursor: pointer;
+    margin-right: 10px;  /* Espacio a la derecha para separarlo del input */
+    vertical-align: middle;
+}
 /* Estilo para la imagen del botón de enviar */
 .send-icon {
     width: 40px;

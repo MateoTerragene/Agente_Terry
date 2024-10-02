@@ -17,34 +17,33 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('login-container').style.display = 'flex';  // Mostrar el login
         });
     }
-   // Función para crear un nuevo thread
-   async function createNewThread() {
-        if (!userId) return;
+  // Seleccionamos el ícono de nuevo thread por su id
+  const newThreadIcon = document.getElementById('new-thread-icon');
+  if (newThreadIcon) {
+      newThreadIcon.addEventListener('click', createNewThread);  // Llamar a la función cuando se haga clic
+  }
+// Funcionalidad para el botón de adjuntar archivo
+const attachButton = document.getElementById('attachButton');
+const fileInput = document.getElementById('fileInput');
+  // Función para crear un nuevo thread
+  async function createNewThread() {
+        // Limpiar todos los mensajes del chat
+        const messagesContainer = document.getElementById('messages');
+        if (messagesContainer) {
+            messagesContainer.innerHTML = '';  // Limpia el contenido del contenedor de mensajes
+        }
+        const response = await fetch('/module_manager/web-service/?action=create_thread', {
+            method: 'GET',
+        });
 
-        try {
-            const response = await fetch('/create-thread/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}',  // Incluye el token CSRF si es necesario
-                },
-                body: JSON.stringify({ 
-                    action: 'create_thread'  // Enviar el parámetro especial para crear el thread
-                })
-            });
-
-            const data = await response.json();
-            if (response.ok) {
-                alert(data.message);
-            } else {
-                alert(`Error: ${data.message}`);
-            }
-        } catch (error) {
-            console.error('Error al crear nuevo thread:', error);
-            alert('Error de conexión.');
+        const data = await response.json();
+        if (data.status === 'success') {
+            console.log('Thread creado con éxito:', data.message);
+        } else {
+            console.error('Error al crear thread:', data.message);
         }
     }
-   
+
 
 
     // Función para enviar consulta con texto personalizado o el input del usuario
@@ -150,7 +149,52 @@ document.addEventListener('DOMContentLoaded', function () {
         sendButton.addEventListener('click', () => sendQuery());
 
     }
+    attachButton.addEventListener('click', function () {
+        fileInput.click();  // Simula el clic en el input de archivo
+    });
 
+    // Funcionalidad para enviar el archivo cuando se seleccione
+    fileInput.addEventListener('change', async function () {
+        const file = fileInput.files[0];
+        if (!file || !userId) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('user_id', userId);
+
+        try {
+            const response = await fetch('/module_manager/web-service/', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                const messages = document.getElementById('messages');
+                const messageContainer = document.createElement("div");
+                messageContainer.classList.add("message", "sent");
+
+                const messageText = document.createElement("p");
+                messageText.textContent = `Archivo adjuntado: ${file.name}`;
+
+                const timeStamp = document.createElement("span");
+                timeStamp.classList.add("time");
+                timeStamp.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                messageContainer.appendChild(messageText);
+                messageContainer.appendChild(timeStamp);
+
+                messages.appendChild(messageContainer);
+
+                // Scroll automático al final del chat
+                messages.scrollTop = messages.scrollHeight;
+            } else {
+                console.error('Error al enviar el archivo:', data.error);
+            }
+        } catch (error) {
+            console.error('Error al procesar el archivo:', error);
+        }
+    });
     // Funcionalidad para expandir el chat al hacer clic en expand-icon
     const expandIcon = document.querySelector('.expand-icon');
     if (expandIcon) {
