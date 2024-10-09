@@ -66,7 +66,15 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     }
-
+    // Manejo del evento "Enter" para enviar el mensaje
+    if (queryInput) {
+        queryInput.addEventListener('keypress', function (event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();  // Evita que se envíe un form si lo hay
+                sendQuery();
+            }
+        });
+    }
     // Enviar mensaje de texto
     if (sendButton) {
         sendButton.addEventListener('click', () => sendQuery());
@@ -136,6 +144,10 @@ document.addEventListener('DOMContentLoaded', function () {
             console.error("Error:", error);
         } finally {
             sendButton.style.pointerEvents = 'auto';  // Reactivar el botón de enviar
+             // Restaurar los botones de adjuntar y grabar
+            attachButton.style.display = 'inline-block';
+            micButton.style.display = 'inline-block';
+            sendButton.style.display = 'none';  // Ocultar el botón de enviar nuevamente
         }
     }
 
@@ -144,6 +156,10 @@ document.addEventListener('DOMContentLoaded', function () {
         queryInput.addEventListener('keypress', function (event) {
             if (event.key === 'Enter') {
                 sendQuery();
+                // Restaurar los botones de adjuntar y grabar
+                attachButton.style.display = 'inline-block';
+                micButton.style.display = 'inline-block';
+                sendButton.style.display = 'none';  // Ocultar el botón de enviar nuevamente
             }
         });
     }

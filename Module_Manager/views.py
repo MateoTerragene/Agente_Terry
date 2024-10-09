@@ -127,7 +127,7 @@ class ClassifyQueryView(View):
                 elif file_type == 'application/octet-stream':
                     # Manejo de archivo '.db'
                     print(f"DB File received: {file}")
-                    response=self.web_handler.handle_db_message(file,user_id)
+                    response,task_type, db_path=self.web_handler.handle_db_message(file,user_id,module_manager,thread)
                     # Guardar la interacción en la base de datos
                     UserInteraction.objects.create(
                         thread_id=thread.thread_id,
@@ -136,11 +136,11 @@ class ClassifyQueryView(View):
                         user_login=user_login,
                         user_email=user_email,
                         display_name=display_name,
-                        query=f"DB File received: {file.name}",
-                        response="DB file processed",
-                        task_type='db_upload'
+                        query=f"DB File received: {db_path}",
+                        response=response,
+                        task_type=task_type
                     )
-
+                    print(f"response views:{response}")
                     return JsonResponse({'response': response}, status=200)
 
                 else:

@@ -11,6 +11,7 @@ from LLM_Bottleneck.services import LLM_Bottleneck
 from RAG_Manager.services import TechnicalQueryAssistant
 from Complaint_Manager.services import ComplaintManager
 from PO_Manager.services import PurchaseOpportunity
+from BionovaDB_Manager.services import BionovaDBManager
 from Image_Manager.services import ImageManager
 # Importar otros managers aquí cuando estén disponibles
 logger = logging.getLogger(__name__)
@@ -24,14 +25,15 @@ class ModuleManager:
             self.docs = "COA = certificado de calidad = certificado de analisis, IFU = Prospecto , PD = Descripcion de producto = Ficha tecnica, SDS = Hoja de seguridad, CC = Color chart, FDA = Certificado FDA = 510K "
             self.prompt = f"""Eres un asistente que clasifica consultas de usuarios e identifica tareas a realizar. Puede haber múltiples tareas en una consulta. \
                         Tu respuesta debe ser un JSON que indique si has recibido una 'fileRequest' (solicitud de documentos), una 'technical_query' (consulta técnica), \
-                        un 'complaint' (reclamo), un 'purchase_opportunity' (consulta de compra), o una 'image_submission' (envío de imagen). \
-                        Solo debes clasificar como 'complaint' si el usuario menciona explícitamente intenciones de presentar un reclamo.\
+                        o 'clear_DB' (blanqueo reset de password o contraseña).\
+                        Solo debes clasificar como 'complaint' si el usuario menciona explícitamente intenciones de presentar un reclamo \
                         Los documentos que te puede pedir el usuario son: {self.docs}.\
-                        Si recibes algo que contenga 'https://agente-terry.s3.amazonaws.com', clasifícalo como 'image_submission'.\
+                        Si recibes algo que contenga 'https://agente-terry.s3.amazonaws.com/images/', clasifícalo como 'image_submission'.\
+                        Si recibes algo que contenga 'https://agente-terry.s3.amazonaws.com/db/', clasifícalo como 'clear_DB'.\
                         Debes responder únicamente en el siguiente formato JSON: \
                         {{
                             "tasks": [
-                                "technical_query" | "fileRequest" | "complaint" | "purchase_opportunity" | "image_submission"
+                                "technical_query" | "fileRequest" | "complaint" | "purchase_opportunity" | "image_submission" | "clear_DB"
                             ]
                         }}"""
 
@@ -44,6 +46,7 @@ class ModuleManager:
          
             self.technical_query_assistant = TechnicalQueryAssistant()
             self.LLM_BN = LLM_Bottleneck()
+            self.DB_manager=BionovaDBManager()
             # Inicializar otros managers aquí cuando estén disponibles
             # self.current_task = None  # Contexto de la tarea actual
         except Exception as e:
@@ -132,7 +135,14 @@ class ModuleManager:
         
         elif self.tasks[0].task_type == "image_submission":
             print("Resolviendo recepción de imagen...")
-            self.image_manager.process_image(self.tasks[0],self.query)
+            self.image_manager.process_image(self.tasks[0],self.query,thread)
+           
+            self.LLM_BN.receive_task(self.tasks[0].clone())
+            
+        elif self.tasks[0].task_type == "clear_DB":
+            print("Resolviendo blanqueo de clave...")
+
+            self.DB_manager.handle_Bionova_DB(self.query,self.tasks[0],thread)
            
             self.LLM_BN.receive_task(self.tasks[0].clone())
 

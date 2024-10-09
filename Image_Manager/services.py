@@ -2,7 +2,7 @@ import os
 import json
 import boto3
 from openai import OpenAI
-
+from RAG_Manager.services import TechnicalQueryAssistant
 class ImageManager:
     def __init__(self):
         try:
@@ -15,7 +15,8 @@ class ImageManager:
             )
             self.bucket_name = os.getenv('S3_BUCKET_NAME')  # Añadir el nombre del bucket aquí
             print(f"ImageManager initialized with bucket: {self.bucket_name}")  # Print para verificar el bucket
-            self.historial=[]
+            # self.historial=[]
+            self.RAG=TechnicalQueryAssistant()
         except Exception as e:
             print(f"Error al inicializar ImageManager: {e}")
 
@@ -85,7 +86,7 @@ class ImageManager:
                         "image_url": {
                             "url": f" {image_url}"
                         }
-                        },*self.historial
+                        }
                     ],
                     }
                 ], 
@@ -111,7 +112,7 @@ class ImageManager:
             print(f"Error al analizar la imagen con OpenAI: {e}")
             return None
 
-    def process_image(self, task, s3_url):
+    def process_image(self, task, s3_url,thread):
         """
         Procesa la tarea de análisis de imagen generando una URL firmada de la imagen en S3, analizándola,
         y almacenando el resultado en `task.response`.
@@ -155,12 +156,15 @@ class ImageManager:
             # Guardar el resultado en la respuesta de la tarea
             
             task.state = 'completed'
-
+            
             # Obtener el código del producto o "desconocido" si no está presente
             product = analysis_result.get("Product Code", "desconocido")
             description=analysis_result.get("Description", "desconocido")
-            task.response = description
-            self.historial.append({"role": "assistant", "content": f"Se recibió una imagen del producto {product}"})
+            if product!=None:
+                query=f"product: {product}, description:{description}"
+                response =self.RAG.handle_technical_query(query,task,thread)
+            else:
+                task.response=description
         else:
             task.response = "No se pudo analizar la imagen."
             task.state = 'failed'

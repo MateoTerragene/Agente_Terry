@@ -41,6 +41,8 @@ class FileHandler:
         print(f"Audio recibido guardado en S3: {received_audio_url}")
 
         try:
+            transcribed_text_body=None
+            
             # Transcribir el audio utilizando Whisper
             with open(audio_path, "rb") as audio_file:
                 transcript = self.client.audio.transcriptions.create(
@@ -113,7 +115,7 @@ class FileHandler:
         file_extension = os.path.splitext(image_file.name)[1]  # Obtiene la extensión con el punto (e.g., '.jpg')
 
         # Define la ruta con un identificador único basado en el user_id y el timestamp
-        local_image_path = f"uploads/images/{identifier}_{int(time.time())}{file_extension}"
+        local_image_path = f"tmp/{identifier}_{int(time.time())}{file_extension}"
         try:
             # Guardar el archivo localmente
             os.makedirs(os.path.dirname(local_image_path), exist_ok=True)  # Crear directorio si no existe
@@ -142,7 +144,7 @@ class FileHandler:
             logger.error(f"Error guardando la imagen: {str(e)}")
             return None
 
-    def handle_db(self, db_file, user_id):
+    def handle_db(self, db_path, identifier,module_manager, thread, is_whatsapp=False):
         """
         Procesa, guarda un archivo .db en una ruta específica y lo sube a S3.
         
@@ -153,29 +155,25 @@ class FileHandler:
         Returns:
             str: URL del archivo en S3 o None si hubo un error.
         """
-        db_path = f"uploads/databases/{user_id}/{db_file.name}"
+        
         try:
-            # Crear la carpeta si no existe
-            os.makedirs(os.path.dirname(db_path), exist_ok=True)
+            file_name = os.path.basename(db_path)  # Solo el nombre del archivo, sin la ruta '/tmp/'
+        
+            # Guardar el audio recibido en S3 antes de procesarlo
+            s3_file_path = self.save_file_to_s3(db_path, 'db')
+            if not s3_file_path:
+                logger.error("Error al guardar el audio recibido en S3.")
+                return None, None  # Devuelve None para todos si ocurre un error
+           
             
-            # Guardar el archivo localmente
-            with open(db_path, 'wb+') as destination:
-                for chunk in db_file.chunks():
-                    destination.write(chunk)
-            logger.info(f"Archivo .db guardado exitosamente en {db_path}")
             
-            # Subir el archivo a S3
-            file_url = self.save_file_to_s3(db_path,  'db')
-            if file_url:
-                logger.info(f"Archivo subido exitosamente a S3. URL: {file_url}")
-                return file_url
-            else:
-                logger.error("Error subiendo el archivo a S3.")
-                return None
             
+            response_text, task_type = module_manager.classify_query(thread, s3_file_path, identifier, is_whatsapp)
+            print(f"responser_text_db_file_handler: {response_text}")
+            return response_text,task_type
         except Exception as e:
             logger.error(f"Error procesando archivo .db: {str(e)}")
-            return None
+            return None, None
 
     def generate_tts_audio(self, thread, text, user_id, file_extension='.ogg'):
         """

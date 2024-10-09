@@ -112,14 +112,28 @@ class WebHandler:
             return JsonResponse({'error': f"Error en la subida de la imagen: {str(e)}"}, status=500)
 
 
-    def handle_db_message(self, file, user_id):
+    def handle_db_message(self, file, user_id,module_manager, thread):
         """
         Maneja la subida de archivos .db.
         """
         try:
-            file_path = self.file_handler.handle_db(file, user_id)
-            response = f"Archivo .db recibido en web_handler y almacenado en {file_path}."
-            return response
+            # Obtén la extensión del archivo desde el nombre original
+            file_extension = os.path.splitext(file.name)[1]  # Obtiene la extensión con el punto (e.g., '.wav')
+            
+            # Define la ruta temporal donde se almacenará el archivo de archivo db con la extensión correcta
+            db_path = f"/tmp/{user_id}_{thread.thread_id}_{int(time.time())}{file_extension}"
+            print(f"Ruta temporal del archivo db: {db_path}")
+            
+            # Guarda el archivo de archivo db en la ruta temporal
+            with open(db_path, 'wb') as destination:
+                for chunk in file.chunks():
+                    destination.write(chunk)
+            
+            logger.info(f"Archivo de archivo db guardado temporalmente en {db_path}")
+            print(f"Archivo de archivo db guardado temporalmente: {db_path}")
+            response_text,task_type = self.file_handler.handle_db(db_path, user_id,module_manager, thread)
+            print(f"response_text_webHandler: {response_text}")
+            return response_text, task_type, db_path
 
         except Exception as e:
             logger.error(f"DB file upload error: {str(e)}")

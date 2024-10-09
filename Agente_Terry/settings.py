@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'dbviewer',
     'Image_Manager',
+    'BionovaDB_Manager',
    
 ]
 
