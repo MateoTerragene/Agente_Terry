@@ -145,9 +145,6 @@ class FileManager:
         print("Subtarea creada y añadida:", fm_subtask)
         
 
-            
-
-
     def clear_historial(self):
         self.historial.clear()
 

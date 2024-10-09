@@ -301,3 +301,23 @@ body {
     margin-bottom: 20px;
     color: #bbb;
 }
+.audio-player {
+    width: 100%;
+    max-width: 250px;
+    margin: 5px 0;
+    border-radius: 10px;
+    background-color: #005c4b;
+    color: #fff;
+}
+
+.audio-player::-webkit-media-controls-panel {
+    background-color: #005c4b;  /* Fondo del reproductor */
+}
+
+.audio-player::-webkit-media-controls-play-button {
+    color: white; /* Color del botón de reproducción */
+}
+
+.audio-player::-webkit-media-controls-timeline {
+    color: #fff; /* Color de la barra de progreso */
+}

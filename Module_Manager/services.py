@@ -11,7 +11,7 @@ from LLM_Bottleneck.services import LLM_Bottleneck
 from RAG_Manager.services import TechnicalQueryAssistant
 from Complaint_Manager.services import ComplaintManager
 from PO_Manager.services import PurchaseOpportunity
-
+from Image_Manager.services import ImageManager
 # Importar otros managers aquí cuando estén disponibles
 logger = logging.getLogger(__name__)
 load_dotenv()  # Cargar las variables de entorno desde el archivo .env
@@ -22,23 +22,25 @@ class ModuleManager:
             # print("ADENTRO DEL CONSTRUCTOR")
             self.client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
             self.docs = "COA = certificado de calidad = certificado de analisis, IFU = Prospecto , PD = Descripcion de producto = Ficha tecnica, SDS = Hoja de seguridad, CC = Color chart, FDA = Certificado FDA = 510K "
-            self.prompt = f"""Eres un asistente que clasifica consultas de usuarios e identifica tareas a realizar. Puede haber multiples tareas en una consulta. \
-                    Tu respuesta debe ser un JSON que indique si has recibido una 'fileRequest' (solicitud de documentos), una 'technical_query' (consulta técnica), \
-                    un 'complaint' (reclamo) o un 'purchase_opportunity' (consulta de compra).\
-                    Solo debes clasificar como 'complaint' si el usuario menciona explícitamente intenciones de presentar un reclamo.\
-                    Los documentos que te puede pedir el usuario son: {self.docs}.\
-                    Debes responder únicamente en el siguiente formato JSON: \
-                    {{
-                        "tasks": [
-                            "technical_query" | "fileRequest" | "complaint" | "purchase_opportunity"
-                        ]
-                    }}"""
+            self.prompt = f"""Eres un asistente que clasifica consultas de usuarios e identifica tareas a realizar. Puede haber múltiples tareas en una consulta. \
+                        Tu respuesta debe ser un JSON que indique si has recibido una 'fileRequest' (solicitud de documentos), una 'technical_query' (consulta técnica), \
+                        un 'complaint' (reclamo), un 'purchase_opportunity' (consulta de compra), o una 'image_submission' (envío de imagen). \
+                        Solo debes clasificar como 'complaint' si el usuario menciona explícitamente intenciones de presentar un reclamo.\
+                        Los documentos que te puede pedir el usuario son: {self.docs}.\
+                        Si recibes algo que contenga 'https://agente-terry.s3.amazonaws.com', clasifícalo como 'image_submission'.\
+                        Debes responder únicamente en el siguiente formato JSON: \
+                        {{
+                            "tasks": [
+                                "technical_query" | "fileRequest" | "complaint" | "purchase_opportunity" | "image_submission"
+                            ]
+                        }}"""
+
             self.tasks = []
             # self.task = Task()
             self.file_manager = FileManager()
             self.complaint_manager=ComplaintManager()
             self.PO_manager = PurchaseOpportunity()
-            
+            self.image_manager = ImageManager()
          
             self.technical_query_assistant = TechnicalQueryAssistant()
             self.LLM_BN = LLM_Bottleneck()
@@ -124,10 +126,16 @@ class ModuleManager:
 
         elif self.tasks[0].task_type == "purchase_opportunity":
             print("Resolviendo oportunidad de compra...")
+            
             self.PO_manager.resolve_task(self.tasks[0],self.query)
+            self.LLM_BN.receive_task(self.tasks[0].clone())
+        
+        elif self.tasks[0].task_type == "image_submission":
+            print("Resolviendo recepción de imagen...")
+            self.image_manager.process_image(self.tasks[0],self.query)
            
             self.LLM_BN.receive_task(self.tasks[0].clone())
- 
+
         else:
             print(f"Tarea desconocida: {self.tasks[0].task_type}")
             if self.tasks[0].state == 'completed':

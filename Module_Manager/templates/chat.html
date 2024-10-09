@@ -35,11 +35,11 @@
         <script src="{% static 'js/chat.js' %}"></script>
         <div class="chat-messages" id="messages" style="background-image: url('{% static 'img/fondo-wh-oscuro.png' %}');"></div>
         <div class="chat-input">
-        
             <input type="text" id="query" placeholder="Write a message..." />
             <input type="file" id="fileInput" style="display: none;">
             <img id="attachButton" src="{% static 'img/attached.png' %}" alt="Adjuntar" class="attach-icon">
-            <img id="sendButton" src="{% static 'img/sent.png' %}" alt="Enviar" class="send-icon">
+            <img id="micButton" src="{% static 'img/mic.png' %}" alt="Grabar Audio" class="mic-icon"> <!-- Botón de grabar audio -->
+            <img id="sendButton" src="{% static 'img/sent.png' %}" alt="Enviar" class="send-icon" style="display: none;"> <!-- Botón de enviar -->
         </div>
         
         <input type="hidden" id="user_id" value="{{ user_id }}">

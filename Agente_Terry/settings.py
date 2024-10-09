@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     'LLM_Bottleneck',
     'rest_framework',
     'dbviewer',
+    'Image_Manager',
    
 ]
 
@@ -136,3 +137,5 @@ LOGOUT_REDIRECT_URL = '/login/'
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# Directorio para archivos multimedia

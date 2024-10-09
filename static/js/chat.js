@@ -9,28 +9,28 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Al hacer clic en la mano, ocultar el mensaje de bienvenida y mostrar el login
+    // Mostrar el login cuando se hace clic en la mano
     const handIcon = document.getElementById('hand-icon');
-    if (handIcon) {
+    const welcomeMessage = document.getElementById('welcome-message');
+    const loginContainer = document.getElementById('login-container');
+
+    if (handIcon && welcomeMessage && loginContainer) {
         handIcon.addEventListener('click', function () {
-            document.getElementById('welcome-message').style.display = 'none';  // Ocultar el mensaje de bienvenida
-            document.getElementById('login-container').style.display = 'flex';  // Mostrar el login
+            welcomeMessage.style.display = 'none';
+            loginContainer.style.display = 'flex';
         });
     }
-  // Seleccionamos el ícono de nuevo thread por su id
-  const newThreadIcon = document.getElementById('new-thread-icon');
-  if (newThreadIcon) {
-      newThreadIcon.addEventListener('click', createNewThread);  // Llamar a la función cuando se haga clic
-  }
-// Funcionalidad para el botón de adjuntar archivo
-const attachButton = document.getElementById('attachButton');
-const fileInput = document.getElementById('fileInput');
-  // Función para crear un nuevo thread
-  async function createNewThread() {
-        // Limpiar todos los mensajes del chat
+
+    // Crear nuevo thread
+    const newThreadIcon = document.getElementById('new-thread-icon');
+    if (newThreadIcon) {
+        newThreadIcon.addEventListener('click', createNewThread);
+    }
+
+    async function createNewThread() {
         const messagesContainer = document.getElementById('messages');
         if (messagesContainer) {
-            messagesContainer.innerHTML = '';  // Limpia el contenido del contenedor de mensajes
+            messagesContainer.innerHTML = '';  // Limpia el chat
         }
         const response = await fetch('/module_manager/web-service/?action=create_thread', {
             method: 'GET',
@@ -38,25 +38,46 @@ const fileInput = document.getElementById('fileInput');
 
         const data = await response.json();
         if (data.status === 'success') {
-            console.log('Thread creado con éxito:', data.message);
+            console.log('Thread creado:', data.message);
         } else {
             console.error('Error al crear thread:', data.message);
         }
     }
 
+    // Control de envío de texto y manejo de los íconos
+    const queryInput = document.getElementById('query');
+    const attachButton = document.getElementById('attachButton');
+    const micButton = document.getElementById('micButton');  // El botón de grabar
+    const sendButton = document.getElementById('sendButton');
+    const fileInput = document.getElementById('fileInput');
+    const messages = document.getElementById('messages');
 
+    // Ocultar los botones de mic y attach cuando se empieza a escribir
+    if (queryInput) {
+        queryInput.addEventListener('input', function () {
+            if (queryInput.value.trim() !== "") {
+                attachButton.style.display = 'none';
+                micButton.style.display = 'none';
+                sendButton.style.display = 'inline-block';  // Mostrar el botón de enviar
+            } else {
+                attachButton.style.display = 'inline-block';
+                micButton.style.display = 'inline-block';
+                sendButton.style.display = 'none';  // Ocultar el botón de enviar
+            }
+        });
+    }
 
-    // Función para enviar consulta con texto personalizado o el input del usuario
+    // Enviar mensaje de texto
+    if (sendButton) {
+        sendButton.addEventListener('click', () => sendQuery());
+    }
+
     async function sendQuery(prefixedQuery = '') {
-        const query = prefixedQuery || document.getElementById('query').value.trim();
+        const query = prefixedQuery || queryInput.value.trim();
         if (!userId || query === '') return;
 
-        const sendButton = document.getElementById('sendButton');
         sendButton.style.pointerEvents = 'none';  // Desactiva el botón de enviar temporalmente
 
-        const messages = document.getElementById('messages');
-
-        // Validación para evitar enviar mensajes vacíos o solo con espacios en blanco
         if (query) {
             const messageContainer = document.createElement("div");
             messageContainer.classList.add("message", "sent");
@@ -72,14 +93,8 @@ const fileInput = document.getElementById('fileInput');
             messageContainer.appendChild(timeStamp);
 
             messages.appendChild(messageContainer);
-
-            document.getElementById("query").value = ''; // Limpiar el input
-
-            // Scroll automático al final del chat
-            messages.scrollTop = messages.scrollHeight;
-        } else {
-            sendButton.style.pointerEvents = 'auto';  // Reactivar el botón si no hay texto
-            return;
+            queryInput.value = '';  // Limpiar el input
+            messages.scrollTop = messages.scrollHeight;  // Scroll automático
         }
 
         try {
@@ -91,20 +106,90 @@ const fileInput = document.getElementById('fileInput');
                 body: JSON.stringify({ user_id: userId, query })
             });
 
-            const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
+            const data = await response.json();
+            if (response.ok) {
+                const messageContainerReceived = document.createElement("div");
+                messageContainerReceived.classList.add("message", "received");
+
+                const messageTextReceived = document.createElement("p");
+                messageTextReceived.innerHTML = data.response.replace(/\n/g, '<br>');
+
+                const timeStampReceived = document.createElement("span");
+                timeStampReceived.classList.add("time");
+                timeStampReceived.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                messageContainerReceived.appendChild(messageTextReceived);
+                messageContainerReceived.appendChild(timeStampReceived);
+
+                // Agregar un reproductor de audio si hay un archivo de audio en la respuesta
+                if (data.audio_response) {
+                    const audioPlayer = document.createElement('audio');
+                    audioPlayer.controls = true;
+                    audioPlayer.src = data.audio_response;  // Asegurarse de que la URL está bien configurada
+                    messageContainerReceived.appendChild(audioPlayer);
+                }
+
+                messages.appendChild(messageContainerReceived);
+                messages.scrollTop = messages.scrollHeight;  // Scroll automático al final del chat
+            }
+        } catch (error) {
+            console.error("Error:", error);
+        } finally {
+            sendButton.style.pointerEvents = 'auto';  // Reactivar el botón de enviar
+        }
+    }
+
+    // Manejo del evento "Enter" para enviar el mensaje
+    if (queryInput) {
+        queryInput.addEventListener('keypress', function (event) {
+            if (event.key === 'Enter') {
+                sendQuery();
+            }
+        });
+    }
+
+    // Enviar archivo adjunto
+    if (attachButton && fileInput) {
+        attachButton.addEventListener('click', function () {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', async function () {
+            const file = fileInput.files[0];
+            if (!file || !userId) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('user_id', userId);
+
+            const messageContainer = document.createElement("div");
+            messageContainer.classList.add("message", "sent");
+
+            const messageText = document.createElement("p");
+            messageText.textContent = `Archivo adjuntado: ${file.name}`;
+
+            const timeStamp = document.createElement("span");
+            timeStamp.classList.add("time");
+            timeStamp.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            messageContainer.appendChild(messageText);
+            messageContainer.appendChild(timeStamp);
+            messages.appendChild(messageContainer);
+            messages.scrollTop = messages.scrollHeight;
+
+            try {
+                const response = await fetch('/module_manager/web-service/', {
+                    method: 'POST',
+                    body: formData
+                });
+
                 const data = await response.json();
-
                 if (response.ok) {
-                    let formattedResponse = data.response
-                        .replace(/\n/g, '<br>')
-                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-
                     const messageContainerReceived = document.createElement("div");
                     messageContainerReceived.classList.add("message", "received");
 
                     const messageTextReceived = document.createElement("p");
-                    messageTextReceived.innerHTML = formattedResponse;
+                    messageTextReceived.textContent = data.response;
 
                     const timeStampReceived = document.createElement("span");
                     timeStampReceived.classList.add("time");
@@ -114,98 +199,128 @@ const fileInput = document.getElementById('fileInput');
                     messageContainerReceived.appendChild(timeStampReceived);
 
                     messages.appendChild(messageContainerReceived);
-
-                    // Scroll automático al final del chat
                     messages.scrollTop = messages.scrollHeight;
                 } else {
-                    messages.innerHTML += `<div class="message received">Error: ${data.error}</div>`;
+                    console.error('Error al enviar el archivo:', data.error);
                 }
-            } else {
-                messages.innerHTML += `<div class="message received">Error: La respuesta no es válida o es HTML en lugar de JSON.</div>`;
+            } catch (error) {
+                console.error('Error al procesar el archivo:', error);
             }
-        } catch (error) {
-            console.error("Error: ", error);
-            messages.innerHTML += `<div class="message received">Error al procesar la consulta.</div>`;
-        } finally {
-            sendButton.style.pointerEvents = 'auto';  // Reactiva el botón de envío
-        }
+        });
     }
 
-    // Manejo del evento "Enter" para enviar mensajes
-    function handleKeyPress(event) {
-        if (event.key === 'Enter') {
-            sendQuery();
-        }
-    }
+    // Grabar audio
+    let mediaRecorder;
+    const chunks = [];
+    let recordingStartTime;
+    let recordingTimer;
 
-    // Asignar eventos de Enter y click para el input de consulta
-    const queryInput = document.getElementById('query');
-    if (queryInput) {
-        queryInput.addEventListener('keypress', handleKeyPress);
-    }
+    if (micButton) {
+        micButton.addEventListener('mousedown', async function () {
+            micButton.src = '/static/img/stop.png';  // Cambiar el icono al de stop
 
-    const sendButton = document.getElementById('sendButton');
-    if (sendButton) {
-        sendButton.addEventListener('click', () => sendQuery());
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
 
-    }
-    attachButton.addEventListener('click', function () {
-        fileInput.click();  // Simula el clic en el input de archivo
-    });
+                mediaRecorder.ondataavailable = function (e) {
+                    chunks.push(e.data);
+                };
 
-    // Funcionalidad para enviar el archivo cuando se seleccione
-    fileInput.addEventListener('change', async function () {
-        const file = fileInput.files[0];
-        if (!file || !userId) return;
+                mediaRecorder.onstop = async function () {
+                    const audioBlob = new Blob(chunks, { type: 'audio/wav' });
+                    const formData = new FormData();
+                    formData.append('file', audioBlob, 'audio.wav');
+                    formData.append('user_id', userId);
 
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('user_id', userId);
+                    // Mostrar el reproductor de audio para el audio enviado
+                    const audioURL = URL.createObjectURL(audioBlob);
+                    const audioElement = document.createElement('audio');
+                    audioElement.controls = true;
+                    audioElement.src = audioURL;
 
-        try {
-            const response = await fetch('/module_manager/web-service/', {
-                method: 'POST',
-                body: formData
-            });
+                    const messageContainer = document.createElement("div");
+                    messageContainer.classList.add("message", "sent");
 
-            const data = await response.json();
-            if (response.ok) {
-                const messages = document.getElementById('messages');
-                const messageContainer = document.createElement("div");
-                messageContainer.classList.add("message", "sent");
+                    const timeStamp = document.createElement("span");
+                    timeStamp.classList.add("time");
+                    timeStamp.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-                const messageText = document.createElement("p");
-                messageText.textContent = `Archivo adjuntado: ${file.name}`;
+                    messageContainer.appendChild(audioElement);
+                    messageContainer.appendChild(timeStamp);
+                    messages.appendChild(messageContainer);
+                    messages.scrollTop = messages.scrollHeight;
 
-                const timeStamp = document.createElement("span");
-                timeStamp.classList.add("time");
-                timeStamp.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    try {
+                        const response = await fetch('/module_manager/web-service/', {
+                            method: 'POST',
+                            body: formData
+                        });
 
-                messageContainer.appendChild(messageText);
-                messageContainer.appendChild(timeStamp);
+                        const data = await response.json();
+                        if (response.ok) {
+                            const messageContainerReceived = document.createElement("div");
+                            messageContainerReceived.classList.add("message", "received");
 
-                messages.appendChild(messageContainer);
+                            const messageTextReceived = document.createElement("p");
+                            messageTextReceived.textContent = data.response;
 
-                // Scroll automático al final del chat
-                messages.scrollTop = messages.scrollHeight;
-            } else {
-                console.error('Error al enviar el archivo:', data.error);
+                            const timeStampReceived = document.createElement("span");
+                            timeStampReceived.classList.add("time");
+                            timeStampReceived.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                            messageContainerReceived.appendChild(messageTextReceived);
+                            messageContainerReceived.appendChild(timeStampReceived);
+
+                            // Agregar un reproductor de audio si hay un archivo de audio en la respuesta
+                            if (data.audio_response) {
+                                const audioPlayer = document.createElement('audio');
+                                audioPlayer.controls = true;
+                                audioPlayer.src = data.audio_response;
+                                messageContainerReceived.appendChild(audioPlayer);
+                            }
+
+                            messages.appendChild(messageContainerReceived);
+                            messages.scrollTop = messages.scrollHeight;
+                        }
+                    } catch (error) {
+                        console.error('Error al enviar el archivo de audio:', error);
+                    }
+                };
+
+                mediaRecorder.start();
+                recordingStartTime = Date.now();
+
+                // Mostrar contador
+                recordingTimer = setInterval(function () {
+                    const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+                    micButton.textContent = `${elapsed}s`;  // Mostrar el tiempo transcurrido
+                }, 1000);
+            } catch (error) {
+                console.error('Error al acceder al micrófono:', error);
             }
-        } catch (error) {
-            console.error('Error al procesar el archivo:', error);
-        }
-    });
-    // Funcionalidad para expandir el chat al hacer clic en expand-icon
+        });
+
+        micButton.addEventListener('mouseup', function () {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+                clearInterval(recordingTimer);
+                micButton.src = '/static/img/mic.png';  // Restaurar el icono del micrófono
+                micButton.textContent = '';  // Limpiar el contador
+            }
+        });
+    }
+
+    // Expandir el chat
     const expandIcon = document.querySelector('.expand-icon');
     if (expandIcon) {
         expandIcon.addEventListener('click', function () {
             const chatContainer = document.querySelector('.chat-container');
             chatContainer.classList.toggle('expanded');
-            
-            // Ajustar la altura y el scroll de los mensajes cuando se expande
+
             const messages = document.getElementById('messages');
             setTimeout(() => {
-                messages.scrollTop = messages.scrollHeight;  // Mantiene el scroll al final cuando se expande
+                messages.scrollTop = messages.scrollHeight;
             }, 300);
         });
     }
