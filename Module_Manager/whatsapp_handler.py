@@ -8,7 +8,7 @@ import hashlib
 
 logger = logging.getLogger(__name__)
 ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
-
+PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
 class WhatsAppHandler:
 
     def __init__(self):

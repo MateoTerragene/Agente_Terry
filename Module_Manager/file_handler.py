@@ -112,16 +112,22 @@ class FileHandler:
         Maneja una imagen, la guarda localmente y la sube a S3.
         """
         # Obtén la extensión del archivo desde el nombre original
-        file_extension = os.path.splitext(image_file.name)[1]  # Obtiene la extensión con el punto (e.g., '.jpg')
+        if is_whatsapp:
+            file_extension=os.path.splitext(image_file)[1]
+        else:     
+            file_extension = os.path.splitext(image_file.name)[1]  # Obtiene la extensión con el punto (e.g., '.jpg')
 
         # Define la ruta con un identificador único basado en el user_id y el timestamp
         local_image_path = f"tmp/{identifier}_{int(time.time())}{file_extension}"
         try:
             # Guardar el archivo localmente
-            os.makedirs(os.path.dirname(local_image_path), exist_ok=True)  # Crear directorio si no existe
             with open(local_image_path, 'wb+') as destination:
-                for chunk in image_file.chunks():
-                    destination.write(chunk)
+                if isinstance(image_file, str):
+                    with open(image_file, 'rb') as src_file:
+                        destination.write(src_file.read())
+                else:
+                    for chunk in image_file.chunks():
+                        destination.write(chunk)
 
             # Verificar que el archivo existe antes de subirlo a S3
             if not os.path.exists(local_image_path):

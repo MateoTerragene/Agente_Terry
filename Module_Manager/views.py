@@ -32,9 +32,14 @@ from django.db import connections, DatabaseError
 load_dotenv()
 logger = logging.getLogger(__name__)
 
+
 def convertir_enlaces(texto):
     url_regex = re.compile(r'(https?://[^\s]+)')
     return url_regex.sub(r'<a href="\1" target="_blank">\1</a>', texto)
+
+
+
+
 
 @method_decorator(csrf_exempt, name='dispatch')
 class ClassifyQueryView(View):
@@ -100,9 +105,12 @@ class ClassifyQueryView(View):
                         response=response,
                         task_type=task_type
                     )
-
-                    response = convertir_enlaces(response)
-                    return JsonResponse({'response': response, 'audio_response': response_audio_url})
+                    print("###########################################")
+                    print(f"response antes de convertir enlaces: {response}")
+                    response_text = convertir_enlaces(response)
+                    print(f"response despuess de convertir enlaces: {response}")
+                    print("*********************************************")
+                    return JsonResponse({'response': response_text, 'audio_response': response_audio_url})
 
                 elif file_type.startswith('image/'):
                     # Manejo de archivo de imagen
@@ -155,9 +163,12 @@ class ClassifyQueryView(View):
                 try:
                     # Clasificar la consulta
                     response_text, task_type = self.web_handler.handle_text_message(query, user_id, module_manager, thread)
-                    
-                    response = convertir_enlaces(response_text)
+                    print("*********************************************")
 
+                    print(f"response despuess de convertir enlaces: {response}")
+                    response = convertir_enlaces(response_text)
+                    print(f"response despuess de convertir enlaces: {response}")
+                    print("*********************************************")
                     # Guardar la interacción en la base de datos
                     UserInteraction.objects.create(
                         thread_id=thread.thread_id,

@@ -100,7 +100,7 @@ class WebHandler:
         """
         try:
             # Llamar a la función handle_image para manejar el archivo de imagen
-            task_type, response_text, s3_image_path = self.file_handler.handle_image(file, user_id, module_manager, thread)
+            task_type, response_text, s3_image_path = self.file_handler.handle_image(file, user_id, module_manager, thread,is_whatsapp=False)
 
             if not s3_image_path:
                 raise ValueError("Error al guardar la imagen en S3 o al procesarla.")
