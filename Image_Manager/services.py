@@ -121,11 +121,12 @@ class ImageManager:
             task: Tarea a procesar.
             s3_url: URL completa del archivo en S3.
         """
+        task.state = 'in_progress'
         # Asegúrate de que el bucket_name esté correctamente configurado
         if not self.bucket_name:
             print("Error: 'bucket_name' no está configurado. Verifica las variables de entorno.")
             task.response = "Error: 'bucket_name' no está configurado."
-            task.state = 'failed'
+            task.state = 'completed'
             return
 
         # Extraer la clave S3 desde la URL completa
@@ -134,7 +135,7 @@ class ImageManager:
         else:
             print("Error: La URL proporcionada no coincide con el bucket.")
             task.response = "Error: La URL proporcionada no coincide con el bucket."
-            task.state = 'failed'
+            task.state = 'completed'
             return
         
         print(f"Processing image with S3 key: {s3_key}")  # Print para ver el s3_key
@@ -144,7 +145,7 @@ class ImageManager:
 
         if presigned_url is None:
             task.response = "Error al generar la URL firmada de la imagen."
-            task.state = 'failed'
+            task.state = 'completed'
             print("Error al generar la URL firmada de la imagen.")
             return
 
@@ -165,7 +166,8 @@ class ImageManager:
                 response =self.RAG.handle_technical_query(query,task,thread)
             else:
                 task.response=description
+                task.state = 'completed'
         else:
             task.response = "No se pudo analizar la imagen."
-            task.state = 'failed'
+            task.state = 'completed'
             print("No se pudo analizar la imagen.")

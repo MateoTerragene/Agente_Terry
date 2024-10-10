@@ -105,6 +105,7 @@ class WebHandler:
             if not s3_image_path:
                 raise ValueError("Error al guardar la imagen en S3 o al procesarla.")
 
+            
             return task_type, response_text, s3_image_path
 
         except Exception as e:

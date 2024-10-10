@@ -137,7 +137,14 @@ class FileHandler:
 
             # Clasificar la consulta utilizando la URL de S3
             response_text, task_type = module_manager.classify_query(thread, s3_image_url, identifier, is_whatsapp)
-
+            # Verificar si el archivo temporal generado (con la extensión correcta) existe antes de eliminarlo
+            if os.path.exists(local_image_path):
+                os.remove(local_image_path)
+                logger.info(f"Archivo temporal eliminado: {local_image_path}")
+                print(f"Archivo temporal eliminado: {local_image_path}")
+            else:
+                logger.warning(f"El archivo {local_image_path} no existe. No se puede eliminar.")
+                print(f"El archivo {local_image_path} no existe. No se puede eliminar.")
             return task_type, response_text, s3_image_url 
 
         except Exception as e:
@@ -159,10 +166,10 @@ class FileHandler:
         try:
             file_name = os.path.basename(db_path)  # Solo el nombre del archivo, sin la ruta '/tmp/'
         
-            # Guardar el audio recibido en S3 antes de procesarlo
+            # Guardar el db recibido en S3 antes de procesarlo
             s3_file_path = self.save_file_to_s3(db_path, 'db')
             if not s3_file_path:
-                logger.error("Error al guardar el audio recibido en S3.")
+                logger.error("Error al guardar el db recibido en S3.")
                 return None, None  # Devuelve None para todos si ocurre un error
            
             
@@ -170,6 +177,13 @@ class FileHandler:
             
             response_text, task_type = module_manager.classify_query(thread, s3_file_path, identifier, is_whatsapp)
             print(f"responser_text_db_file_handler: {response_text}")
+            if os.path.exists(db_path):
+                os.remove(db_path)
+                logger.info(f"Archivo temporal eliminado: {db_path}")
+                print(f"Archivo temporal eliminado: {db_path}")
+            else:
+                logger.warning(f"El archivo {db_path} no existe. No se puede eliminar.")
+                print(f"El archivo {db_path} no existe. No se puede eliminar.")
             return response_text,task_type
         except Exception as e:
             logger.error(f"Error procesando archivo .db: {str(e)}")

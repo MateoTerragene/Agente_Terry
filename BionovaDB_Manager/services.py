@@ -71,6 +71,7 @@ class BionovaDBManager:
             if 'https://agente-terry.s3.amazonaws.com/db/' in query:
                 print("entro al if de dbmanager")
                 task.response=self.clear_pass(query)
+                task.state = 'completed'
             # Actualizar el estado de la tarea
             else:
 
