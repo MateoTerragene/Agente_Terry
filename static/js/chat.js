@@ -234,7 +234,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (micButton) {
         micButton.addEventListener('mousedown', async function () {
             micButton.src = '/static/img/stop.png';  // Cambiar el icono al de stop
-
+            chunks.length = 0;    
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 mediaRecorder = new MediaRecorder(stream);
@@ -248,61 +248,79 @@ document.addEventListener('DOMContentLoaded', function () {
                     const formData = new FormData();
                     formData.append('file', audioBlob, 'audio.wav');
                     formData.append('user_id', userId);
-
+                
                     // Mostrar el reproductor de audio para el audio enviado
                     const audioURL = URL.createObjectURL(audioBlob);
                     const audioElement = document.createElement('audio');
                     audioElement.controls = true;
                     audioElement.src = audioURL;
-
+                
                     const messageContainer = document.createElement("div");
                     messageContainer.classList.add("message", "sent");
-
+                
                     const timeStamp = document.createElement("span");
                     timeStamp.classList.add("time");
                     timeStamp.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
+                
                     messageContainer.appendChild(audioElement);
                     messageContainer.appendChild(timeStamp);
                     messages.appendChild(messageContainer);
                     messages.scrollTop = messages.scrollHeight;
-
+                
                     try {
                         const response = await fetch('/module_manager/web-service/', {
                             method: 'POST',
                             body: formData
                         });
-
+                
                         const data = await response.json();
                         if (response.ok) {
-                            const messageContainerReceived = document.createElement("div");
-                            messageContainerReceived.classList.add("message", "received");
-
-                            const messageTextReceived = document.createElement("p");
-                            messageTextReceived.textContent = data.response;
-
-                            const timeStampReceived = document.createElement("span");
-                            timeStampReceived.classList.add("time");
-                            timeStampReceived.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-                            messageContainerReceived.appendChild(messageTextReceived);
-                            messageContainerReceived.appendChild(timeStampReceived);
-
-                            // Agregar un reproductor de audio si hay un archivo de audio en la respuesta
-                            if (data.audio_response) {
-                                const audioPlayer = document.createElement('audio');
-                                audioPlayer.controls = true;
-                                audioPlayer.src = data.audio_response;
-                                messageContainerReceived.appendChild(audioPlayer);
+                            // Manejar el texto de respuesta si existe
+                            if (data.response) {
+                                const messageContainerReceivedText = document.createElement("div");
+                                messageContainerReceivedText.classList.add("message", "received");
+                
+                                const messageTextReceived = document.createElement("p");
+                                messageTextReceived.innerHTML = data.response.replace(/\n/g, '<br>');  // Mostrar HTML correctamente
+                
+                                const timeStampReceivedText = document.createElement("span");
+                                timeStampReceivedText.classList.add("time");
+                                timeStampReceivedText.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                
+                                messageContainerReceivedText.appendChild(messageTextReceived);
+                                messageContainerReceivedText.appendChild(timeStampReceivedText);
+                
+                                messages.appendChild(messageContainerReceivedText);
                             }
-
-                            messages.appendChild(messageContainerReceived);
+                
+                            // Manejar el audio de respuesta si existe
+                            if (data.audio_response) {
+                                const messageContainerReceivedAudio = document.createElement("div");
+                                messageContainerReceivedAudio.classList.add("message", "received");
+                
+                                const audioPlayerReceived = document.createElement('audio');
+                                audioPlayerReceived.controls = true;
+                                audioPlayerReceived.src = data.audio_response;  // Reproductor de audio recibido
+                
+                                const timeStampReceivedAudio = document.createElement("span");
+                                timeStampReceivedAudio.classList.add("time");
+                                timeStampReceivedAudio.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                
+                                messageContainerReceivedAudio.appendChild(audioPlayerReceived);
+                                messageContainerReceivedAudio.appendChild(timeStampReceivedAudio);
+                
+                                messages.appendChild(messageContainerReceivedAudio);
+                            }
+                
+                            // Scroll automático al final del chat
                             messages.scrollTop = messages.scrollHeight;
                         }
                     } catch (error) {
                         console.error('Error al enviar el archivo de audio:', error);
                     }
                 };
+                
+                
 
                 mediaRecorder.start();
                 recordingStartTime = Date.now();

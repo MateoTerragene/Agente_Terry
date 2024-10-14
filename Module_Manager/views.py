@@ -33,10 +33,14 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 
-
 def convertir_enlaces(texto):
-    url_regex = re.compile(r'(https?://[^\s]+)')
-    return url_regex.sub(r'<a href="\1" target="_blank">\1</a>', texto)
+    # Detectar enlaces con formato Markdown y convertirlos a HTML
+    markdown_link_regex = re.compile(r'\[([^\]]+)\]\((https?://[^\s]+)\)')
+    
+    # Reemplazar el formato Markdown con HTML
+    texto_converted = markdown_link_regex.sub(r'<a href="\2" target="_blank">\1</a>', texto)
+    
+    return texto_converted
 
 
 
@@ -107,6 +111,7 @@ class ClassifyQueryView(View):
                     print("###########################################")
                     print(f"response antes de convertir enlaces: {response}")
                     response_text = convertir_enlaces(response)
+                    # response_text=response
                     print(f"response despuess de convertir enlaces: {response_text}")
                     print("*********************************************")
                     return JsonResponse({'response': response_text, 'audio_response': response_audio_url})

@@ -1,4 +1,5 @@
 import os
+import re
 import hashlib
 import boto3
 import logging
@@ -79,7 +80,8 @@ class FileHandler:
         # Generar respuesta de audio usando TTS
         try:
             print(f"Generando audio de respuesta usando TTS para el texto: {response_text}")
-            tts_audio_path = self.generate_tts_audio(thread, response_text,identifier)
+            response_text_sin_enlaces=self.remover_enlaces(response_text)
+            tts_audio_path = self.generate_tts_audio(thread, response_text_sin_enlaces,identifier)
             print(f"TTS generado en la ruta: {tts_audio_path}")
             
             if not tts_audio_path:
@@ -199,6 +201,7 @@ class FileHandler:
         """
         Genera una respuesta de audio utilizando TTS (Text to Speech) basada en el thread.
         """
+        text=self.remover_enlaces(text)
         VOICES = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
 
         def get_voice_for_thread(thread_id):
@@ -283,3 +286,10 @@ class FileHandler:
         except Exception as e:
             logger.error(f"Error subiendo el archivo a S3: {str(e)}")
             return None
+
+    def remover_enlaces(self, texto):
+        # Expresión regular para detectar enlaces en formato Markdown
+        url_regex = re.compile(r'\[([^\]]+)\]\((https?://[^\s]+)\)')
+        
+        # Reemplazar los enlaces con solo el texto visible
+        return url_regex.sub(r'\1', texto)
