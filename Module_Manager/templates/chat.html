@@ -33,7 +33,9 @@
         </div>
         
         <script src="{% static 'js/chat.js' %}"></script>
-        <div class="chat-messages" id="messages" style="background-image: url('{% static 'img/fondo-wh-oscuro.png' %}');"></div>
+        <div class="chat-messages" id="messages" style="background-image: url('{% static 'img/fondo-wh-oscuro.png' %}');">
+            {{ response|safe }}
+        </div>
         <div class="chat-input">
             <input type="text" id="query" placeholder="Write a message..." />
             <input type="file" id="fileInput" style="display: none;">

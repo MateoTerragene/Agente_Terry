@@ -33,11 +33,10 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 
+
 def convertir_enlaces(texto):
     url_regex = re.compile(r'(https?://[^\s]+)')
     return url_regex.sub(r'<a href="\1" target="_blank">\1</a>', texto)
-
-
 
 
 
@@ -108,7 +107,7 @@ class ClassifyQueryView(View):
                     print("###########################################")
                     print(f"response antes de convertir enlaces: {response}")
                     response_text = convertir_enlaces(response)
-                    print(f"response despuess de convertir enlaces: {response}")
+                    print(f"response despuess de convertir enlaces: {response_text}")
                     print("*********************************************")
                     return JsonResponse({'response': response_text, 'audio_response': response_audio_url})
 
@@ -165,7 +164,7 @@ class ClassifyQueryView(View):
                     response_text, task_type = self.web_handler.handle_text_message(query, user_id, module_manager, thread)
                     print("*********************************************")
 
-                    print(f"response despuess de convertir enlaces: {response}")
+                    print(f"response antes de convertir enlaces: {response_text}")
                     response = convertir_enlaces(response_text)
                     print(f"response despuess de convertir enlaces: {response}")
                     print("*********************************************")

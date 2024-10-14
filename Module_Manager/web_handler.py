@@ -24,6 +24,7 @@ class WebHandler:
         """
         try:
             response, task_type = self.file_handler.handle_text(thread, message, user_id, module_manager,is_whatsapp=False)
+            print(f"response dentro de web_handler: {response}")
             return response, task_type
 
         except Exception as e:
