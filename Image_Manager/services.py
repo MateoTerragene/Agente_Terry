@@ -74,6 +74,7 @@ class ImageManager:
                         {
                             "Brand": "Brand Name",
                             "Product Code": "Code",
+                            "Lot": "Lot",
                             "Description": "description"
                             
                         }
@@ -160,10 +161,11 @@ class ImageManager:
             
             # Obtener el código del producto o "desconocido" si no está presente
             product = analysis_result.get("Product Code", "desconocido")
+            lot=analysis_result.get("Lot", "desconocido")
             description=analysis_result.get("Description", "desconocido")
             if product!=None:
-                query=f"product: {product}, description:{description}"
-                response =self.RAG.handle_technical_query(query,task,thread)
+                query=f"product: {product}, lot: {lot}, description:{description}"
+                self.RAG.handle_technical_query(query,task,thread)
             else:
                 task.response=description
                 task.state = 'completed'
