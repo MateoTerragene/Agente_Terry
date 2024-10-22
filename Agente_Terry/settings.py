@@ -26,7 +26,7 @@ INSTALLED_APPS = [
     'File_Manager',
     'RAG_Manager',
     'PO_Manager',
-    'Complaint_Manager',
+    'Form_Manager',
     'LLM_Bottleneck',
     'rest_framework',
     'dbviewer',

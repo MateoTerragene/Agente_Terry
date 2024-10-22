@@ -1,6 +1,6 @@
 from django.apps import AppConfig
 
 
-class ComplaintManagerConfig(AppConfig):
+class FormManagerConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
-    name = "Complaint_Manager"
+    name = "Form_Manager"

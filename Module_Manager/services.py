@@ -9,7 +9,7 @@ from Module_Manager.Tasks import Task
 from File_Manager.services import FileManager
 from LLM_Bottleneck.services import LLM_Bottleneck
 from RAG_Manager.services import TechnicalQueryAssistant
-from Complaint_Manager.services import ComplaintManager
+from Form_Manager.services import FormManager
 from PO_Manager.services import PurchaseOpportunity
 from BionovaDB_Manager.services import BionovaDBManager
 from Image_Manager.services import ImageManager
@@ -26,21 +26,21 @@ class ModuleManager:
             self.prompt = f"""Eres un asistente que clasifica consultas de usuarios e identifica tareas a realizar. Puede haber múltiples tareas en una consulta. \
                         Tu respuesta debe ser un JSON que indique si has recibido una 'fileRequest' (solicitud de documentos), una 'technical_query' (consulta técnica), \
                         o 'clear_DB' (blanqueo reset de password o contraseña).\
-                        Solo debes clasificar como 'complaint' si el usuario menciona explícitamente intenciones de presentar un reclamo \
+                        Solo debes clasificar como 'form' si el usuario menciona explícitamente intenciones de convertirse en distribuidor de la marca Terragene \
                         Los documentos que te puede pedir el usuario son: {self.docs}.\
                         Si recibes algo que contenga 'https://agente-terry.s3.amazonaws.com/images/', clasifícalo como 'image_submission'.\
                         Si recibes algo que contenga 'https://agente-terry.s3.amazonaws.com/db/', clasifícalo como 'clear_DB'.\
                         Debes responder únicamente en el siguiente formato JSON: \
                         {{
                             "tasks": [
-                                "technical_query" | "fileRequest" | "complaint" | "purchase_opportunity" | "image_submission" | "clear_DB"
+                                "technical_query" | "fileRequest" | "form" | "purchase_opportunity" | "image_submission" | "clear_DB"
                             ]
                         }}"""
 
             self.tasks = []
             # self.task = Task()
             self.file_manager = FileManager()
-            self.complaint_manager=ComplaintManager()
+            self.form_manager=FormManager()
             self.PO_manager = PurchaseOpportunity()
             self.image_manager = ImageManager()
          
@@ -118,9 +118,9 @@ class ModuleManager:
             self.LLM_BN.receive_task(self.tasks[0].clone())
     
             
-        elif self.tasks[0].task_type == "complaint":
-            print("Resolviendo reclamo...")
-            self.complaint_manager.handle_complaint(self.query,self.tasks[0],thread)
+        elif self.tasks[0].task_type == "form":
+            print("Resolviendo Form...")
+            self.form_manager.handle_form(self.query,self.tasks[0],thread)
            
             self.LLM_BN.receive_task(self.tasks[0].clone())
             # task.update_state('completed')
