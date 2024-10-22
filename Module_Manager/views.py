@@ -108,12 +108,12 @@ class ClassifyQueryView(View):
                         response=response,
                         task_type=task_type
                     )
-                    print("###########################################")
-                    print(f"response antes de convertir enlaces: {response}")
+                    # print("###########################################")
+                    # print(f"response antes de convertir enlaces: {response}")
                     response_text = convertir_enlaces(response)
                     # response_text=response
-                    print(f"response despuess de convertir enlaces: {response_text}")
-                    print("*********************************************")
+                    # print(f"response despuess de convertir enlaces: {response_text}")
+                    # print("*********************************************")
                     return JsonResponse({'response': response_text, 'audio_response': response_audio_url})
 
                 elif file_type.startswith('image/'):
