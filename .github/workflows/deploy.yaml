@@ -23,14 +23,23 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Install SSH key
+      - name: Set up SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
         run: |
+          sudo apt-get install -y openssh-client
+          eval $(ssh-agent -s)
+          echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+          chmod 700 ~/.ssh
+          echo "$SSH_KNOWN_HOSTS" >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
 
       - name: Deploy to EC2
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
         run: |
           # Create deployment script
           echo "#!/bin/bash
@@ -67,16 +76,18 @@ jobs:
           docker system prune -af --force --volumes" > deploy.sh
           
           # Copy and execute deployment script
-          scp -o StrictHostKeyChecking=no deploy.sh ubuntu@${{ secrets.EC2_HOST }}:${{ env.PROJECT_PATH }}/
-          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} "chmod +x ${{ env.PROJECT_PATH }}/deploy.sh && ${{ env.PROJECT_PATH }}/deploy.sh"
+          scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null deploy.sh ubuntu@${EC2_HOST}:${{ env.PROJECT_PATH }}/
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ubuntu@${EC2_HOST} "chmod +x ${{ env.PROJECT_PATH }}/deploy.sh && ${{ env.PROJECT_PATH }}/deploy.sh"
 
       - name: Verify Deployment
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
         run: |
           # Wait for deployment to complete
           sleep 30
           
           # Check container status
-          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} "cd ${{ env.PROJECT_PATH }} && docker-compose ps"
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ubuntu@${EC2_HOST} "cd ${{ env.PROJECT_PATH }} && docker-compose ps"
 
       - name: Deployment Status Notification
         if: always()
