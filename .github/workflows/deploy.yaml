@@ -23,11 +23,11 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Install AWS CLI
+      - name: Update AWS CLI
         run: |
           curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
           unzip awscliv2.zip
-          sudo ./aws/install
+          sudo ./aws/install --update
 
       - name: Check AWS SSM connectivity
         run: |
@@ -92,19 +92,12 @@ jobs:
             --parameters commands=["cd ${{ env.PROJECT_PATH }} && docker-compose ps"] \
             --output text
 
-      - name: Send Notification
+      - name: Deployment Status Notification
         if: always()
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const { status } = context;
-            const message = status === 'success' 
-              ? '✅ Deployment completed successfully!' 
-              : '❌ Deployment failed!';
-            
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: message
-            });
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "✅ Deployment completed successfully!"
+          else
+            echo "❌ Deployment failed!"
+            exit 1
+          fi
