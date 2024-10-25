@@ -1,4 +1,4 @@
-name: Deploy to AWS EC2 with SSM and SCP
+name: Deploy to AWS EC2 with SSH
 
 on:
   push:
@@ -23,15 +23,12 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Update AWS CLI
+      - name: Install SSH key
         run: |
-          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-          unzip awscliv2.zip
-          sudo ./aws/install --update
-
-      - name: Check AWS SSM connectivity
-        run: |
-          aws ssm describe-instance-information
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
       - name: Deploy to EC2
         run: |
@@ -57,7 +54,7 @@ jobs:
           docker-compose down
           
           # Remove old images
-          docker system prune -af
+          docker system prune -af --force
           
           # Build and start new containers
           docker-compose build --no-cache
@@ -67,18 +64,11 @@ jobs:
           docker-compose ps
           
           # Clean up old images and containers
-          docker system prune -af --volumes" > deploy.sh
+          docker system prune -af --force --volumes" > deploy.sh
           
-          # Make script executable
-          chmod +x deploy.sh
-          
-          # Copy deployment script to EC2
-          aws ssm send-command \
-            --instance-ids ${{ secrets.EC2_INSTANCE_ID }} \
-            --document-name "AWS-RunShellScript" \
-            --parameters commands=["chmod +x ${{ env.PROJECT_PATH }}/deploy.sh && ${{ env.PROJECT_PATH }}/deploy.sh"] \
-            --comment "Deploy application using docker-compose" \
-            --output text
+          # Copy and execute deployment script
+          scp -o StrictHostKeyChecking=no deploy.sh ubuntu@${{ secrets.EC2_HOST }}:${{ env.PROJECT_PATH }}/
+          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} "chmod +x ${{ env.PROJECT_PATH }}/deploy.sh && ${{ env.PROJECT_PATH }}/deploy.sh"
 
       - name: Verify Deployment
         run: |
@@ -86,11 +76,7 @@ jobs:
           sleep 30
           
           # Check container status
-          aws ssm send-command \
-            --instance-ids ${{ secrets.EC2_INSTANCE_ID }} \
-            --document-name "AWS-RunShellScript" \
-            --parameters commands=["cd ${{ env.PROJECT_PATH }} && docker-compose ps"] \
-            --output text
+          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} "cd ${{ env.PROJECT_PATH }} && docker-compose ps"
 
       - name: Deployment Status Notification
         if: always()
