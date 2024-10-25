@@ -1,126 +1,46 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-    <title>Chat with AI</title>
-    <style>
-        body { font-family: Arial, sans-serif; }
-        .chat-container { width: 50%; margin: auto; padding-top: 50px; }
-        .message { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 5px; }
-        .message.user { background-color: #f0f0f0; }
-        .message.ai { background-color: #e0ffe0; }
-        .input-container { display: flex; margin-top: 20px; }
-        .input-container input { flex: 1; padding: 10px; }
-        .input-container button { padding: 10px; }
-        .loading { font-style: italic; color: #999; }
-        .user-id-container { margin-bottom: 20px; }
-        .user-id-container input { padding: 10px; width: 100%; }
-    </style>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script type="text/javascript">
-        MathJax = {
-            tex: {
-                inlineMath: [['\\(', '\\)']],
-                displayMath: [['\\[', '\\]']],
-                processEscapes: true,
-            },
-            svg: {
-                fontCache: 'global'
-            }
-        };
-    </script>
-    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-    <script>
-        console.log('MathJax loaded:', !!window.MathJax);
-    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+    <title>Terry</title>
+    {% load static %}
+   
+    <link rel="stylesheet" href="{% static 'styles.css' %}?v=1.0">
 </head>
 <body>
     <div class="chat-container">
-        <div class="user-id-container">
-            <input type="text" id="user_id" placeholder="Ingrese el ID de usuario">
+        <div class="chat-header">
+            <img src="{% static 'img/hand.svg' %}" alt="Avatar" class="avatar">
+            
+            <div class="chat-user-info">
+                <h3>Terry</h3>
+                <p>Online</p>
+            </div>
+            <div class="chat-header-icons">
+                <img id="new-thread-icon" title="Create new thread" data-url="{% url 'create_thread' %}" alt="Nuevo Thread" src="{% static 'img/new-thread.png' %}" />
+                <img class="expand-icon" title="Expand" alt="Expandir" src="{% static 'img/grupo-641.png' %}" />
+                <a href="/logout/" title="Logout"> <!-- Enlace para redirigir al logout -->
+                    <img class="logout" alt="Logout" src="{% static 'img/grupo-179.png' %}" />
+                </a>
+            </div>
+            
         </div>
-        <div id="messages"></div>
-        <div class="input-container">
-            <input type="text" id="query" placeholder="Escribe tu consulta..." onkeypress="handleKeyPress(event)">
-            <button id="sendButton" onclick="sendQuery()">Enviar</button>
+        <div class="disclaimer">
+            <p>Terry can make mistakes. Consider checking important information.</p>
         </div>
+        
+        <script src="{% static 'js/chat.js' %}"></script>
+        <div class="chat-messages" id="messages" style="background-image: url('{% static 'img/fondo-wh-oscuro.png' %}');"></div>
+        <div class="chat-input">
+            <input type="text" id="query" placeholder="Write a message..." />
+            <img id="sendButton" src="{% static 'img/sent.png' %}" alt="Enviar" class="send-icon">
+        </div>
+        
+        <input type="hidden" id="user_id" value="{{ user_id }}">
     </div>
-    <script>
-        async function sendQuery() {
-            const userId = document.getElementById('user_id').value.trim();
-            const query = document.getElementById('query').value.trim();
-            if (userId === '' || query === '') return;
-
-            const sendButton = document.getElementById('sendButton');
-            sendButton.disabled = true;
-
-            const messages = document.getElementById('messages');
-            messages.innerHTML += `<div class="message user">${query}</div>`;
-            messages.innerHTML += `<div class="message ai loading">Procesando...</div>`;
-            document.getElementById('query').value = '';
-
-            try {
-                const response = await fetch(`/module_manager/`, {  // Apunta a ClassifyQueryView
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCookie('csrftoken')
-                    },
-                    body: JSON.stringify({ user_id: userId, query })
-                });
-
-                const data = await response.json();
-
-                const loadingElement = messages.querySelector('.loading');
-                if (loadingElement) {
-                    loadingElement.remove();
-                }
-
-                if (response.ok) {
-                    let formattedResponse = data.response
-                        .replace(/\n/g, '<br>')
-                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-
-                    messages.innerHTML += `<div class="message ai">${formattedResponse}</div>`;
-
-                    if (window.MathJax) {
-                        MathJax.typesetPromise().then(() => {
-                            console.log('MathJax typesetting complete');
-                        }).catch((err) => console.error('MathJax typesetting failed: ', err));
-                    }
-                } else {
-                    messages.innerHTML += `<div class="message ai">Error: ${data.error}</div>`;
-                }
-            } catch (error) {
-                console.error("Error: ", error);
-                const loadingElement = messages.querySelector('.loading');
-                if (loadingElement) {
-                    loadingElement.remove();
-                }
-                messages.innerHTML += `<div class="message ai">Error al procesar la consulta.</div>`;
-            } finally {
-                sendButton.disabled = false;
-            }
-        }
-        function handleKeyPress(event) {
-            if (event.key === 'Enter') {
-                sendQuery();
-            }
-        }
-
-        function getCookie(name) {
-            let cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
-                    }
-                }
-            }
-            return cookieValue;
-        }
-    </script>
+    
 </body>
 </html>

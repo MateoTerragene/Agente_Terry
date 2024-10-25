@@ -17,3 +17,5 @@ openpyxl==3.1.2
 pydub
 boto3
 gunicorn
+bcrypt
+passlib

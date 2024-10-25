@@ -26,6 +26,7 @@ client.api_key = os.getenv('OPENAI_API_KEY')
 
 class DBViewerView(LoginRequiredMixin, View):
     template_name = ''
+    login_url = '/dbviewer/login/'  # URL de inicio de sesión
     def export_to_excel(self, columns, rows, file_name='export.xlsx'):
         """Función para exportar los datos de una tabla a formato Excel."""
         df = pd.DataFrame(rows, columns=columns)

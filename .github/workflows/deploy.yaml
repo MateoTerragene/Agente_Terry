@@ -1,0 +1,110 @@
+name: Deploy to AWS EC2 with SSM and SCP
+
+on:
+  push:
+    branches: [ "deployment" ]
+
+env:
+  PROJECT_PATH: /home/ubuntu/Agente_Terry
+  DOCKER_COMPOSE_FILE: docker-compose.yaml
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Install AWS CLI
+        run: |
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip awscliv2.zip
+          sudo ./aws/install
+
+      - name: Check AWS SSM connectivity
+        run: |
+          aws ssm describe-instance-information
+
+      - name: Deploy to EC2
+        run: |
+          # Create deployment script
+          echo "#!/bin/bash
+          cd ${{ env.PROJECT_PATH }}
+          
+          # Backup existing .env if it exists
+          if [ -f .env ]; then
+            cp .env .env.backup
+          fi
+          
+          # Pull latest changes
+          git fetch --all
+          git reset --hard origin/deployment
+          
+          # Restore .env file
+          if [ -f .env.backup ]; then
+            cp .env.backup .env
+          fi
+          
+          # Stop running containers
+          docker-compose down
+          
+          # Remove old images
+          docker system prune -af
+          
+          # Build and start new containers
+          docker-compose build --no-cache
+          docker-compose up -d
+          
+          # Check containers status
+          docker-compose ps
+          
+          # Clean up old images and containers
+          docker system prune -af --volumes" > deploy.sh
+          
+          # Make script executable
+          chmod +x deploy.sh
+          
+          # Copy deployment script to EC2
+          aws ssm send-command \
+            --instance-ids ${{ secrets.EC2_INSTANCE_ID }} \
+            --document-name "AWS-RunShellScript" \
+            --parameters commands=["chmod +x ${{ env.PROJECT_PATH }}/deploy.sh && ${{ env.PROJECT_PATH }}/deploy.sh"] \
+            --comment "Deploy application using docker-compose" \
+            --output text
+
+      - name: Verify Deployment
+        run: |
+          # Wait for deployment to complete
+          sleep 30
+          
+          # Check container status
+          aws ssm send-command \
+            --instance-ids ${{ secrets.EC2_INSTANCE_ID }} \
+            --document-name "AWS-RunShellScript" \
+            --parameters commands=["cd ${{ env.PROJECT_PATH }} && docker-compose ps"] \
+            --output text
+
+      - name: Send Notification
+        if: always()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const { status } = context;
+            const message = status === 'success' 
+              ? '✅ Deployment completed successfully!' 
+              : '❌ Deployment failed!';
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: message
+            });

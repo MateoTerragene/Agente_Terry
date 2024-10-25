@@ -55,9 +55,16 @@ class ThreadManager:
 
     def create_thread(self, user_id, is_whatsapp=False, retries=3, delay=5):
         try:
+            # Ajustar el identificador para WhatsApp o ID de usuario
+            if is_whatsapp:
+                # Para WhatsApp asumimos que user_id es un número de teléfono o identificador similar (string o int)
+                identifier = user_id  # Si es WhatsApp, el user_id puede ser directamente el número de teléfono
+            else:
+                # Si no es WhatsApp, se espera que user_id sea una instancia de usuario o un int
+                identifier = user_id if isinstance(user_id, int) else user_id.id  # Usamos el ID si es un objeto de usuario
+
             for attempt in range(retries):
                 try:
-                    identifier = user_id if is_whatsapp else user_id.id  # Ajuste para cuando es WhatsApp
                     print(f"Intentando crear un thread en OpenAI para el usuario {identifier}...")
                     openai_thread = self.client.beta.threads.create()
                     thread_id = openai_thread.id
@@ -71,10 +78,11 @@ class ThreadManager:
                     else:
                         raise e
 
-            # Crear el thread en la base de datos default (SQLite)
-            identifier = user_id if is_whatsapp else user_id.id  # Ajuste para cuando es WhatsApp
+            # Crear el thread en la base de datos (SQLite o Postgres)
             print(f"Creando thread en la base de datos Postgres SQL para el usuario con identificador {identifier}...")
-            thread = Thread.objects.using('default').create(user_id=identifier, thread_id=thread_id)
+
+            # Convertimos el ID a string para almacenarlo correctamente en el campo CharField
+            thread = Thread.objects.using('default').create(user_id=str(identifier), thread_id=thread_id)
             thread.update_last_activity()
             print(f"Thread guardado en la base de datos Postgres SQL con ID {thread.thread_id}")
 

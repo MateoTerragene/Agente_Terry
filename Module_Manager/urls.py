@@ -1,9 +1,9 @@
 from django.urls import path
-from .views import ClassifyQueryView, ChatView, WhatsAppQueryView
+from .views import ClassifyQueryView, WhatsAppQueryView, UserView  # Importa la nueva vista
 
 urlpatterns = [
-    path('web-service', ClassifyQueryView.as_view(), name='classify_query'),
-    path('chat/', ChatView.as_view(), name='chat'),
-    path('whatsapp_query/', WhatsAppQueryView.as_view(), name='whatsapp_query')
-
+    path('', UserView.as_view(), name='home'),  # Ruta para la vista principal
+    path('whatsapp_query/', WhatsAppQueryView.as_view(), name='whatsapp_query'),
+    path('web-service/', ClassifyQueryView.as_view(), name='web_service'),
+    path('create-thread/', UserView.as_view(), name='create_thread'),  # Ruta para crear un nuevo thread
 ]
