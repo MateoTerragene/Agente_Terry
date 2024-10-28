@@ -244,9 +244,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 };
 
                 mediaRecorder.onstop = async function () {
-                    const audioBlob = new Blob(chunks, { type: 'audio/wav' });
+                    const audioBlob = new Blob(chunks, { type: 'audio/mp3' });
                     const formData = new FormData();
-                    formData.append('file', audioBlob, 'audio.wav');
+                    formData.append('file', audioBlob, 'audio.mp3');
                     formData.append('user_id', userId);
                 
                     // Mostrar el reproductor de audio para el audio enviado

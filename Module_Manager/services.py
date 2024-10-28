@@ -83,7 +83,7 @@ class ModuleManager:
         #     self.tasks.clear()    
         completed_task_type = self.process_tasks(thread, user_identifier, is_whatsapp)
         resp= self.LLM_BN.generate_tasks_response(query,thread)
-        
+        print(f"respuesta en module_manager/classify_query: {resp}")
         return resp, completed_task_type 
      
 

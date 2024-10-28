@@ -86,7 +86,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 mediaRecorder.onstop = async () => {
                     // Crear un Blob del audio grabado
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
                     const audioURL = URL.createObjectURL(audioBlob);
 
                     // Insertar el reproductor de audio en el chat
@@ -107,7 +107,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     // Enviar el archivo al servidor
                     const formData = new FormData();
-                    formData.append('file', audioBlob, 'audio.wav');
+                    formData.append('file', audioBlob, 'audio.mp3');
                     formData.append('user_id', userId);
 
                     try {
