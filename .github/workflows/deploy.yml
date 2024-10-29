@@ -17,11 +17,11 @@ jobs:
         uses: shimataro/ssh-key-action@v2
         with:
           key: ${{ secrets.EC2_SSH_KEY }}
-          known_hosts: 100.27.3.89
+          known_hosts: 100.27.3.89:1555
 
       - name: Deploy to EC2
         run: |
-          ssh -o StrictHostKeyChecking=no ubuntu@100.27.3.89 '
+          ssh -o StrictHostKeyChecking=no -p 1555 ubuntu@100.27.3.89 '
           cd /home/ubuntu/Agente_Terry &&
           git pull &&
           sudo docker compose down &&
