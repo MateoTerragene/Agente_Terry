@@ -20,31 +20,34 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Install SSH key
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Debug SSH Connection
+      - name: Test SSH Connection
         run: |
           echo "Testing SSH connection..."
           echo "Host: ${{ secrets.EC2_HOST }}"
-          ssh-keyscan -v -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts 2>&1 || echo "ssh-keyscan failed"
-          
-          # Test SSH connection
-          ssh -v ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'echo "SSH Connection Successful"' || echo "SSH connection failed"
+          # Add verbose output and connection timeout
+          ssh -v -o ConnectTimeout=10 ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'echo "SSH Connection Successful"'
 
       - name: Copy files to EC2
         if: success()
         run: |
           echo "Starting file copy..."
-          scp -v -r docker-compose.yml .env* ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:/home/ubuntu/Agente_Terry/ || echo "SCP failed for docker-compose and env files"
-          scp -v -r * ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:/home/ubuntu/Agente_Terry/ || echo "SCP failed for remaining files"
+          rsync -av --progress \
+            --exclude '.git' \
+            --exclude '.github' \
+            --exclude 'node_modules' \
+            ./ ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:/home/ubuntu/Agente_Terry/
 
       - name: Deploy on EC2
         if: success()
         run: |
-          ssh -v ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} '
+          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} '
             cd /home/ubuntu/Agente_Terry &&
             docker compose down &&
             docker compose up --build -d
