@@ -1,4 +1,4 @@
-name: Deploy to AWS EC2
+name: Deploy to EC2
 
 on:
   push:
@@ -8,47 +8,22 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: Install SSH Key
+        uses: shimataro/ssh-key-action@v2
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          known_hosts: 100.27.3.89
 
-      - name: Setup SSH
+      - name: Deploy to EC2
         run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
-
-      - name: Test SSH Connection
-        run: |
-          echo "Testing SSH connection..."
-          echo "Host: ${{ secrets.EC2_HOST }}"
-          # Add verbose output and connection timeout
-          ssh -v -o ConnectTimeout=10 ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'echo "SSH Connection Successful"'
-
-      - name: Copy files to EC2
-        if: success()
-        run: |
-          echo "Starting file copy..."
-          rsync -av --progress \
-            --exclude '.git' \
-            --exclude '.github' \
-            --exclude 'node_modules' \
-            ./ ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:/home/ubuntu/Agente_Terry/
-
-      - name: Deploy on EC2
-        if: success()
-        run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} '
-            cd /home/ubuntu/Agente_Terry &&
-            docker compose down &&
-            docker compose up --build -d
+          ssh -o StrictHostKeyChecking=no ubuntu@100.27.3.89 '
+          cd /home/ubuntu/Agente_Terry &&
+          git pull &&
+          sudo docker compose down &&
+          sudo docker compose up --build -d
           '
