@@ -4,6 +4,8 @@ import logging
 import os
 import time
 import boto3
+import subprocess
+
 from django.conf import settings
 logger = logging.getLogger(__name__)
 
@@ -32,58 +34,71 @@ class WebHandler:
             return JsonResponse({'error': f"Error en el manejo del mensaje de texto: {str(e)}"}, status=500)
 
     def handle_audio_message(self, file, user_id, module_manager, thread):
-        """
-        Maneja la subida de archivos de audio, lo guarda en una ruta temporal y lo procesa.
-        
-        Args:
-            file (InMemoryUploadedFile): El archivo de audio recibido.
-            user_id (str): ID del usuario.
-            module_manager: Manejador de módulos.
-            thread: Hilo de conversación.
-        
-        Returns:
-            dict: Un diccionario con la transcripción del audio, el texto de la respuesta, la ruta del audio TTS, y el tipo de tarea.
-        """
+        audio_path = None
+        processed_audio_path = None
         try:
-            # Obtén la extensión del archivo desde el nombre original
-            file_extension = os.path.splitext(file.name)[1]  # Obtiene la extensión con el punto (e.g., '.wav')
-            
-            # Define la ruta temporal donde se almacenará el archivo de audio con la extensión correcta
-            audio_path = f"/tmp/{user_id}_{int(time.time())}{file_extension}"
+            # Obtén la extensión del archivo
+            file_extension = os.path.splitext(file.name)[1]
+            audio_path = f"tmp/{user_id}_{int(time.time())}{file_extension}"
             print(f"Ruta temporal del audio: {audio_path}")
             
-            # Guarda el archivo de audio en la ruta temporal
-            with open(audio_path, 'wb') as destination:
+            # Guarda el archivo de audio
+            with open(audio_path, 'wb+') as destination:
                 for chunk in file.chunks():
                     destination.write(chunk)
-            
+
             logger.info(f"Archivo de audio guardado temporalmente en {audio_path}")
-            print(f"Archivo de audio guardado temporalmente: {audio_path}")
             
+            # Acondicionar el audio usando FFmpeg
+            processed_audio_path = f"tmp/{user_id}_{int(time.time())}_processed.wav"
+            command = [
+                "ffmpeg",
+                "-i", audio_path,
+                "-ar", "16000",
+                "-ac", "1",
+                processed_audio_path
+            ]
+
+            try:
+                result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                if result.returncode != 0:
+                    logger.error(f"Error al procesar el audio: {result.stderr.decode()}")
+                    return None, None, None, None
+            except Exception as e:
+                logger.error(f"Error al ejecutar FFmpeg: {str(e)}")
+                return None, None, None, None
+            
+            logger.info(f"Audio procesado correctamente: {processed_audio_path}")
+
             # Procesar el audio utilizando FileHandler
-            response_text, tts_audio_path, s3_audio_path, transcribed_text_body, task_type = self.file_handler.handle_audio(audio_path, user_id, module_manager, thread)
-            
-            # Verifica si se ha procesado correctamente
+            try:
+                response_text, tts_audio_path, s3_audio_path, transcribed_text_body, task_type = self.file_handler.handle_audio(processed_audio_path, user_id, module_manager, thread)
+            except Exception as e:
+                logger.error(f"Error en la transcripción de audio: {str(e)}")
+                return None, None, None, None
+
             print(f"Transcripción: {transcribed_text_body}")
             print(f"Respuesta TTS audio path: {tts_audio_path}")
             print(f"S3 audio path: {s3_audio_path}")
-            
-            # Verificar si el archivo temporal generado (con la extensión correcta) existe antes de eliminarlo
-            if os.path.exists(audio_path):
-                os.remove(audio_path)
-                logger.info(f"Archivo temporal eliminado: {audio_path}")
-                print(f"Archivo temporal eliminado: {audio_path}")
-            else:
-                logger.warning(f"El archivo {audio_path} no existe. No se puede eliminar.")
-                print(f"El archivo {audio_path} no existe. No se puede eliminar.")
-            public_s3_audio_path= self.get_presigned_url(s3_audio_path)
-            # Devolver los detalles del procesamiento
+
+            public_s3_audio_path = self.get_presigned_url(s3_audio_path)
             return transcribed_text_body, task_type, response_text, public_s3_audio_path
             
         except Exception as e:
             logger.error(f"Error manejando el archivo de audio: {str(e)}")
             print(f"Error en handle_audio_message: {str(e)}")
             return None
+
+        finally:
+            # Eliminar archivos temporales si existen
+            if audio_path and os.path.exists(audio_path):
+                os.remove(audio_path)
+                logger.info(f"Archivo temporal eliminado: {audio_path}")
+            
+            if processed_audio_path and os.path.exists(processed_audio_path):
+                os.remove(processed_audio_path)
+                logger.info(f"Archivo temporal procesado eliminado: {processed_audio_path}")
+
 
 
     def handle_image_message(self, file, user_id, thread, module_manager):
@@ -123,7 +138,7 @@ class WebHandler:
             file_extension = os.path.splitext(file.name)[1]  # Obtiene la extensión con el punto (e.g., '.wav')
             
             # Define la ruta temporal donde se almacenará el archivo de archivo db con la extensión correcta
-            db_path = f"/tmp/{user_id}_{thread.thread_id}_{int(time.time())}{file_extension}"
+            db_path = f"tmp/{user_id}_{thread.thread_id}_{int(time.time())}{file_extension}"
             print(f"Ruta temporal del archivo db: {db_path}")
             
             # Guarda el archivo de archivo db en la ruta temporal

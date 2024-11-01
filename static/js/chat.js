@@ -230,117 +230,121 @@ document.addEventListener('DOMContentLoaded', function () {
     const chunks = [];
     let recordingStartTime;
     let recordingTimer;
+    let isRecording = false; // Variable para controlar el estado de grabación
 
     if (micButton) {
-        micButton.addEventListener('mousedown', async function () {
-            micButton.src = '/static/img/stop.png';  // Cambiar el icono al de stop
-            chunks.length = 0;    
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(stream);
+        micButton.addEventListener('click', async function () {
+            if (!isRecording) {
+                // Iniciar la grabación
+                micButton.src = '/static/img/stop.png';  // Cambiar el icono al de stop
+                chunks.length = 0;    
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream);
 
-                mediaRecorder.ondataavailable = function (e) {
-                    chunks.push(e.data);
-                };
+                    mediaRecorder.ondataavailable = function (e) {
+                        chunks.push(e.data);
+                    };
 
-                mediaRecorder.onstop = async function () {
-                    const audioBlob = new Blob(chunks, { type: 'audio/mp3' });
-                    const formData = new FormData();
-                    formData.append('file', audioBlob, 'audio.mp3');
-                    formData.append('user_id', userId);
-                
-                    // Mostrar el reproductor de audio para el audio enviado
-                    const audioURL = URL.createObjectURL(audioBlob);
-                    const audioElement = document.createElement('audio');
-                    audioElement.controls = true;
-                    audioElement.src = audioURL;
-                
-                    const messageContainer = document.createElement("div");
-                    messageContainer.classList.add("message", "sent");
-                
-                    const timeStamp = document.createElement("span");
-                    timeStamp.classList.add("time");
-                    timeStamp.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                
-                    messageContainer.appendChild(audioElement);
-                    messageContainer.appendChild(timeStamp);
-                    messages.appendChild(messageContainer);
-                    messages.scrollTop = messages.scrollHeight;
-                
-                    try {
-                        const response = await fetch('/module_manager/web-service/', {
-                            method: 'POST',
-                            body: formData
-                        });
-                
-                        const data = await response.json();
-                        if (response.ok) {
-                            // Manejar el texto de respuesta si existe
-                            if (data.response) {
-                                const messageContainerReceivedText = document.createElement("div");
-                                messageContainerReceivedText.classList.add("message", "received");
-                
-                                const messageTextReceived = document.createElement("p");
-                                messageTextReceived.innerHTML = data.response.replace(/\n/g, '<br>');  // Mostrar HTML correctamente
-                
-                                const timeStampReceivedText = document.createElement("span");
-                                timeStampReceivedText.classList.add("time");
-                                timeStampReceivedText.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                
-                                messageContainerReceivedText.appendChild(messageTextReceived);
-                                messageContainerReceivedText.appendChild(timeStampReceivedText);
-                
-                                messages.appendChild(messageContainerReceivedText);
+                    mediaRecorder.onstop = async function () {
+                        const audioBlob = new Blob(chunks, { type: 'audio/mp3' });
+                        const formData = new FormData();
+                        formData.append('file', audioBlob, 'audio.mp3');
+                        formData.append('user_id', userId);
+                    
+                        // Mostrar el reproductor de audio para el audio enviado
+                        const audioURL = URL.createObjectURL(audioBlob);
+                        const audioElement = document.createElement('audio');
+                        audioElement.controls = true;
+                        audioElement.src = audioURL;
+                    
+                        const messageContainer = document.createElement("div");
+                        messageContainer.classList.add("message", "sent");
+                    
+                        const timeStamp = document.createElement("span");
+                        timeStamp.classList.add("time");
+                        timeStamp.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    
+                        messageContainer.appendChild(audioElement);
+                        messageContainer.appendChild(timeStamp);
+                        messages.appendChild(messageContainer);
+                        messages.scrollTop = messages.scrollHeight;
+                    
+                        try {
+                            const response = await fetch('/module_manager/web-service/', {
+                                method: 'POST',
+                                body: formData
+                            });
+                    
+                            const data = await response.json();
+                            if (response.ok) {
+                                // Manejar el texto de respuesta si existe
+                                if (data.response) {
+                                    const messageContainerReceivedText = document.createElement("div");
+                                    messageContainerReceivedText.classList.add("message", "received");
+                    
+                                    const messageTextReceived = document.createElement("p");
+                                    messageTextReceived.innerHTML = data.response.replace(/\n/g, '<br>');  // Mostrar HTML correctamente
+                    
+                                    const timeStampReceivedText = document.createElement("span");
+                                    timeStampReceivedText.classList.add("time");
+                                    timeStampReceivedText.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    
+                                    messageContainerReceivedText.appendChild(messageTextReceived);
+                                    messageContainerReceivedText.appendChild(timeStampReceivedText);
+                    
+                                    messages.appendChild(messageContainerReceivedText);
+                                }
+                    
+                                // Manejar el audio de respuesta si existe
+                                if (data.audio_response) {
+                                    const messageContainerReceivedAudio = document.createElement("div");
+                                    messageContainerReceivedAudio.classList.add("message", "received");
+                    
+                                    const audioPlayerReceived = document.createElement('audio');
+                                    audioPlayerReceived.controls = true;
+                                    audioPlayerReceived.src = data.audio_response;  // Reproductor de audio recibido
+                    
+                                    const timeStampReceivedAudio = document.createElement("span");
+                                    timeStampReceivedAudio.classList.add("time");
+                                    timeStampReceivedAudio.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    
+                                    messageContainerReceivedAudio.appendChild(audioPlayerReceived);
+                                    messageContainerReceivedAudio.appendChild(timeStampReceivedAudio);
+                    
+                                    messages.appendChild(messageContainerReceivedAudio);
+                                }
+                    
+                                // Scroll automático al final del chat
+                                messages.scrollTop = messages.scrollHeight;
                             }
-                
-                            // Manejar el audio de respuesta si existe
-                            if (data.audio_response) {
-                                const messageContainerReceivedAudio = document.createElement("div");
-                                messageContainerReceivedAudio.classList.add("message", "received");
-                
-                                const audioPlayerReceived = document.createElement('audio');
-                                audioPlayerReceived.controls = true;
-                                audioPlayerReceived.src = data.audio_response;  // Reproductor de audio recibido
-                
-                                const timeStampReceivedAudio = document.createElement("span");
-                                timeStampReceivedAudio.classList.add("time");
-                                timeStampReceivedAudio.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                
-                                messageContainerReceivedAudio.appendChild(audioPlayerReceived);
-                                messageContainerReceivedAudio.appendChild(timeStampReceivedAudio);
-                
-                                messages.appendChild(messageContainerReceivedAudio);
-                            }
-                
-                            // Scroll automático al final del chat
-                            messages.scrollTop = messages.scrollHeight;
+                        } catch (error) {
+                            console.error('Error al enviar el archivo de audio:', error);
                         }
-                    } catch (error) {
-                        console.error('Error al enviar el archivo de audio:', error);
-                    }
-                };
-                
-                
+                    };
 
-                mediaRecorder.start();
-                recordingStartTime = Date.now();
+                    mediaRecorder.start();
+                    recordingStartTime = Date.now();
 
-                // Mostrar contador
-                recordingTimer = setInterval(function () {
-                    const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
-                    micButton.textContent = `${elapsed}s`;  // Mostrar el tiempo transcurrido
-                }, 1000);
-            } catch (error) {
-                console.error('Error al acceder al micrófono:', error);
-            }
-        });
+                    // Mostrar contador
+                    recordingTimer = setInterval(function () {
+                        const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+                        micButton.textContent = `${elapsed}s`;  // Mostrar el tiempo transcurrido
+                    }, 1000);
 
-        micButton.addEventListener('mouseup', function () {
-            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-                mediaRecorder.stop();
-                clearInterval(recordingTimer);
-                micButton.src = '/static/img/mic.png';  // Restaurar el icono del micrófono
-                micButton.textContent = '';  // Limpiar el contador
+                    isRecording = true; // Cambia el estado a grabando
+                } catch (error) {
+                    console.error('Error al acceder al micrófono:', error);
+                }
+            } else {
+                // Detener la grabación
+                if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                    mediaRecorder.stop();
+                    clearInterval(recordingTimer);
+                    micButton.src = '/static/img/mic.png';  // Restaurar el icono del micrófono
+                    micButton.textContent = '';  // Limpiar el contador
+                    isRecording = false; // Cambia el estado a no grabando
+                }
             }
         });
     }

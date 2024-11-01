@@ -5,6 +5,7 @@ import requests
 import logging
 import uuid
 import hashlib
+import time
 
 logger = logging.getLogger(__name__)
 ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
@@ -28,7 +29,7 @@ class WhatsAppHandler:
         """
         Maneja un mensaje de audio de WhatsApp.
         """
-        audio_path = self.download_audio(audio_id)
+        audio_path = self.download_audio(audio_id, phone_number)
         if not audio_path:
             raise ValueError("No se pudo descargar el audio")
 
@@ -88,11 +89,17 @@ class WhatsAppHandler:
             logger.error(f"Error en download_image: {str(e)}")
             return None
         
-    def download_audio(self, media_id, save_path='/tmp/audio.ogg'):
+    def download_audio(self, media_id,phone_number ):
         try:
             url = f"https://graph.facebook.com/v20.0/{media_id}?access_token={ACCESS_TOKEN}"
             headers = {"Authorization": f"Bearer {ACCESS_TOKEN}"}
-
+            #file_extension .ogg funciona bien
+            # file_extension = os.path.splitext(file.name)[1]  # Obtiene la extensión con el punto (e.g., '.wav')
+            # Define la ruta temporal donde se almacenará el archivo de audio con la extensión correcta
+            file_extension='.ogg'
+            
+            save_path = f"tmp/{phone_number}_{int(time.time())}{file_extension}"
+            print(f"Ruta temporal del audio: {save_path}")
             response = requests.get(url, headers=headers)
             if response.status_code == 200:
                 media_url = response.json().get("url")

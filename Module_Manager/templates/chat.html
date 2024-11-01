@@ -7,8 +7,9 @@
 
     <title>Terry</title>
     {% load static %}
-   
+    
     <link rel="stylesheet" href="{% static 'styles.css' %}?v=1.0">
+    
 </head>
 <body>
     <div class="chat-container">
@@ -33,6 +34,7 @@
         </div>
         
         <script src="{% static 'js/chat.js' %}"></script>
+        
         <div class="chat-messages" id="messages" style="background-image: url('{% static 'img/fondo-wh-oscuro.png' %}');">
             {{ response|safe }}
         </div>

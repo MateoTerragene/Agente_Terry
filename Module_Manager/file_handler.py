@@ -7,6 +7,8 @@ from openai import OpenAI
 from dotenv import load_dotenv
 import time
 load_dotenv()
+import shutil
+# from pydub.utils import mediainfo
 
 AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
 AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
@@ -31,7 +33,7 @@ class FileHandler:
         print("Entrando a handle_audio de file_handler")
         
         # Mantén la ruta completa para el almacenamiento local, pero quita '/tmp/' antes de subir a S3
-        file_name = os.path.basename(audio_path)  # Solo el nombre del archivo, sin la ruta '/tmp/'
+        # file_name = os.path.basename(audio_path)  # Solo el nombre del archivo, sin la ruta '/tmp/'
         
         # Guardar el audio recibido en S3 antes de procesarlo
         received_audio_url = self.save_file_to_s3(audio_path, 'received_audio')
@@ -43,7 +45,13 @@ class FileHandler:
 
         try:
             transcribed_text_body=None
-            
+            # Ruta para depurar el audio guardado
+            # debug_audio_path = f"debug/{os.path.basename(audio_path)}"
+            # info = mediainfo(audio_path)
+            # print(info)  # Imprime propiedades como bitrate, sample rate, y codec
+            # Copia el archivo a la ruta de depuración
+            # shutil.copy(audio_path, debug_audio_path)
+            # print(f"Archivo de audio copiado para depuración en: {debug_audio_path}")
             # Transcribir el audio utilizando Whisper
             with open(audio_path, "rb") as audio_file:
                 transcript = self.client.audio.transcriptions.create(
@@ -197,7 +205,7 @@ class FileHandler:
             logger.error(f"Error procesando archivo .db: {str(e)}")
             return None, None
 
-    def generate_tts_audio(self, thread, text, user_id, file_extension='.ogg'):
+    def generate_tts_audio(self, thread, text, user_id, file_extension='.mp3'):
         """
         Genera una respuesta de audio utilizando TTS (Text to Speech) basada en el thread.
         """
@@ -216,7 +224,7 @@ class FileHandler:
             # Genera el nombre de archivo de salida
             output_audio_path = f"/tmp/{user_id}_{int(time.time())}{file_extension}"
             print(f"Ruta del archivo TTS generado: {output_audio_path}")
-
+            print(f"texto a generar TTS: {text}")
             # Generar el TTS utilizando OpenAI API
             response = self.client.audio.speech.create(
                 model="tts-1",

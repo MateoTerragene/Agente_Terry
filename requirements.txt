@@ -18,3 +18,4 @@ pydub
 boto3
 bcrypt
 passlib
+pydub
