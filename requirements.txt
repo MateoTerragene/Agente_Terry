@@ -19,3 +19,5 @@ boto3
 bcrypt
 passlib
 pydub
+dbr
+pylibdmtx

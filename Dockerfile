@@ -12,9 +12,12 @@ COPY requirements.txt /code/
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
-# Instala FFmpeg
-RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
-
+# Install FFmpeg and libdmtx libraries
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    libdmtx0b \
+    libdmtx-dev && \
+    rm -rf /var/lib/apt/lists/*
 # Copy the entire project
 COPY . /code/
 
