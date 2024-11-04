@@ -78,7 +78,7 @@ class ImageManager:
     # def initialize_reader(self):
     #     print("Inicializando el lector de códigos de barras...")
     #     reader = BarcodeReader()
-    #     reader.init_license("DLS2eyJvcmdhbml6YXRpb25JRCI6IjIwMDAwMSJ9")  # Reemplaza con la clave de Dynamsoft
+    #     reader.init_license("clavedynam")  # Reemplaza con la clave de Dynamsoft
     #     print("Lector inicializado.")
     #     return reader
 
@@ -136,8 +136,12 @@ class ImageManager:
             return []
         finally:
             # Eliminar el archivo temporal después de usarlo
-            if 'temp_image_path' in locals():
-                os.remove(temp_image_path)
+            if temp_image_path and os.path.exists(temp_image_path):
+                try:
+                    os.remove(temp_image_path)
+                    print(f"Temporary file {temp_image_path} removed.")
+                except Exception as e:
+                    print(f"Error removing temporary file {temp_image_path}: {e}")
 
 
 
@@ -227,56 +231,106 @@ class ImageManager:
             return None
 
     def process_image(self, task, s3_url, thread):
-        products=None
+        products = None
         query = ""
         task.state = 'in_progress'
 
-        if not self.bucket_name:
-            print("Error: 'bucket_name' no está configurado. Verifica las variables de entorno.")
-            task.response = "Error: 'bucket_name' no está configurado."
-            task.state = 'completed'
-            return
+        try:
+            if not self.bucket_name:
+                print("Error: 'bucket_name' no está configurado. Verifica las variables de entorno.")
+                task.response = "Error: 'bucket_name' no está configurado."
+                task.state = 'completed'
+                return
 
-        # Extract S3 key from the URL
-        if s3_url.startswith(f"https://{self.bucket_name}.s3.amazonaws.com/"):
-            s3_key = s3_url[len(f"https://{self.bucket_name}.s3.amazonaws.com/"):]
-        else:
-            print("Error: La URL proporcionada no coincide con el bucket.")
-            task.response = "Error: La URL proporcionada no coincide con el bucket."
-            task.state = 'completed'
-            return
+            # Extract S3 key from the URL
+            try:
+                if s3_url.startswith(f"https://{self.bucket_name}.s3.amazonaws.com/"):
+                    s3_key = s3_url[len(f"https://{self.bucket_name}.s3.amazonaws.com/"):]
+                else:
+                    print("Error: La URL proporcionada no coincide con el bucket.")
+                    task.response = "Error: La URL proporcionada no coincide con el bucket."
+                    task.state = 'completed'
+                    return
+            except Exception as e:
+                print(f"Error al extraer la clave S3 de la URL: {e}")
+                task.response = "Error al procesar la URL de la imagen."
+                task.state = 'completed'
+                return
 
-        print(f"Processing image with S3 key: {s3_key}")
-        presigned_url = self.get_presigned_url(s3_key)
+            print(f"Processing image with S3 key: {s3_key}")
 
-        if presigned_url is None:
-            task.response = "Error al generar la URL firmada de la imagen."
-            task.state = 'completed'
-            print("Error al generar la URL firmada de la imagen.")
-            return
+            # Generate presigned URL
+            try:
+                presigned_url = self.get_presigned_url(s3_key)
+                if presigned_url is None:
+                    raise ValueError("Error al generar la URL firmada de la imagen.")
+            except Exception as e:
+                print(f"Error al generar la URL firmada: {e}")
+                task.response = "Error al generar la URL firmada de la imagen."
+                task.state = 'completed'
+                return
 
-        # Extract DTX codes and GTINs from the image
-        gtin_list = self.extract_dtx_codes(presigned_url)
-        products = self.identify_product_by_gtin(gtin_list) if gtin_list else []
+            # Extract DTX codes and GTINs from the image
+            try:
+                gtin_list = self.extract_dtx_codes(presigned_url)
+                products = self.identify_product_by_gtin(gtin_list) if gtin_list else []
+            except Exception as e:
+                print(f"Error al extraer códigos DTX o identificar productos: {e}")
+                task.response = "Error al procesar los códigos en la imagen."
+                task.state = 'completed'
+                return
 
-        if products:
-            # Format products into a readable string
-            product_descriptions = [f"{prod['product_code']} (GTIN: {prod['gtin']})" for prod in products]
-            query = "En la foto se identifican los siguientes productos: " + ", ".join(product_descriptions)
-        else:
-            # Analyze image if no products found
-            print(f"Using presigned URL for analysis: {presigned_url}")
-            analysis_result = self.analyze_image(presigned_url)
-            product = analysis_result.get("Product Code", "desconocido")
-            lot=analysis_result.get("Lot", "desconocido")
-            description=analysis_result.get("Description", "desconocido")
-            if product!=None:
-                query=f"product: {product},  description:{description}"
-                
+            # Formulate query based on products or perform analysis
+            if products:
+                try:
+                    # Format products into a readable string
+                    product_descriptions = [f"{prod['product_code']} (GTIN: {prod['gtin']})" for prod in products]
+                    query = "En la foto se identifican los siguientes productos: " + ", ".join(product_descriptions)
+                    # Final query handling
+                    try:
+                        self.RAG.handle_technical_query(query, task, thread)
+                    except Exception as e:
+                        print(f"Error al manejar la consulta técnica: {e}")
+                        task.response = "Error al procesar la consulta técnica."
+                        task.state = 'completed'
+                        return
+                except Exception as e:
+                    print(f"Error al formatear la lista de productos: {e}")
+                    task.response = "Error al formatear la información de productos."
+                    task.state = 'completed'
+                    return
             else:
-                task.response=description
-                
+                try:
+                    # Analyze image if no products found
+                    print(f"Using presigned URL for analysis: {presigned_url}")
+                    analysis_result = self.analyze_image(presigned_url)
+                    product = analysis_result.get("Product Code", "desconocido")
+                    lot = analysis_result.get("Lot", "desconocido")
+                    description = analysis_result.get("Description", "desconocido")
+                    
+                    if product is not None:
+                        query = f"product: {product}, description: {description}"
+                        # Final query handling
+                        try:
+                            self.RAG.handle_technical_query(query, task, thread)
+                        except Exception as e:
+                            print(f"Error al manejar la consulta técnica: {e}")
+                            task.response = "Error al procesar la consulta técnica."
+                            task.state = 'completed'
+                            return
+                    else:
+                        task.response = description
+                except Exception as e:
+                    print(f"Error al analizar la imagen: {e}")
+                    task.response = "Error al analizar la imagen."
+                    task.state = 'completed'
+                    return
 
-        # print(f"query en RAG: {query}")
-        self.RAG.handle_technical_query(query, task, thread)
-        task.state = 'completed'
+            
+
+            task.state = 'completed'
+        except Exception as e:
+            print(f"Error general en process_image: {e}")
+            task.response = "Error inesperado al procesar la imagen."
+            task.state = 'completed'
+

@@ -46,56 +46,76 @@ class LLM_Bottleneck:
         # print(f"user_prompt: {user_prompt}")
         return user_prompt
 
-    def generate_response(self, user_prompt,thread):             # Esta funcion se puede llamar dentro de una funcion que saque una respuesta por el chat
-        
-        chat = self.client.beta.threads.messages.create(
-            thread_id=thread.thread_id,
-            role="user", content=user_prompt
-        
+    def generate_response(self, user_prompt, thread):
+        try:
+            # Envía el mensaje del usuario
+            self.client.beta.threads.messages.create(
+                thread_id=thread.thread_id,
+                role="user",
+                content=user_prompt
             )
-        # print(f"LLM_BN user prompt: {user_prompt}")
-        chat = self.client.beta.threads.messages.create(
-            thread_id=thread.thread_id,
-            role="assistant", content=self.prompt
-        
-            )
-        run = self.client.beta.threads.runs.create_and_poll(
-        thread_id=thread.thread_id,
-        assistant_id=self.assistant_id,
-        )
-        if run.status == 'completed':
-            messages_response = self.client.beta.threads.messages.list(thread_id=thread.thread_id)
-            messages = messages_response.data
-            latest_message = messages[0]    
             
-            if messages and hasattr(latest_message, 'content'):
-                content_blocks = messages[0].content
-                if isinstance(content_blocks, list) and len(content_blocks) > 0:
-                    text_block = content_blocks[0]
-                    
-                    if hasattr(text_block, 'text') and hasattr(text_block.text, 'value'):
-                        classification = text_block.text.value
+            # Envía el prompt
+            self.client.beta.threads.messages.create(
+                thread_id=thread.thread_id,
+                role="assistant",
+                content=self.prompt
+            )
+            
+            # Ejecuta y espera la respuesta del asistente
+            run = self.client.beta.threads.runs.create_and_poll(
+                thread_id=thread.thread_id,
+                assistant_id=self.assistant_id,
+            )
+            
+            if run.status == 'completed':
+                # Recupera los mensajes de la conversación
+                messages_response = self.client.beta.threads.messages.list(thread_id=thread.thread_id)
+                messages = messages_response.data
+                latest_message = messages[0] if messages else None
+                
+                # Verifica si existe contenido en el mensaje más reciente
+                if latest_message and hasattr(latest_message, 'content'):
+                    content_blocks = latest_message.content
+                    if isinstance(content_blocks, list) and len(content_blocks) > 0:
+                        text_block = content_blocks[0]
                         
-                        # Parsear el JSON devuelto por el modelo
-                        try:
+                        if hasattr(text_block, 'text') and hasattr(text_block.text, 'value'):
+                            classification = text_block.text.value
                             
-                            response_json = json.loads(classification)
-                            print(f"response_json: {response_json}")
-                            # Asegurarnos de que contiene los campos esperados
-                            if 'response' in response_json and 'abort' in response_json:
-                                # Extraer los valores directamente
-                                response = response_json.get('response')
-                                self.abort_signal = response_json.get('abort')
+                            # Imprimir el contenido crudo para inspección
+                            print(f"Raw classification content: {classification}")
+                            
+                            # Intenta parsear el JSON devuelto por el modelo
+                            try:
+                                response_json = json.loads(classification)
+                                print(f"response_json: {response_json}")
                                 
-                                return response
-                            else:
-                                return JsonResponse({'error': 'Invalid response format'}, status=500)
-                        
-                        except json.JSONDecodeError:
-                            return JsonResponse({'error': 'Response is not a valid JSON'}, status=500)
-        else:
-            print(run.status)
+                                # Verifica que el JSON contiene los campos esperados
+                                if 'response' in response_json and 'abort' in response_json:
+                                    response = response_json.get('response')
+                                    self.abort_signal = response_json.get('abort')
+                                    print(f"respuesta en generate_response: {response}")
+                                    return response
+                                else:
+                                    # Devuelve un error si el formato no es el esperado
+                                    return {'error': 'Invalid response format'}
+                            
+                            except json.JSONDecodeError as e:
+                                print(f"JSON decode error: {e}")
+                                return {'error': 'Response is not a valid JSON'}
+                else:
+                    return {'error': 'No content found in latest message'}
+            else:
+                print(f"Run status: {run.status}")
+                return {'error': f'Run did not complete, status: {run.status}'}
         
+        except Exception as e:
+            print(f"Exception in generate_response: {e}")
+            return {'error': f'Unexpected error: {str(e)}'}
+
+
+            
 
     
     def generate_tasks_response(self, query,thread):      #esta funcion deberia llamarse al final de Module_Manager/services classify_query

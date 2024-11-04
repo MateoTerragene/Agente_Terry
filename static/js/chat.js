@@ -173,47 +173,59 @@ document.addEventListener('DOMContentLoaded', function () {
         fileInput.addEventListener('change', async function () {
             const file = fileInput.files[0];
             if (!file || !userId) return;
-
+        
             const formData = new FormData();
             formData.append('file', file);
             formData.append('user_id', userId);
-
+        
             const messageContainer = document.createElement("div");
             messageContainer.classList.add("message", "sent");
-
-            const messageText = document.createElement("p");
-            messageText.textContent = `Archivo adjuntado: ${file.name}`;
-
+        
+            if (file.type.startsWith('image/')) {
+                // Si el archivo es una imagen, mostrar una previsualización
+                const imagePreview = document.createElement("img");
+                imagePreview.src = URL.createObjectURL(file);
+                imagePreview.style.maxWidth = "100%";
+                imagePreview.style.borderRadius = "8px";
+                messageContainer.appendChild(imagePreview);
+            } else {
+                // Si no es una imagen, mostrar el nombre del archivo
+                const messageText = document.createElement("p");
+                messageText.textContent = `Archivo adjuntado: ${file.name}`;
+                messageContainer.appendChild(messageText);
+            }
+        
+            // Añadir la hora de envío
             const timeStamp = document.createElement("span");
             timeStamp.classList.add("time");
             timeStamp.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-            messageContainer.appendChild(messageText);
             messageContainer.appendChild(timeStamp);
+        
             messages.appendChild(messageContainer);
             messages.scrollTop = messages.scrollHeight;
-
+        
+            // Enviar la imagen al servidor
             try {
                 const response = await fetch('/module_manager/web-service/', {
                     method: 'POST',
                     body: formData
                 });
-
+        
                 const data = await response.json();
                 if (response.ok) {
                     const messageContainerReceived = document.createElement("div");
                     messageContainerReceived.classList.add("message", "received");
-
+        
                     const messageTextReceived = document.createElement("p");
                     messageTextReceived.textContent = data.response;
-
+        
                     const timeStampReceived = document.createElement("span");
                     timeStampReceived.classList.add("time");
                     timeStampReceived.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
+        
                     messageContainerReceived.appendChild(messageTextReceived);
                     messageContainerReceived.appendChild(timeStampReceived);
-
+        
                     messages.appendChild(messageContainerReceived);
                     messages.scrollTop = messages.scrollHeight;
                 } else {

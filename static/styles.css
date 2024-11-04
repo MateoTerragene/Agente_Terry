@@ -347,3 +347,8 @@ audio::-webkit-media-controls-play-button {
 audio::-webkit-media-controls-volume-slider {
     background-color: #005c4b; /* Color de la barra de volumen */
 }
+
+.message img {
+    max-width: 100%; /* Asegura que las imágenes no superen el ancho del contenedor */
+    border-radius: 8px; /* Bordes redondeados como en WhatsApp */
+}
