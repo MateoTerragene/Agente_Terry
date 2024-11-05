@@ -1,5 +1,22 @@
 document.addEventListener('DOMContentLoaded', function () {
     const userId = document.getElementById('user_id') ? document.getElementById('user_id').value : null;
+    
+    function decodeMessage(rawMessage) {
+        // Reemplazar encabezados de nivel 3
+        const headerMessage = rawMessage.replace(/### (.*?)\n/g, '<h3>$1</h3>');
+    
+        // Reemplazar negritas
+        const boldedMessage = headerMessage.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        
+        // Reemplazar saltos de línea para crear párrafos
+        const paragraphMessage = boldedMessage.replace(/\n/g, '<br>');
+        
+        // Reemplazar los elementos de la lista con etiquetas <li>
+        const listMessage = paragraphMessage.replace(/- (.*?)(?=<br>|$)/g, '<li>$1</li>');
+        
+        // Envolver la lista en un <ul> si hay elementos de lista
+        return listMessage.includes('<li>') ? '<ul>' + listMessage + '</ul>' : listMessage;
+    }
 
     // Funcionalidad para el botón de logout
     const logoutButton = document.querySelector('.logout');
@@ -67,14 +84,14 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
     // Manejo del evento "Enter" para enviar el mensaje
-    if (queryInput) {
-        queryInput.addEventListener('keypress', function (event) {
-            if (event.key === 'Enter') {
-                event.preventDefault();  // Evita que se envíe un form si lo hay
-                sendQuery();
-            }
-        });
-    }
+    // if (queryInput) {
+    //     queryInput.addEventListener('keypress', function (event) {
+    //         if (event.key === 'Enter') {
+    //             event.preventDefault();  // Evita que se envíe un form si lo hay
+    //             sendQuery();
+    //         }
+    //     });
+    // }
     // Enviar mensaje de texto
     if (sendButton) {
         sendButton.addEventListener('click', () => sendQuery());
@@ -120,8 +137,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 messageContainerReceived.classList.add("message", "received");
 
                 const messageTextReceived = document.createElement("p");
-                messageTextReceived.innerHTML = data.response.replace(/\n/g, '<br>');
-
+                // messageTextReceived.innerHTML = data.response.replace(/\n/g, '<br>');
+                messageTextReceived.innerHTML = decodeMessage(data.response);  
+                
                 const timeStampReceived = document.createElement("span");
                 timeStampReceived.classList.add("time");
                 timeStampReceived.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });

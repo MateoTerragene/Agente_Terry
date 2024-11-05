@@ -352,3 +352,26 @@ audio::-webkit-media-controls-volume-slider {
     max-width: 100%; /* Asegura que las imágenes no superen el ancho del contenedor */
     border-radius: 8px; /* Bordes redondeados como en WhatsApp */
 }
+
+
+h1 {
+    font-size: 2em; /* Tamaño grande */
+}
+
+h2 {
+    font-size: 1.5em; /* Tamaño medio */
+}
+
+h3 {
+    font-size: 1.2em; /* Tamaño pequeño */
+}
+
+ul {
+    list-style-type: disc;
+    padding-left: 20px; /* Espaciado a la izquierda para las listas */
+}
+
+strong {
+    font-weight: bold; /* Mantiene la negrita */
+}
+
