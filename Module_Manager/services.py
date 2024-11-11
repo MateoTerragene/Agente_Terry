@@ -142,7 +142,7 @@ class ModuleManager:
         elif self.tasks[0].task_type == "clear_DB":
             print("Resolviendo blanqueo de clave...")
 
-            self.DB_manager.handle_Bionova_DB(self.query,self.tasks[0],thread)
+            self.DB_manager.handle_Bionova_DB(self.query,self.tasks[0],user_identifier, thread)
            
             self.LLM_BN.receive_task(self.tasks[0].clone())
 

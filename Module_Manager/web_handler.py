@@ -129,31 +129,32 @@ class WebHandler:
             return JsonResponse({'error': f"Error en la subida de la imagen: {str(e)}"}, status=500)
 
 
-    def handle_db_message(self, file, user_id,module_manager, thread):
+    def handle_db_message(self, file, user_id, module_manager, thread):
         """
-        Maneja la subida de archivos .db.
+        Maneja la subida de archivos .db, los guarda localmente y los procesa utilizando un manejador.
+        
+        Args:
+            file (InMemoryUploadedFile): El archivo .db recibido.
+            user_id (str): El ID del usuario que sube el archivo.
+            module_manager: Manejador de módulos.
+            thread: Hilo de conversación.
+        
+        Returns:
+            tuple: Respuesta con los detalles del proceso o un mensaje de error.
         """
         try:
-            # Obtén la extensión del archivo desde el nombre original
-            file_extension = os.path.splitext(file.name)[1]  # Obtiene la extensión con el punto (e.g., '.wav')
+            # Llamar a la función handle_db para manejar el archivo .db
+            task_type, response_text, s3_db_path = self.file_handler.handle_db_message(file, user_id, module_manager, thread)
+
+            # Si no se pudo procesar el archivo correctamente, lanzar un error
+            if not s3_db_path:
+                raise ValueError("Error al procesar el archivo .db.")
             
-            # Define la ruta temporal donde se almacenará el archivo de archivo db con la extensión correcta
-            db_path = f"tmp/{user_id}_{thread.thread_id}_{int(time.time())}{file_extension}"
-            print(f"Ruta temporal del archivo db: {db_path}")
-            
-            # Guarda el archivo de archivo db en la ruta temporal
-            with open(db_path, 'wb') as destination:
-                for chunk in file.chunks():
-                    destination.write(chunk)
-            
-            logger.info(f"Archivo de archivo db guardado temporalmente en {db_path}")
-            print(f"Archivo de archivo db guardado temporalmente: {db_path}")
-            response_text,task_type = self.file_handler.handle_db(db_path, user_id,module_manager, thread)
-            print(f"response_text_webHandler: {response_text}")
-            return response_text, task_type, db_path
+            # Retornar el tipo de tarea, el texto de respuesta y la ruta del archivo
+            return task_type, response_text, s3_db_path
 
         except Exception as e:
-            logger.error(f"DB file upload error: {str(e)}")
+            logger.error(f"Error en la subida del archivo .db: {str(e)}")
             return JsonResponse({'error': f"Error en la subida del archivo .db: {str(e)}"}, status=500)
 
     def get_presigned_url(self, s3_key, expiration=3600):

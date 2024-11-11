@@ -20,3 +20,4 @@ bcrypt
 passlib
 pydub
 pylibdmtx
+pysqlcipher3

@@ -167,43 +167,63 @@ class FileHandler:
             logger.error(f"Error guardando la imagen: {str(e)}")
             return None
 
-    def handle_db(self, db_path, identifier,module_manager, thread, is_whatsapp=False):
+    def handle_db_message(self, file, identifier, module_manager, thread, is_whatsapp=False):
         """
-        Procesa, guarda un archivo .db en una ruta específica y lo sube a S3.
+        Maneja la subida de archivos .db, los guarda localmente, los sube a S3 y los procesa.
         
         Args:
-            db_file (InMemoryUploadedFile): Archivo .db recibido.
-            user_id (str): ID del usuario para generar la ruta.
+            file (InMemoryUploadedFile): El archivo .db recibido.
+            identifier (str): El ID del usuario o identificador para la consulta.
+            module_manager: Manejador de módulos para procesar la consulta.
+            thread: Hilo de conversación.
+            is_whatsapp (bool): Indicador para saber si la consulta es desde WhatsApp (opcional).
         
         Returns:
-            str: URL del archivo en S3 o None si hubo un error.
+            tuple: Respuesta con los detalles del proceso o un mensaje de error.
         """
-        
         try:
-            file_name = os.path.basename(db_path)  # Solo el nombre del archivo, sin la ruta '/tmp/'
-        
-            # Guardar el db recibido en S3 antes de procesarlo
-            s3_file_path = self.save_file_to_s3(db_path, 'db')
-            if not s3_file_path:
-                logger.error("Error al guardar el db recibido en S3.")
-                return None, None  # Devuelve None para todos si ocurre un error
-           
+            # Obtener la extensión del archivo recibido
+            file_extension = os.path.splitext(file.name)[1]  # Obtiene la extensión con el punto (e.g., '.db')
             
+            # Define la ruta temporal donde se almacenará el archivo .db
+            local_db_path = f"tmp/{identifier}_{int(time.time())}{file_extension}"
+            print(f"Ruta temporal del archivo .db: {local_db_path}")
             
+            # Guardar el archivo .db localmente
+            with open(local_db_path, 'wb+') as destination:
+                for chunk in file.chunks():
+                    destination.write(chunk)
+
+            # Verificar si el archivo existe antes de intentar subirlo a S3
+            if not os.path.exists(local_db_path):
+                logger.error(f"El archivo .db {local_db_path} no existe.")
+                return None, None  # Si el archivo no se guarda correctamente, retornar None
             
-            response_text, task_type = module_manager.classify_query(thread, s3_file_path, identifier, is_whatsapp)
-            print(f"responser_text_db_file_handler: {response_text}")
-            if os.path.exists(db_path):
-                os.remove(db_path)
-                logger.info(f"Archivo temporal eliminado: {db_path}")
-                print(f"Archivo temporal eliminado: {db_path}")
+            # Subir el archivo .db a S3
+            s3_db_url = self.save_file_to_s3(local_db_path, 'db')
+            print(f"s3_db_url: {s3_db_url}")
+
+            if not s3_db_url:
+                raise ValueError("Error guardando el archivo .db en S3")
+
+            # Clasificar la consulta utilizando la URL del archivo .db en S3
+            response_text, task_type = module_manager.classify_query(thread, s3_db_url, identifier, is_whatsapp)
+            
+            # Verificar si el archivo temporal generado existe antes de eliminarlo
+            if os.path.exists(local_db_path):
+                os.remove(local_db_path)
+                logger.info(f"Archivo temporal eliminado: {local_db_path}")
+                print(f"Archivo temporal eliminado: {local_db_path}")
             else:
-                logger.warning(f"El archivo {db_path} no existe. No se puede eliminar.")
-                print(f"El archivo {db_path} no existe. No se puede eliminar.")
-            return response_text,task_type
+                logger.warning(f"El archivo {local_db_path} no existe. No se puede eliminar.")
+                print(f"El archivo {local_db_path} no existe. No se puede eliminar.")
+            
+            # Retornar la respuesta con el tipo de tarea, el texto y la URL de S3 del archivo .db
+            return task_type, response_text, s3_db_url
+
         except Exception as e:
-            logger.error(f"Error procesando archivo .db: {str(e)}")
-            return None, None
+            logger.error(f"Error al manejar el archivo .db: {str(e)}")
+            return None
 
     def generate_tts_audio(self, thread, text, user_id, file_extension='.mp3'):
         """
