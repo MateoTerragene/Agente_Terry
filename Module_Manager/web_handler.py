@@ -99,8 +99,6 @@ class WebHandler:
                 os.remove(processed_audio_path)
                 logger.info(f"Archivo temporal procesado eliminado: {processed_audio_path}")
 
-
-
     def handle_image_message(self, file, user_id, thread, module_manager):
         """
         Maneja la subida de imágenes, las guarda localmente, las sube a S3 y clasifica la consulta.
@@ -143,13 +141,16 @@ class WebHandler:
             tuple: Respuesta con los detalles del proceso o un mensaje de error.
         """
         try:
+            print("Iniciando manejo del archivo .db...")
+            print(f"Detalles del archivo recibido: Nombre: {file.name}, Tamaño: {file.size}, Tipo: {file.content_type}")
+            print(f"Usuario ID: {user_id}, Thread: {thread}")
             # Llamar a la función handle_db para manejar el archivo .db
             task_type, response_text, s3_db_path = self.file_handler.handle_db_message(file, user_id, module_manager, thread)
-
+            print(f"Resultado de handle_db_message: task_type={task_type}, response_text={response_text}, s3_db_path={s3_db_path}")
             # Si no se pudo procesar el archivo correctamente, lanzar un error
             if not s3_db_path:
                 raise ValueError("Error al procesar el archivo .db.")
-            
+            print("Archivo procesado con éxito. Retornando resultados...")
             # Retornar el tipo de tarea, el texto de respuesta y la ruta del archivo
             return task_type, response_text, s3_db_path
 

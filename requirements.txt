@@ -20,4 +20,4 @@ bcrypt
 passlib
 pydub
 pylibdmtx
-pysqlcipher3
+httpx==0.23.3 

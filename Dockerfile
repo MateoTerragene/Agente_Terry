@@ -11,14 +11,15 @@ RUN apt-get update && apt-get install -y \
     libdmtx0b \
     libdmtx-dev && \
     rm -rf /var/lib/apt/lists/*
-
-# Descarga e instala SQLCipher 4.6.1
-RUN wget https://github.com/sqlcipher/sqlcipher/archive/refs/tags/v4.6.1.tar.gz && \
-    tar -xvzf v4.6.1.tar.gz && \
-    cd sqlcipher-4.6.1 && \
-    ./configure --enable-tempstore=yes CFLAGS="-DSQLITE_HAS_CODEC" LDFLAGS="-lcrypto" && \
-    make && make install && \
-    cd .. && rm -rf sqlcipher-4.6.1 v4.6.1.tar.gz
+# Añadir dependencias del sistema
+RUN apt-get update && apt-get install -y libsqlite3-dev
+# # Descarga e instala SQLCipher 4.6.1
+# RUN wget https://github.com/sqlcipher/sqlcipher/archive/refs/tags/v4.6.1.tar.gz && \
+#     tar -xvzf v4.6.1.tar.gz && \
+#     cd sqlcipher-4.6.1 && \
+#     ./configure --enable-tempstore=yes CFLAGS="-DSQLITE_HAS_CODEC" LDFLAGS="-lcrypto" && \
+#     make && make install && \
+#     cd .. && rm -rf sqlcipher-4.6.1 v4.6.1.tar.gz
 
 # Establece el path para que las librerías de SQLCipher sean accesibles
 ENV LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH

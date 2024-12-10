@@ -232,8 +232,6 @@ class ClassifyQueryView(View):
             return JsonResponse({'status': 'error', 'message': f'Error al crear un nuevo thread: {str(e)}'}, status=500)
 
 
-
-        
 WHATSAPP_API_URL = os.getenv("WHATSAPP_API_URL")
 ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
 VERIFY_TOKEN = os.getenv("VERIFY_TOKEN")

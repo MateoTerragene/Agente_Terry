@@ -84,18 +84,18 @@ class LLM_Bottleneck:
                             classification = text_block.text.value
                             
                             # Imprimir el contenido crudo para inspección
-                            print(f"Raw classification content: {classification}")
+                            # print(f"Raw classification content: {classification}")
                             
                             # Intenta parsear el JSON devuelto por el modelo
                             try:
                                 response_json = json.loads(classification)
-                                print(f"response_json: {response_json}")
+                                # print(f"response_json: {response_json}")
                                 
                                 # Verifica que el JSON contiene los campos esperados
                                 if 'response' in response_json and 'abort' in response_json:
                                     response = response_json.get('response')
                                     self.abort_signal = response_json.get('abort')
-                                    print(f"respuesta en generate_response: {response}")
+                                    # print(f"respuesta en generate_response: {response}")
                                     return response
                                 else:
                                     # Devuelve un error si el formato no es el esperado
