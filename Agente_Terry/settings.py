@@ -26,10 +26,13 @@ INSTALLED_APPS = [
     'File_Manager',
     'RAG_Manager',
     'PO_Manager',
-    'Complaint_Manager',
+    'Form_Manager',
     'LLM_Bottleneck',
     'rest_framework',
     'dbviewer',
+    'Image_Manager',
+    'BionovaDB_Manager',
+ 
    
 ]
 
@@ -42,6 +45,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    
 ]
 
 ROOT_URLCONF = "Agente_Terry.urls"
@@ -136,3 +140,5 @@ LOGOUT_REDIRECT_URL = '/login/'
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# Directorio para archivos multimedia

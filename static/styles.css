@@ -126,19 +126,19 @@ Cuando se expande el chat
 
 /* Estilos para la ventana de mensajes del chat */
 .chat-messages {
-    flex: 1;
-    padding: 10px;
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    scrollbar-width: thin;
-    scrollbar-color: #888 #1e2a33;
-    transition: all 0.3s ease-in-out;
-    width:100%;
-    margin: 0 0 1% 0;
+  flex: 1;
+  padding: 10px;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  overflow-y: auto; /* Scroll vertical */
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: calc(100% - 18%); /* Ajusta el alto dinámicamente */
+  margin: 0 0 1% 0;
+  scrollbar-width: thin;
+  scrollbar-color: #888 #1e2a33;
 }
 
 /* Estilos generales para cada mensaje (enviado o recibido) */
@@ -179,20 +179,29 @@ Cuando se expande el chat
 }
 
 /* Estilo para la barra de entrada de mensajes */
-.chat-input {
+/* .input-container {
     display: flex;
     padding: 10px;
     background-color: #2a3942;
     border-top: 1px solid #333;
+} */
+.input-container {
+  display: flex;
+  background-color: #2a3942;
+  border-top: 1px solid #333;
+  border-radius: 20px;
+  /* padding:0 0 0 2%; */
+  /* width:92%; */
+  align-items: center;
+  padding:10px;
 }
-
 /* Estilo para el campo de entrada de texto en el chat */
-.chat-input input {
+.input-container input {
     flex: 1;
     padding: 10px;
     border: none;
     border-radius: 20px;
-    background-color: #1e2a33;
+    background: rgba(255, 255, 255, 0.1); 
     color: #fff;
     margin-right: 10px;
     font-size: 16px; /* Ajusta la fuente para evitar el zoom */
@@ -201,10 +210,19 @@ Cuando se expande el chat
 }
 
 /* Asegura que el campo de entrada no tenga sombras o bordes adicionales en iOS */
-.chat-input input:focus {
+.input-container input:focus {
     outline: none;
     border: 1px solid #fff;
     box-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+}
+
+/* Estilo para el ícono de adjuntar archivo */
+.attach-icon, .mic-icon {
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+  margin-right: 10px;  /* Espacio a la derecha para separarlo del input */
+  vertical-align: middle;
 }
 
 /* Estilo para la imagen del botón de enviar */
@@ -651,16 +669,9 @@ Cuando se expande el chat
 .expanded .chat-box {
     width: 60%;
 }
-.input-container {
-    display: flex;
-    background: white;
-    border-top: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 20px;
-    padding:0 0 0 2%;
-    width:92%;
-}
 
-.input-container input {
+
+ /* .input-container input {
     flex: 1;
     padding: 10px;
     border: none;
@@ -668,5 +679,43 @@ Cuando se expande el chat
     margin-right: 10px;
     outline: none;
     font-size: 16px;
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.1); */
+} */
+
+/* Estilos para el reproductor de audio en los mensajes */
+audio {
+  width: 100%; /* Asegura que el reproductor de audio ocupe todo el ancho disponible */
+  margin-top: 10px;
+  outline: none; /* Elimina los bordes de enfoque */
+  border-radius: 10px; /* Bordes redondeados */
+}
+
+/* Personalización del reproductor de audio */
+audio::-webkit-media-controls-panel {
+  background-color: #1e2a33; /* Fondo del reproductor de audio acorde al fondo del chat */
+  color: white; /* Asegura que los controles del reproductor sean visibles */
+  border-radius: 10px;
+}
+
+audio::-webkit-media-controls-play-button,
+audio::-webkit-media-controls-timeline,
+audio::-webkit-media-controls-current-time-display,
+audio::-webkit-media-controls-time-remaining-display,
+audio::-webkit-media-controls-mute-button,
+audio::-webkit-media-controls-volume-slider {
+  color: white; /* Asegura que los controles del reproductor sean visibles */
+}
+
+audio::-webkit-media-controls-play-button {
+  background-color: #005c4b; /* Color del botón de reproducción */
+  border-radius: 50%; /* Hace que el botón de reproducción sea circular */
+}
+
+audio::-webkit-media-controls-volume-slider {
+  background-color: #005c4b; /* Color de la barra de volumen */
+}
+
+.message img {
+  max-width: 100%; /* Asegura que las imágenes no superen el ancho del contenedor */
+  border-radius: 8px; /* Bordes redondeados como en WhatsApp */
 }

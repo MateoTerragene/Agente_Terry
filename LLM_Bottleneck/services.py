@@ -18,9 +18,14 @@ class LLM_Bottleneck:
                 "If a query lacks accompanying information or is empty, I will not respond. "
                 "If I do not understand the query or need more information, I will ask for more details. "
                 "On the first message, I will greet the user as Terry, the AI expert in biotechnology, but I will not greet the user in subsequent messages. "
-                "An Empty Response does NOT mean that the user wants to abort."
-                "If I detect any explicit intention to end the conversation or abort the task , I will return the sequence '#-#-#-#-#-#-', inform the user that the task has been aborted, and make myself available for further assistance."
-            )
+                "I will always return a JSON object that contains two fields: "
+                "1. 'response': a string with the final answer, "
+                "2. 'abort': a boolean value indicating whether the task should be aborted (True or False). "
+                "I will detect common phrases or keywords that suggest the user wants to stop, such as 'stop', 'abort', 'end', 'cancel', 'no more', 'I regret' or 'that's it'. "
+                "If I detect this, I will set the 'abort' field to True. "
+                "If there is no intention to abort, I will set 'abort' to False. "
+                "An empty response does NOT indicate an abort signal. Please respond accordingly."
+                        )
             
             self.tasks = []
             # self.task_responses = ""
@@ -41,66 +46,84 @@ class LLM_Bottleneck:
         # print(f"user_prompt: {user_prompt}")
         return user_prompt
 
-    def generate_response(self, user_prompt,thread):             # Esta funcion se puede llamar dentro de una funcion que saque una respuesta por el chat
-        
-        chat = self.client.beta.threads.messages.create(
-            thread_id=thread.thread_id,
-            role="user", content=user_prompt
-        
+    def generate_response(self, user_prompt, thread):
+        try:
+            # Envía el mensaje del usuario
+            self.client.beta.threads.messages.create(
+                thread_id=thread.thread_id,
+                role="user",
+                content=user_prompt
             )
-        # print(f"LLM_BN user prompt: {user_prompt}")
-        chat = self.client.beta.threads.messages.create(
-            thread_id=thread.thread_id,
-            role="assistant", content=self.prompt
-        
+            
+            # Envía el prompt
+            self.client.beta.threads.messages.create(
+                thread_id=thread.thread_id,
+                role="assistant",
+                content=self.prompt
             )
-        run = self.client.beta.threads.runs.create_and_poll(
-        thread_id=thread.thread_id,
-        assistant_id=self.assistant_id,
-        )
-        if run.status == 'completed': 
-            messages_response = self.client.beta.threads.messages.list(
-                thread_id=thread.thread_id                     )
-        else:
-            print(run.status)
-        messages = messages_response.data
-        latest_message = messages[0]    
-        if messages and hasattr(latest_message, 'content'):
-            content_blocks = messages[0].content
-            if isinstance(content_blocks, list) and len(content_blocks) > 0:
-                text_block = content_blocks[0]
-                if hasattr(text_block, 'text') and hasattr(text_block.text, 'value'):
-                    classification=   text_block.text.value
-                    
-                                                
-        # print(f"classification dentro de generate_response: {classification}")
-        return classification
-    def detect_abort_signal(self, response):
-        #print(f"response: {response}")
-        pattern = r"(#-)+"
-        if re.search(pattern, response):
-            self.abort_signal = True ### SOLO PARA PROBAR
+            
+            # Ejecuta y espera la respuesta del asistente
+            run = self.client.beta.threads.runs.create_and_poll(
+                thread_id=thread.thread_id,
+                assistant_id=self.assistant_id,
+            )
+            
+            if run.status == 'completed':
+                # Recupera los mensajes de la conversación
+                messages_response = self.client.beta.threads.messages.list(thread_id=thread.thread_id)
+                messages = messages_response.data
+                latest_message = messages[0] if messages else None
+                
+                # Verifica si existe contenido en el mensaje más reciente
+                if latest_message and hasattr(latest_message, 'content'):
+                    content_blocks = latest_message.content
+                    if isinstance(content_blocks, list) and len(content_blocks) > 0:
+                        text_block = content_blocks[0]
+                        
+                        if hasattr(text_block, 'text') and hasattr(text_block.text, 'value'):
+                            classification = text_block.text.value
+                            
+                            # Imprimir el contenido crudo para inspección
+                            # print(f"Raw classification content: {classification}")
+                            
+                            # Intenta parsear el JSON devuelto por el modelo
+                            try:
+                                response_json = json.loads(classification)
+                                # print(f"response_json: {response_json}")
+                                
+                                # Verifica que el JSON contiene los campos esperados
+                                if 'response' in response_json and 'abort' in response_json:
+                                    response = response_json.get('response')
+                                    self.abort_signal = response_json.get('abort')
+                                    # print(f"respuesta en generate_response: {response}")
+                                    return response
+                                else:
+                                    # Devuelve un error si el formato no es el esperado
+                                    return {'error': 'Invalid response format'}
+                            
+                            except json.JSONDecodeError as e:
+                                print(f"JSON decode error: {e}")
+                                return {'error': 'Response is not a valid JSON'}
+                else:
+                    return {'error': 'No content found in latest message'}
+            else:
+                print(f"Run status: {run.status}")
+                return {'error': f'Run did not complete, status: {run.status}'}
         
-            # Eliminar el patrón de response
-            cleaned_response = re.sub(pattern, "", response)
-            return cleaned_response.strip()
-        else:
-            self.abort_signal = False
-            return response
+        except Exception as e:
+            print(f"Exception in generate_response: {e}")
+            return {'error': f'Unexpected error: {str(e)}'}
+
+
+            
+
     
     def generate_tasks_response(self, query,thread):      #esta funcion deberia llamarse al final de Module_Manager/services classify_query
         response=""
         user_prompt = self.generate_prompt_tasks(query)
-        # print(f"response antes de generarla: {response}")
         response = self.generate_response(user_prompt,thread)
-        
-        # print(f"abort signal antes de detectar: {self.abort_signal}")
-        # print(f"response antes de detectar: {response}")
-        response= self.detect_abort_signal(response)
-        #print(response) # este print es solo para probar
-        # print(response)
         self.tasks.clear()
-        # print("  ")
+
         
         print("******************************************************************************")
         print(f"abort signal: {self.abort_signal}")

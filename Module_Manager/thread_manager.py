@@ -52,9 +52,10 @@ class ThreadManager:
         except Exception as e:
             logger.error(f"Error inesperado al obtener o crear thread para usuario {user_id}: {str(e)}")
             raise
-
+      
     def create_thread(self, user_id, is_whatsapp=False, retries=3, delay=5):
         try:
+            self.module_manager.reset_tasks()
             # Ajustar el identificador para WhatsApp o ID de usuario
             if is_whatsapp:
                 # Para WhatsApp asumimos que user_id es un número de teléfono o identificador similar (string o int)

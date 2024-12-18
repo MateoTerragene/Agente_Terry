@@ -18,3 +18,7 @@ pydub
 boto3
 bcrypt
 passlib
+pydub
+pylibdmtx
+httpx==0.23.3 
+django-cors-headers==3.14.0
