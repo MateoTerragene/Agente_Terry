@@ -5,6 +5,9 @@ from openai import OpenAI
 from Module_Manager import Tasks
 from django.http import JsonResponse
 import json
+import time
+import logging
+logger = logging.getLogger(__name__)
 class LLM_Bottleneck:
     def __init__(self):
         try:
@@ -119,19 +122,26 @@ class LLM_Bottleneck:
 
     
     def generate_tasks_response(self, query,thread):      #esta funcion deberia llamarse al final de Module_Manager/services classify_query
-        response=""
-        user_prompt = self.generate_prompt_tasks(query)
-        response = self.generate_response(user_prompt,thread)
-        self.tasks.clear()
+        start_time = time.time()
+        try:
+            response=""
+            user_prompt = self.generate_prompt_tasks(query)
+            response = self.generate_response(user_prompt,thread)
+            self.tasks.clear()
 
-        
-        print("******************************************************************************")
-        print(f"abort signal: {self.abort_signal}")
-        print("Respuesta del LLM_Bottleneck:  ")
-        print(response)
-        print("******************************************************************************")
-        return response
-
+            
+            print("******************************************************************************")
+            print(f"abort signal: {self.abort_signal}")
+            print("Respuesta del LLM_Bottleneck:  ")
+            print(response)
+            print("******************************************************************************")
+            return response
+        except Exception as e:
+            logger.error(f"Error in LLM_Bottleneck: {e}")
+            raise
+        finally:
+            elapsed_time = time.time() - start_time
+            print(f"LLM_Bottleneck/generate_task_response completed in {elapsed_time:.2f} seconds")
     def receive_task(self, task):        # esta funcion deberia llamarse al final de cada "if  y elif" de Module_Manager/services handle_task 
         self.tasks.append(task)
 

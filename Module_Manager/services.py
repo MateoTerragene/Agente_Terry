@@ -1,5 +1,5 @@
 # module_manager/services.py
-
+import time
 import logging
 from dotenv import load_dotenv
 import json
@@ -58,54 +58,68 @@ class ModuleManager:
         #     self.tasks[0].set_state('completed')  # Marcar la primera tarea como completada
         self.tasks.clear()  # Limpia la lista de tareas          
     def classify_query(self, thread, query, user_identifier, is_whatsapp=False):
-        thread_id = thread.thread_id
-        # print(f"ClassQuer Usando el thread ID: {thread_id} para clasificar la consulta.")
-        logger.info(f"Usando el thread ID: {thread_id} para clasificar la consulta.")
-        self.query = query
-        if self.LLM_BN.abort_signal:
-            self.LLM_BN.abort_signal=False
-            self.tasks.clear()
-        if not self.tasks or self.tasks[0].get_state() == 'pending':
-            print("entro a clasificar")
-            
-            response = self.client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": self.prompt}, 
-                    {"role": "user", "content": f"Clasifica la siguiente consulta y genera el JSON correspondiente: {query}"}
-                ]
-                # thread_id=thread_id  # Asegúrate de que el thread_id es el correcto
-            )
-            classification = response.choices[0].message.content
-            classification_json = json.loads(classification)
-            for task_type in classification_json["tasks"]:
-                task = Task()  # Crear una nueva instancia de Task (o la clase que estés utilizando)
-                task.set_type(task_type)
-                print(task.task_type)
-                self.tasks.append(task)
-            # self.task = copy.deepcopy(self.tasks[0])
-        # else:
-        #     self.tasks.clear()    
-        completed_task_type = self.process_tasks(thread, user_identifier, is_whatsapp)
-        resp= self.LLM_BN.generate_tasks_response(query,thread)
-        # print(f"respuesta en module_manager/classify_query: {resp}")
-        return resp, completed_task_type 
-     
+        start_time = time.time()
+        try:
+            thread_id = thread.thread_id
+            # print(f"ClassQuer Usando el thread ID: {thread_id} para clasificar la consulta.")
+            logger.info(f"Usando el thread ID: {thread_id} para clasificar la consulta.")
+            self.query = query
+            if self.LLM_BN.abort_signal:
+                self.LLM_BN.abort_signal=False
+                self.tasks.clear()
+            if not self.tasks or self.tasks[0].get_state() == 'pending':
+                print("entro a clasificar")
+                
+                response = self.client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": self.prompt}, 
+                        {"role": "user", "content": f"Clasifica la siguiente consulta y genera el JSON correspondiente: {query}"}
+                    ]
+                    # thread_id=thread_id  # Asegúrate de que el thread_id es el correcto
+                )
+                classification = response.choices[0].message.content
+                classification_json = json.loads(classification)
+                for task_type in classification_json["tasks"]:
+                    task = Task()  # Crear una nueva instancia de Task (o la clase que estés utilizando)
+                    task.set_type(task_type)
+                    print(task.task_type)
+                    self.tasks.append(task)
+                # self.task = copy.deepcopy(self.tasks[0])
+            # else:
+            #     self.tasks.clear()    
+            completed_task_type = self.process_tasks(thread, user_identifier, is_whatsapp)
+            resp= self.LLM_BN.generate_tasks_response(query,thread)
+            # print(f"respuesta en module_manager/classify_query: {resp}")
+            return resp, completed_task_type 
+        except Exception as e:
+            logger.error(f"Error in classify_query: {e}")
+            raise
+        finally:
+            elapsed_time = time.time() - start_time
+            print(f"classify_query completed in {elapsed_time:.2f} seconds")
 
     def process_tasks(self, thread, user_identifier, is_whatsapp=False):
-       
-        for i in range(len(self.tasks)):
-            # task = self.tasks[0]  # Siempre obtenemos la primera tarea
+        start_time = time.time()
+        try:
+            for i in range(len(self.tasks)):
+                # task = self.tasks[0]  # Siempre obtenemos la primera tarea
 
-            self.handle_task(thread, user_identifier, is_whatsapp)
-            # print("estado task dentro de process_task")
-            # print(task.get_state())
-            if self.tasks[0].get_state() == 'completed':
-                completed_task_type = self.tasks[0].task_type
-                self.tasks.pop(0)  # Eliminar la tarea completada de la lista
-                return completed_task_type
-        return None 
-    
+                self.handle_task(thread, user_identifier, is_whatsapp)
+                # print("estado task dentro de process_task")
+                # print(task.get_state())
+                if self.tasks[0].get_state() == 'completed':
+                    completed_task_type = self.tasks[0].task_type
+                    self.tasks.pop(0)  # Eliminar la tarea completada de la lista
+                    return completed_task_type
+            return None 
+        except Exception as e:
+            logger.error(f"Error in process_tasks: {e}")
+            raise
+        finally:
+            total_elapsed = time.time() - start_time
+            print(f"process_tasks completed in {total_elapsed:.2f} seconds")
+            
     def handle_task(self, thread, user_identifier, is_whatsapp=False):
         if self.tasks[0].task_type == "fileRequest":
             print("Resolviendo solicitud de documentos...")

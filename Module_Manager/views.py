@@ -28,7 +28,7 @@ from dotenv import load_dotenv
 import os
 from threading import Thread
 from django.db import connections, DatabaseError
-
+import time
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -49,6 +49,7 @@ def convertir_enlaces(texto):
 class ClassifyQueryView(View):
     web_handler = WebHandler()
     def post(self, request):
+        start_time = time.time()
         try:
             # Obtener el tipo de contenido antes de procesar el cuerpo de la solicitud
             content_type = request.META.get('CONTENT_TYPE')
@@ -202,6 +203,9 @@ class ClassifyQueryView(View):
         except Exception as e:
             logger.error(f"Initialization error: {str(e)}")
             return JsonResponse({'error': str(e)}, status=500)
+        finally:
+            total_elapsed = time.time() - start_time
+            print(f"Total time for request in ClassifyQueryView: {total_elapsed:.2f} seconds") 
 
     def get(self, request):
         action = request.GET.get('action')  # Verificar si la acción es crear un nuevo thread
