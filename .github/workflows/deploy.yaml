@@ -5,35 +5,25 @@ on:
     branches:
       - deployment
 
-env:
-  PROJECT_PATH: /home/ubuntu/Agente_Terry
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
-      - name: Install SSH key
+      - name: Install SSH Key
         uses: shimataro/ssh-key-action@v2
         with:
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          name: id_rsa
-          known_hosts: ${{ secrets.KNOWN_HOSTS }}
-          if_key_exists: replace
-
-      - name: Add host to known_hosts
-        run: ssh-keyscan -p 1555 -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+          key: ${{ secrets.EC2_SSH_KEY }}
+          known_hosts: 100.27.3.89:1555
 
       - name: Deploy to EC2
         run: |
-          ssh -p 1555 ubuntu@${{ secrets.EC2_HOST }} "\
-            cd ${{ env.PROJECT_PATH }} && \
-            git fetch --all && \
-            git reset --hard origin/deployment && \
-            sudo docker system prune -af --volumes && \
-            sudo docker compose down && \
-            sudo docker compose build --no-cache && \
-            sudo docker compose up -d && \
-            sudo docker compose ps"
+          ssh -o StrictHostKeyChecking=no -p 1555 ubuntu@100.27.3.89 '
+          cd /home/ubuntu/Agente_Terry &&
+          git pull &&
+          sudo docker compose down &&
+          sudo docker compose up --build -d
+          '
