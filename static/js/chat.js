@@ -10,13 +10,14 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Al hacer clic en la mano, ocultar el mensaje de bienvenida y mostrar el login
-    const handIcon = document.getElementById('hand-icon');
-    if (handIcon) {
-        handIcon.addEventListener('click', function () {
-            document.getElementById('welcome-message').style.display = 'none';  // Ocultar el mensaje de bienvenida
-            document.getElementById('login-container').style.display = 'flex';  // Mostrar el login
-        });
-    }
+    //const handIcon = document.getElementById('hand-icon');
+   // if (handIcon) {
+    //    handIcon.addEventListener('click', function () {
+    //        document.getElementById('welcome-message').style.display = 'none';  // Ocultar el mensaje de bienvenida
+    //        document.getElementById('login-container').style.display = 'flex';  // Mostrar el login
+    //    });
+   // }
+
   // Seleccionamos el ícono de nuevo thread por su id
   const newThreadIcon = document.getElementById('new-thread-icon');
   if (newThreadIcon) {
@@ -152,8 +153,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const expandIcon = document.querySelector('.expand-icon');
     if (expandIcon) {
         expandIcon.addEventListener('click', function () {
-            const chatContainer = document.querySelector('.chat-container');
-            chatContainer.classList.toggle('expanded');
+           const chatContainer = document.querySelector('.chat-container');
+           chatContainer.classList.toggle('expanded');
             
             // Ajustar la altura y el scroll de los mensajes cuando se expande
             const messages = document.getElementById('messages');
@@ -162,4 +163,33 @@ document.addEventListener('DOMContentLoaded', function () {
             }, 300);
         });
     }
+
+
+
 });
+
+$(document).ready(function() {
+    $('.frase-circ').click(function() {
+        $(this).fadeOut(500);
+        $('.grupo-707').addClass('show-grupo');
+    });
+    $(".expand-icon").click(function() {
+        $(".grupo-707").toggleClass("expanded");
+        $('.grupo-707').toggleClass('show-grupo');
+    });
+});
+
+
+$('.grupo-179-icon').click(function() {
+    $('.grupo-707').removeClass('show-grupo');
+    $(".grupo-707").removeClass("expanded");
+    $('.frase-circ').fadeIn(500);
+});
+
+
+circulo = document.getElementById("circulo")
+        circlearray = circulo.textContent.split('')
+        circulo.textContent = ''
+        for(var i = 0; i< circlearray.length; i++){
+            circulo.innerHTML += '<span style="transform:rotate('+((i+1)*7)+'deg)">'+ circlearray[i]+'</span>'
+        }
