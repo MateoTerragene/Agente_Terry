@@ -1,257 +1,258 @@
 /* Reinicia los márgenes y rellenos de todos los elementos para evitar inconsistencias entre navegadores */
 * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 :root {
-  /* fonts */
-  --font-gotham: Gotham;
+/* fonts */
+--font-gotham: Gotham;
 
-  /* font sizes */
-  --font-size-sm: 0.875rem;
-  --font-size-19xl: 2.375rem;
-  --font-size-base: 1rem;
-  --font-size-title: 1.8rem;
+/* font sizes */
+--font-size-sm: 0.875rem;
+--font-size-19xl: 2.375rem;
+--font-size-base: 1rem;
+--font-size-title: 1.8rem;
 
-  /* Colors */
-  --color-white: #fff;
-  --color-gray: #1d1d1b;
-  --color-dimgray: #707070;
+/* Colors */
+--color-white: #fff;
+--color-gray: #1d1d1b;
+--color-dimgray: #707070;
 
-  --gray-0: #f8f9fa;
-  --gray-1: #f1f3f5;
-  --gray-2: #e9ecef;
-  --gray-3: #dee2e6;
-  --gray-4: #ced4da;
-  --gray-5: #adb5bd;
-  --gray-6: #868e96;
-  --gray-7: #495057;
-  --gray-8: #343a40;
-  --gray-9: #212529;
-  --gray-10: #16191d;
-  --gray-11: #0d0f12;
-  --gray-12: #030507;
-  /* Surfaces */
-  --text-1: var(--gray-12);
-  --text-2: var(--gray-10);
-  --text-3: var(--gray-8);
-  --text-4: var(--gray-7);
-  --surface-1: var(--gray-0);
-  --surface-2: var(--gray-1);
-  --surface-3: var(--gray-2);
-  --surface-4: var(--gray-3);
+--gray-0: #f8f9fa;
+--gray-1: #f1f3f5;
+--gray-2: #e9ecef;
+--gray-3: #dee2e6;
+--gray-4: #ced4da;
+--gray-5: #adb5bd;
+--gray-6: #868e96;
+--gray-7: #495057;
+--gray-8: #343a40;
+--gray-9: #212529;
+--gray-10: #16191d;
+--gray-11: #0d0f12;
+--gray-12: #030507;
+/* Surfaces */
+--text-1: var(--gray-12);
+--text-2: var(--gray-10);
+--text-3: var(--gray-8);
+--text-4: var(--gray-7);
+--surface-1: var(--gray-0);
+--surface-2: var(--gray-1);
+--surface-3: var(--gray-2);
+--surface-4: var(--gray-3);
 }
 
 body {
-    font-family: 'Arial', sans-serif;
-   /* background-color: #111b21;  Color de fondo oscuro típico de WhatsApp */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh; /* Ocupa toda la altura de la pantalla */
-    overflow: hidden; /* Evita que haya scroll en la página principal */
+  font-family: 'Arial', sans-serif;
+ /* background-color: #111b21;  Color de fondo oscuro típico de WhatsApp */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh; /* Ocupa toda la altura de la pantalla */
+  overflow: hidden; /* Evita que haya scroll en la página principal */
 }
 
 /* El contenedor principal del chat */
 .chat-container {
-    width: 400px;
-    height: 600px;
-    background-color: transparent;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    transition: all 0.3s ease-in-out;
-    position: relative; 
+  width: 400px;
+  height: 600px;
+  background-color: transparent;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: all 0.3s ease-in-out;
+  position: relative; 
 }
 
 Cuando se expande el chat 
 .chat-container.expanded {
-    width: 80%;  
-    height: 90vh;  
+  width: 80%;  
+  height: 90vh;  
 }
 
 /* Estilos para la cabecera del chat, donde está el avatar y la información del usuario */
 .chat-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between; /* Alinea el contenido del header entre extremos */
-    padding: 10px;
-    /* background-color: #2a3942; Color de fondo para el header 
-    color: #fff;*/
-    width: 100%; /* Hace que el header ocupe todo el ancho del contenedor del chat */
-    box-sizing: border-box; /* Asegura que el padding no afecte el ancho */
-    min-height:18%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* Alinea el contenido del header entre extremos */
+  padding: 10px;
+  /* background-color: #2a3942; Color de fondo para el header 
+  color: #fff;*/
+  width: 100%; /* Hace que el header ocupe todo el ancho del contenedor del chat */
+  box-sizing: border-box; /* Asegura que el padding no afecte el ancho */
+  min-height:18%;
 }
 
 /* Contenedor para los íconos en el lado derecho */
 .chat-header-icons {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end; /* Alinea los íconos a la derecha */
-    flex-grow: 1; /* Ocupa el espacio restante para empujar los íconos a la derecha */
+  display: flex;
+  align-items: center;
+  justify-content: flex-end; /* Alinea los íconos a la derecha */
+  flex-grow: 1; /* Ocupa el espacio restante para empujar los íconos a la derecha */
 }
 
 /* Estilos para los íconos del header */
 .expand-icon, .logout , #new-thread-icon {
-    width: 30px; /* Ajusta el tamaño de los íconos */
-    height: 30px;
-    margin-left: 25px; /* Aumenta el espacio entre los íconos */
-    cursor: pointer;
+  width: 30px; /* Ajusta el tamaño de los íconos */
+  height: 30px;
+  margin-left: 25px; /* Aumenta el espacio entre los íconos */
+  cursor: pointer;
 }
 
 
 /* Tamaño y forma del avatar */
 .avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    margin-right: 10px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  margin-right: 10px;
 }
 
 /* Estilos para la sección de información del usuario */
 .chat-user-info h3 {
-    font-size: 16px;
-    margin-bottom: 2px;
-    color: white; /* Asegurar el color blanco */
+  font-size: 16px;
+  margin-bottom: 2px;
+  color: white; /* Asegurar el color blanco */
 }
 
 .chat-user-info p {
-    font-size: 12px;
-    margin-top: 0;
-    color: white; /* Asegurar el color blanco */
+  font-size: 12px;
+  margin-top: 0;
+  color: white; /* Asegurar el color blanco */
 }
 
 /* Estilos para la ventana de mensajes del chat */
 .chat-messages {
-  flex: 1;
-  padding: 10px;
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  overflow-y: auto; /* Scroll vertical */
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  height: calc(100% - 18%); /* Ajusta el alto dinámicamente */
-  margin: 0 0 1% 0;
-  scrollbar-width: thin;
-  scrollbar-color: #888 #1e2a33;
+flex: 1;
+padding: 10px;
+background-size: cover;
+background-position: center;
+background-repeat: no-repeat;
+overflow-y: auto; /* Scroll vertical */
+display: flex;
+flex-direction: column;
+width: 100%;
+height: calc(100% - 18%); /* Ajusta el alto dinámicamente */
+margin: 0 0 1% 0;
+scrollbar-width: thin;
+scrollbar-color: #888 #1e2a33;
 }
 
 /* Estilos generales para cada mensaje (enviado o recibido) */
 .message {
-    max-width: 70%;
-    word-wrap: break-word;
-    padding: 8px 10px;
-    margin-bottom: 10px;
-    border-radius: 15px;
-    position: relative;
-    font-size: 14px;
-    color: white; /* Color blanco en los mensajes */
+  min-width:14%;
+  max-width: 70%;
+  word-wrap: break-word;
+  padding: 8px 10px;
+  margin-bottom: 19px;
+  border-radius: 15px;
+  position: relative;
+  font-size: 14px;
+  color: white; /* Color blanco en los mensajes */
 }
 
 /* Estilo para los mensajes enviados por el usuario */
 .sent {
-    background-color: #005c4b;
-    align-self: flex-end;
-    color: #fff;
-    border-bottom-right-radius: 0;
+  background-color: #00B189;
+  align-self: flex-end;
+  color: #fff;
+  border-bottom-right-radius: 0;
 }
 
 /* Estilo para los mensajes recibidos */
 .received {
-    background-color: #202c33;
-    align-self: flex-start;
-    color: #fff;
-    border-bottom-left-radius: 0;
+  background-color: #202c33;
+  align-self: flex-start;
+  color: #fff;
+  border-bottom-left-radius: 0;
 }
 
 /* Estilo para la hora del mensaje */
 .time {
-    font-size: 10px;
-    color: #bbb;
-    position: absolute;
-    bottom: -15px;
-    right: 10px;
+  font-size: 10px;
+  color: #bbb;
+  position: absolute;
+  bottom: -15px;
+  right: 10px;
 }
 
 /* Estilo para la barra de entrada de mensajes */
 /* .input-container {
-    display: flex;
-    padding: 10px;
-    background-color: #2a3942;
-    border-top: 1px solid #333;
-} */
-.input-container {
   display: flex;
+  padding: 10px;
   background-color: #2a3942;
   border-top: 1px solid #333;
-  border-radius: 20px;
-  /* padding:0 0 0 2%; */
-  /* width:92%; */
-  align-items: center;
-  padding:10px;
+} */
+.input-container {
+display: flex;
+background-color: #FFF;
+/* border-top: 1px solid #333;*/
+border-radius: 20px;
+/* padding:0 0 0 2%; */
+width:92%;
+align-items: center;
+padding:10px;
 }
 /* Estilo para el campo de entrada de texto en el chat */
 .input-container input {
-    flex: 1;
-    padding: 10px;
-    border: none;
-    border-radius: 20px;
-    background: rgba(255, 255, 255, 0.1); 
-    color: #fff;
-    margin-right: 10px;
-    font-size: 16px; /* Ajusta la fuente para evitar el zoom */
-    -webkit-appearance: none; /* Elimina los estilos predeterminados de iOS */
-    caret-color: #fff;
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.1); 
+  color: #000;
+  margin-right: 10px;
+  font-size: 16px; /* Ajusta la fuente para evitar el zoom */
+  -webkit-appearance: none; /* Elimina los estilos predeterminados de iOS */
+  caret-color: #fff;
 }
 
 /* Asegura que el campo de entrada no tenga sombras o bordes adicionales en iOS */
 .input-container input:focus {
-    outline: none;
-    border: 1px solid #fff;
-    box-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+  outline: none;
+  border: 1px solid #fff;
+  box-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
 }
 
 /* Estilo para el ícono de adjuntar archivo */
 .attach-icon, .mic-icon {
-  width: 30px;
-  height: 30px;
-  cursor: pointer;
-  margin-right: 10px;  /* Espacio a la derecha para separarlo del input */
-  vertical-align: middle;
+width: 30px;
+height: 30px;
+cursor: pointer;
+margin-right: 10px;  /* Espacio a la derecha para separarlo del input */
+vertical-align: middle;
 }
 
 /* Estilo para la imagen del botón de enviar */
 .send-icon {
-    width: 40px;
-    height: 40px;
-    cursor: pointer;
-    margin-left: 10px;
-    vertical-align: middle;
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  margin-left: 10px;
+  vertical-align: middle;
 }
 
 /* Disclaimer como una burbuja */
 .disclaimer {
-    width: 90%; /* Ajustado para que quede dentro del contenedor */
-    margin: 20px auto;
-    background-color: rgba(255, 255, 255, 0.1); /* Fondo semitransparente solo para el disclaimer */
-    /* color: #e0e0e0;  Texto gris claro */
-    text-align: center;
-    padding: 5px;
-    border-radius: 20px; /* Bordes redondeados */
-    font-size: 0.65rem;
-    line-height: 1.5;
-    font-style: italic;
-    z-index: 2; /* Asegura que el disclaimer esté sobre otros elementos */
-    position: absolute; /* Esto lo saca del flujo del documento */
-    top: 50px; /* Ajusta según sea necesario para la ubicación deseada */
-    left: 50%;
-    transform: translateX(-50%); /* Lo centra horizontalmente */
-    background-clip: padding-box; /* Hace que el fondo esté contenido dentro de los bordes redondeados */
+  width: 90%; /* Ajustado para que quede dentro del contenedor */
+  margin: 20px auto;
+  background-color: rgba(255, 255, 255, 0.1); /* Fondo semitransparente solo para el disclaimer */
+  /* color: #e0e0e0;  Texto gris claro */
+  text-align: center;
+  padding: 5px;
+  border-radius: 20px; /* Bordes redondeados */
+  font-size: 0.65rem;
+  line-height: 1.5;
+  font-style: italic;
+  z-index: 2; /* Asegura que el disclaimer esté sobre otros elementos */
+  position: absolute; /* Esto lo saca del flujo del documento */
+  top: 50px; /* Ajusta según sea necesario para la ubicación deseada */
+  left: 50%;
+  transform: translateX(-50%); /* Lo centra horizontalmente */
+  background-clip: padding-box; /* Hace que el fondo esté contenido dentro de los bordes redondeados */
 }
 
 
@@ -259,107 +260,107 @@ Cuando se expande el chat
 
 /* Estilo para el contenedor inicial con la frase y la mano */
 .frase-circ {
-    display: grid;
-    position: absolute;
-    bottom:1%;
-    right:1%;
-    background-color: white; /* Texto blanco */
-    border-radius: 50%;
-    height:155px;
-    width:155px;
-    cursor:pointer;
-    /*flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    text-align: center;*/
+  display: grid;
+  position: absolute;
+  bottom:1%;
+  right:1%;
+  background-color: white; /* Texto blanco */
+  border-radius: 50%;
+  height:155px;
+  width:155px;
+  cursor:pointer;
+  /*flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;*/
 }
 
 #circulo {
-    transform:rotate(-30deg);
-      position: absolute;
-      top: 6%;
-      left: 44%;
-      height:150px;
-    }
+  transform:rotate(-30deg);
+    position: absolute;
+    top: 6%;
+    left: 44%;
+    height:150px;
+  }
 
-    #circulo span {
-      position: absolute;
-      height:74px;
-      font-size:15px;
-      width:19px;
-      text-align:center;
-      transform-origin: bottom center;
-      color:Black;
-    }
+  #circulo span {
+    position: absolute;
+    height:74px;
+    font-size:15px;
+    width:19px;
+    text-align:center;
+    transform-origin: bottom center;
+    color:Black;
+  }
 
-   
+ 
 
 
 .hand-01 {
-    position:absolute;
-    width:70%;
-    top:16%;
-    overflow:hidden;
-    object-fit:cover;
-    left:15%;
+  position:absolute;
+  width:70%;
+  top:16%;
+  overflow:hidden;
+  object-fit:cover;
+  left:15%;
 }
 
 /* Contenedor principal del formulario de login */
 #login-container {
-    width: 400px;
-    height: auto;
-    background-color: #1e2a33;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    display: none; /* Oculto inicialmente */
-    flex-direction: column;
-    overflow: hidden;
-    transition: all 0.3s ease-in-out;
-    color: white; /* Texto blanco */
+  width: 400px;
+  height: auto;
+  background-color: #1e2a33;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  display: none; /* Oculto inicialmente */
+  flex-direction: column;
+  overflow: hidden;
+  transition: all 0.3s ease-in-out;
+  color: white; /* Texto blanco */
 }
 
 /* Estilos para el formulario de login */
 .form-login {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 20px;
-    color: white; /* Texto blanco */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  color: white; /* Texto blanco */
 }
 
 /* Estilos para los campos de entrada en el formulario de login */
 .form-login input {
-    width: 100%;
-    padding: 10px;
-    margin-bottom: 15px;
-    border-radius: 5px;
-    border: 1px solid #ccc;
-    background-color: #2c3e50;
-    color: #fff;
-    caret-color: #fff;
-    font-size: 16px; /* Asegúrate de que el tamaño de la fuente sea al menos 16px */
-    -webkit-appearance: none; /* Elimina los estilos predeterminados de iOS */
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 15px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  background-color: #2c3e50;
+  color: #fff;
+  caret-color: #fff;
+  font-size: 16px; /* Asegúrate de que el tamaño de la fuente sea al menos 16px */
+  -webkit-appearance: none; /* Elimina los estilos predeterminados de iOS */
 }
 
 /* Asegura que el campo de entrada no tenga sombras o bordes adicionales en iOS */
 .form-login input:focus {
-    outline: none;
-    border: 1px solid #fff;
-    box-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+  outline: none;
+  border: 1px solid #fff;
+  box-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
 }
 
 /* Estilos para el botón del formulario de login */
 .form-login button {
-    padding: 10px 20px;
-    background-color: #005c4b;
-    color: white; /* Texto blanco */
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
+  padding: 10px 20px;
+  background-color: #005c4b;
+  color: white; /* Texto blanco */
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
 }
 
 .form-login button:hover {
-    background-color: #007f5f;
+  background-color: #007f5f;
 }
 
 /* Otros estilos reutilizados para el login */
@@ -368,333 +369,333 @@ Cuando se expande el chat
 
 
 .subfrase {
-    text-align: center;
-    margin-bottom: 20px;
-    color: #bbb;
+  text-align: center;
+  margin-bottom: 20px;
+  color: #bbb;
 }
 
 /*estilos utilizados en login*/
 .grupo-179-icon,
 .expand-icon,
 .rectngulo-96-icon, #new-thread-icon {
-  position: absolute;
-  height: 100%;
-  width: 100%;
-  max-width: 100%;
-  overflow: hidden;
-  max-height: 100%;
+position: absolute;
+height: 100%;
+width: 100%;
+max-width: 100%;
+overflow: hidden;
+max-height: 100%;
 }
 
 .grupo-179-icon, .expand-icon, #new-thread-icon {
-  height: 3.33%;
-  width: 4.69%;
-  top: 5%;
-  right: 3.18%;
-  cursor:pointer;
+height: 3.33%;
+width: 4.69%;
+top: 5%;
+right: 3.18%;
+cursor:pointer;
 }
 .expanded .grupo-179-icon,
 .expanded .expand-icon,
 .expanded #new-thread-icon{
-  width: 1.69%;
+width: 1.69%;
 }
 .expand-icon {
-  right: 9.25%;
+right: 9.25%;
 }
 .expanded .expand-icon {
-  right: 5.25%;
+right: 5.25%;
 }
 #new-thread-icon {
-  right: 15.25%;
+right: 15.25%;
 }
 .expanded #new-thread-icon {
-  right: 7.25%;
+right: 7.25%;
 }
 .user{
-    position:absolute;
-    top:5%;
-    left: 4.5%;
-    z-index:1;
-    display:inline-flex;
+  position:absolute;
+  top:5%;
+  left: 4.5%;
+  z-index:1;
+  display:inline-flex;
 }
 .expanded .user{
-    left: 1.5%;
+  left: 1.5%;
 }
 .user-name {
-  font-weight: 500;
-  align-content: center;
-  margin: 0 0 0 3%;
+font-weight: 500;
+align-content: center;
+margin: 0 0 0 3%;
 }
 .user-icon{
-  width:20%;
+width:20%;
 }
 .grupo-409-icon, .hand {
-  position: absolute;
-  width: 27%;
-  top: 5.95%;
-  overflow: hidden;
-  object-fit: cover;
+position: absolute;
+width: 27%;
+top: 5.95%;
+overflow: hidden;
+object-fit: cover;
 }
 .expanded .grupo-409-icon, .expanded .hand {
-  width: 10%;
-  top: 6.95%;
+width: 10%;
+top: 6.95%;
 }
 .expanded .hand {
-  top: 14%;
+top: 14%;
 }
 
 .frase, .subfrase {
-    width:54%;
-    display: inline-grid;
-    text-align: center;
+  width:54%;
+  display: inline-grid;
+  text-align: center;
 }
 .subfrase {
-    width:60%;
-    margin:8% 0;
-    font-size: var(--font-size-sm);
-    color: var(--gray-7);
- }
- .subfrase b {
-    color: var(--gray-12);
- }
+  width:60%;
+  margin:8% 0;
+  font-size: var(--font-size-sm);
+  color: var(--gray-7);
+}
+.subfrase b {
+  color: var(--gray-12);
+}
 .expanded .frase {
-    width:40%;
-    margin:18% 0 0 0;
+  width:40%;
+  margin:18% 0 0 0;
 }
 .expanded .subfrase {
-    margin:2% 0;
-    width:30%;
+  margin:2% 0;
+  width:30%;
 }
 .can-i-help,
 .tell-me {
-  font-size: var(--font-size-title);
+font-size: var(--font-size-title);
 }
 .expanded .can-i-help,
 .expanded .tell-me {
-  font-size: var(--font-size-19xl);
+font-size: var(--font-size-19xl);
 }
 .can-i-help {}
 .tell-me {
-  color: var(--color-dimgray);
+color: var(--color-dimgray);
 }
 .shortcuts {
-    width:80%;
-    display:flex;
-    margin: 25% 0 3%;
+  width:80%;
+  display:flex;
+  margin: 25% 0 3%;
 }
 .expanded .shortcuts {
-    margin: 5% 0;
-    width:33%;
+  margin: 5% 0;
+  width:33%;
 }
 .caja_blanca {
-    width:32%;
-    background: white;
-    border-radius:13px;
-    min-height:100px;
-    padding: 3% 0 1% 2%;
-    margin: 0 2%;
+  width:32%;
+  background: white;
+  border-radius:13px;
+  min-height:100px;
+  padding: 3% 0 1% 2%;
+  margin: 0 2%;
 }
 .expanded .caja_blanca {
-    min-height:150px;
+  min-height:150px;
 }
 .clip-path-group3{
-    width:42%;
+  width:42%;
 }
 .coa,
 .grupo-107 {
-  position: absolute;
+position: absolute;
 }
 .grupo-107 {
-  top: 1.119rem;
-  left: 0.994rem;
-  width: 3.556rem;
-  height: 3.556rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
+top: 1.119rem;
+left: 0.994rem;
+width: 3.556rem;
+height: 3.556rem;
+display: flex;
+flex-direction: column;
+align-items: center;
+justify-content: flex-end;
 }
 .coa {
-  top: 1.963rem;
-  left: 2.256rem;
-  font-size: 0.313rem;
-  color: var(--color-white);
+top: 1.963rem;
+left: 2.256rem;
+font-size: 0.313rem;
+color: var(--color-white);
 }
 .find {
-  top: 61.74%;
-  left: 11.17%;
+top: 61.74%;
+left: 11.17%;
 }
 .busqueda,
 .coas,
 .find {
-  position: absolute;
+position: absolute;
 }
 .coas {
-  top: 71.1%;
-  left: 10.64%;
+top: 71.1%;
+left: 10.64%;
 }
 .busqueda {
-  top: 29.913rem;
-  left: 36.869rem;
-  width: 9.344rem;
-  height: 9.344rem;
+top: 29.913rem;
+left: 36.869rem;
+width: 9.344rem;
+height: 9.344rem;
 }
 .find-ifus {
-  width: 2rem;
-  position: relative;
-  height: 1.938rem;
+width: 2rem;
+position: relative;
+height: 1.938rem;
 }
 
 .frame1 {
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  margin: 0 0 6% 0;
+overflow: hidden;
+display: flex;
+flex-direction: column;
+align-items: flex-start;
+justify-content: center;
+margin: 0 0 6% 0;
 }
 
 .find1 {
-    display:block;
+  display:block;
 }
 .ifus {
 
 }
 .clip-path-group6,
 .grupo-172 {
-  width: 9.344rem;
-  height: 9.344rem;
+width: 9.344rem;
+height: 9.344rem;
 }
 
 .clip-path-group6 {
-  position: relative;
+position: relative;
 }
 .products,
 .search {
-  position: absolute;
-  top: 0;
-  left: 0.47%;
+position: absolute;
+top: 0;
+left: 0.47%;
 }
 .products {
-  top: 45.16%;
-  left: 0;
+top: 45.16%;
+left: 0;
 }
 .search-products {
-  position: absolute;
-  top: 0;
-  left: 0.956rem;
-  width: 4rem;
-  height: 1.938rem;
+position: absolute;
+top: 0;
+left: 0.956rem;
+width: 4rem;
+height: 1.938rem;
 }
 
 .grupo-707.expanded {
-  width: 90%;
-  height: 90%;
-  display: flex;
-  align-items: center;
-  border-radius: 26px;
-  padding: 0 0 2% 0;
-  top:3%;
-  right: 5%;
+width: 90%;
+height: 90%;
+display: flex;
+align-items: center;
+border-radius: 26px;
+padding: 0 0 2% 0;
+top:3%;
+right: 5%;
 }
 .grupo-707.show-grupo {
-    width: 27%;
-    height: 73%;
-    right: 5%;
-    bottom: 4%;
-    border-radius: 26px;
-    display: flex;
+  width: 27%;
+  height: 73%;
+  right: 5%;
+  bottom: 4%;
+  border-radius: 26px;
+  display: flex;
 }
 .grupo-707 {
-  position: absolute;
-  display: none;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  text-align: left;
-  font-size: 0.875rem;
-  color: var(--color-gray);
-  font-family: var(--font-gotham);
-  background: #F5F5F5;
-  padding: 0 0 2% 0;
-  width: 0;
-  height: 0;
-  bottom: 5%;
-  right: 15%;
-  border-radius: 50%;
-  overflow: hidden;
-  transition: all 0.5s ease-in-out;
+position: absolute;
+display: none;
+flex-direction: column;
+align-items: center;
+justify-content: flex-end;
+text-align: left;
+font-size: 0.875rem;
+color: var(--color-gray);
+font-family: var(--font-gotham);
+background: #F5F5F5;
+padding: 0 0 2% 0;
+width: 0;
+height: 0;
+bottom: 5%;
+right: 15%;
+border-radius: 50%;
+overflow: hidden;
+transition: all 0.5s ease-in-out;
 }
 .form-login1 {
-    text-align:center;
+  text-align:center;
 }
 .form-login1 input {
-    width:80%;
-    padding: 2%;
-    border: none;
-    border-radius: 5px;
-    outline: none;
-    font-size: 14px;
-    background: white;
-    margin:2% 0;
+  width:80%;
+  padding: 2%;
+  border: none;
+  border-radius: 5px;
+  outline: none;
+  font-size: 14px;
+  background: white;
+  margin:2% 0;
 }
 .expanded .form-login1 input {
-    width:60%;
-    padding: 1%;
-    margin:1% 0;
+  width:60%;
+  padding: 1%;
+  margin:1% 0;
 }
 .form-login1 a {
-    font-size: var(--font-size-sm);
-    color: var(--gray-7);
-    text-decoration: none;
+  font-size: var(--font-size-sm);
+  color: var(--gray-7);
+  text-decoration: none;
 }
 
 .input-container button, .form-login1 button {
-    padding: 4px 20px;
-    border: none;
-    border-radius: 20px;
-    background: #00B189;
-    color: white;
-    font-size: 16px;
-    cursor: pointer;
-    transition: background 0.3s, transform 0.3s;
-    margin:4px;
+  padding: 4px 20px;
+  border: none;
+  border-radius: 20px;
+  background: #00B189;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.3s, transform 0.3s;
+  margin:4px;
 }
 .chat-box {
-    width: 80%;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
+  width: 80%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .expanded .chat-box {
-    width: 60%;
+  width: 60%;
 }
 
 
- /* .input-container input {
-    flex: 1;
-    padding: 10px;
-    border: none;
-    border-radius: 20px;
-    margin-right: 10px;
-    outline: none;
-    font-size: 16px;
-    background: rgba(255, 255, 255, 0.1); */
+/* .input-container input {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 20px;
+  margin-right: 10px;
+  outline: none;
+  font-size: 16px;
+  background: rgba(255, 255, 255, 0.1); */
 } */
 
 /* Estilos para el reproductor de audio en los mensajes */
 audio {
-  width: 100%; /* Asegura que el reproductor de audio ocupe todo el ancho disponible */
-  margin-top: 10px;
-  outline: none; /* Elimina los bordes de enfoque */
-  border-radius: 10px; /* Bordes redondeados */
+width: 100%; /* Asegura que el reproductor de audio ocupe todo el ancho disponible */
+margin-top: 10px;
+outline: none; /* Elimina los bordes de enfoque */
+border-radius: 10px; /* Bordes redondeados */
 }
 
 /* Personalización del reproductor de audio */
 audio::-webkit-media-controls-panel {
-  background-color: #1e2a33; /* Fondo del reproductor de audio acorde al fondo del chat */
-  color: white; /* Asegura que los controles del reproductor sean visibles */
-  border-radius: 10px;
+background-color: #1e2a33; /* Fondo del reproductor de audio acorde al fondo del chat */
+color: white; /* Asegura que los controles del reproductor sean visibles */
+border-radius: 10px;
 }
 
 audio::-webkit-media-controls-play-button,
@@ -703,19 +704,19 @@ audio::-webkit-media-controls-current-time-display,
 audio::-webkit-media-controls-time-remaining-display,
 audio::-webkit-media-controls-mute-button,
 audio::-webkit-media-controls-volume-slider {
-  color: white; /* Asegura que los controles del reproductor sean visibles */
+color: white; /* Asegura que los controles del reproductor sean visibles */
 }
 
 audio::-webkit-media-controls-play-button {
-  background-color: #005c4b; /* Color del botón de reproducción */
-  border-radius: 50%; /* Hace que el botón de reproducción sea circular */
+background-color: #005c4b; /* Color del botón de reproducción */
+border-radius: 50%; /* Hace que el botón de reproducción sea circular */
 }
 
 audio::-webkit-media-controls-volume-slider {
-  background-color: #005c4b; /* Color de la barra de volumen */
+background-color: #005c4b; /* Color de la barra de volumen */
 }
 
 .message img {
-  max-width: 100%; /* Asegura que las imágenes no superen el ancho del contenedor */
-  border-radius: 8px; /* Bordes redondeados como en WhatsApp */
+max-width: 100%; /* Asegura que las imágenes no superen el ancho del contenedor */
+border-radius: 8px; /* Bordes redondeados como en WhatsApp */
 }

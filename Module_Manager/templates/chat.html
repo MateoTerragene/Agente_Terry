@@ -25,7 +25,7 @@
                     <p>Online</p>
                 </div>
             </div>    
-            <img id="new-thread-icon" title="Create new thread" data-url="{% url 'create_thread' %}" alt="Nuevo Thread" src="{% static 'img/new-thread2.png' %}" />
+            <img id="new-thread-icon" title="Create new thread" data-url="{% url 'create_thread' %}" alt="Nuevo Thread" src="{% static 'img/refresh.svg' %}" />
             <img class="expand-icon" title="Expand" alt="Expandir" src="{% static 'img/grupo-641.svg' %}" />
             <a href="/logout/" title="Logout"> <!-- Enlace para redirigir al logout -->
                 <img class="grupo-179-icon" alt="Logout" src="{% static 'img/grupo-179.svg' %}" />
@@ -40,9 +40,9 @@
         <div class="input-container">
             <input type="text" id="query" placeholder="Write a message..." />
             <input type="file" id="fileInput" style="display: none;">
-            <img id="attachButton" src="{% static 'img/attached.png' %}" alt="Adjuntar" class="attach-icon">
-            <img id="micButton" src="{% static 'img/mic.png' %}" alt="Grabar Audio" class="mic-icon"> <!-- Botón de grabar audio -->
-            <img id="sendButton" src="{% static 'img/sent.png' %}" alt="Enviar" class="send-icon">
+            <img id="attachButton" src="{% static 'img/adjuntar.svg' %}" alt="Adjuntar" class="attach-icon">
+            <img id="micButton" src="{% static 'img/mico.svg' %}" alt="Grabar Audio" class="mic-icon"> <!-- Botón de grabar audio -->
+            <img id="sendButton" src="{% static 'img/sent.svg' %}" alt="Enviar" class="send-icon">
         </div>
         
         <input type="hidden" id="user_id" value="{{ user_id }}">
