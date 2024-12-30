@@ -21,6 +21,7 @@ jobs:
 
       - name: Deploy to EC2
         run: |
+          ssh -o StrictHostKeyChecking=no ubuntu@100.27.3.89 -p 1555 '
           ssh -o StrictHostKeyChecking=no -p 1555 ubuntu@100.27.3.89 '
           cd /home/ubuntu/Agente_Terry &&
           git pull &&
