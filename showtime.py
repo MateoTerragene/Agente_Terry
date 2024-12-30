@@ -1,1 +1,1 @@
-print("hola_test_cicd")#borrar v. git branch 1.0.24
+print("hola_test_cicd")#borrar v. git branch 1.0.25
