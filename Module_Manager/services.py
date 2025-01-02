@@ -24,18 +24,30 @@ class ModuleManager:
             self.client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
             self.docs = "COA = certificado de calidad = certificado de analisis, IFU = Prospecto , PD = Descripcion de producto = Ficha tecnica, SDS = Hoja de seguridad, CC = Color chart, FDA = Certificado FDA = 510K "
             self.prompt = f"""Eres un asistente que clasifica consultas de usuarios e identifica tareas a realizar. Puede haber múltiples tareas en una consulta. \
-                        Tu respuesta debe ser un JSON que indique si has recibido una 'fileRequest' (solicitud de documentos), una 'technical_query' (consulta técnica), \
-                        o 'clear_DB' (blanqueo reset de password o contraseña).\
-                        Solo debes clasificar como 'form' si el usuario menciona explícitamente intenciones de convertirse en distribuidor de la marca Terragene \
-                        Los documentos que te puede pedir el usuario son: {self.docs}.\
-                        Si recibes algo que contenga 'https://agente-terry.s3.amazonaws.com/images/', clasifícalo como 'image_submission'.\
-                        Si recibes algo que contenga 'https://agente-terry.s3.amazonaws.com/db/', clasifícalo como 'clear_DB'.\
-                        Debes responder únicamente en el siguiente formato JSON: \
-                        {{
-                            "tasks": [
-                                "technical_query" | "fileRequest" | "form" | "purchase_opportunity" | "image_submission" | "clear_DB"
-                            ]
-                        }}"""
+                Tu respuesta debe ser un JSON que indique lo siguiente: \
+                1. Las tareas detectadas en la consulta. Estas pueden ser: \
+                - "technical_query" (consulta técnica) \
+                - "fileRequest" (solicitud de documentos) \
+                - "form" (intención de convertirse en distribuidor de Terragene) \
+                - "purchase_opportunity" (oportunidad de compra) \
+                - "image_submission" (recepción de imagen) \
+                - "clear_DB" (blanqueo de contraseña). \
+                2. La consulta traducida al inglés. \
+                3. El idioma original de la consulta como un nombre de idioma, no un código (por ejemplo, 'Spanish', 'English', 'French'). \
+                Los documentos que te puede pedir el usuario son: {self.docs}.\
+                Si recibes algo que contenga 'https://agente-terry.s3.amazonaws.com/images/', clasifícalo como 'image_submission'.\
+                Si recibes algo que contenga 'https://agente-terry.s3.amazonaws.com/db/', clasifícalo como 'clear_DB'.\
+                Debes responder únicamente en el siguiente formato JSON: \
+                {{
+                    "tasks": [
+                        "technical_query" | "fileRequest" | "form" | "purchase_opportunity" | "image_submission" | "clear_DB"
+                    ],
+                    "query_translation": {{
+                        "translated_query": "consulta traducida al inglés",
+                        "original_language": "idioma original"
+                    }}
+                }}"""
+
 
             self.tasks = []
             # self.task = Task()
@@ -87,9 +99,15 @@ class ModuleManager:
                     self.tasks.append(task)
                 # self.task = copy.deepcopy(self.tasks[0])
             # else:
-            #     self.tasks.clear()    
+            #     self.tasks.clear()   
+            # Traducción e idioma original
+            query_translation = classification_json.get("query_translation", {})
+            translated_query = query_translation.get("translated_query")
+            original_language = query_translation.get("original_language")
+            
+            self.query = translated_query
             completed_task_type = self.process_tasks(thread, user_identifier, is_whatsapp)
-            resp= self.LLM_BN.generate_tasks_response(query,thread)
+            resp= self.LLM_BN.generate_tasks_response(original_language,translated_query,thread)
             # print(f"respuesta en module_manager/classify_query: {resp}")
             return resp, completed_task_type 
         except Exception as e:

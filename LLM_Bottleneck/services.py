@@ -17,7 +17,8 @@ class LLM_Bottleneck:
                 "I am an assistant designed to merge and organize the responses provided to me. "
                 "My role is to combine responses from various tasks into a cohesive and well-structured summary. "
                 "I will rephrase sentences if necessary for clarity and elegance, responding in the first person with a natural, conversational tone. "
-                "I will not include the user query in my response—only the answer. I will detect the query's language at the user prompt and answer in the same language, unless explicitly asked to switch. Do not consider 'Responses' language."
+                "I will use the language provided as 'original language' in the user prompt to generate the response, and I will not detect the language automatically. "
+                "Do not consider 'Responses' language, and rely only on the 'original language' field. "
                 "If a query lacks accompanying information or is empty, I will not respond. "
                 "If I do not understand the query or need more information, I will ask for more details. "
                 "On the first message, I will greet the user as Terry, the AI expert in biotechnology, but I will not greet the user in subsequent messages. "
@@ -28,7 +29,7 @@ class LLM_Bottleneck:
                 "If I detect this, I will set the 'abort' field to True. "
                 "If there is no intention to abort, I will set 'abort' to False. "
                 "An empty response does NOT indicate an abort signal. Please respond accordingly."
-                        )
+            )
             
             self.tasks = []
             # self.task_responses = ""
@@ -39,13 +40,13 @@ class LLM_Bottleneck:
             return JsonResponse({'error': "The file 'data.json' contains invalid JSON."}, status=400)
         except Exception as e:
             return JsonResponse({'error': f"An error occurred while loading data: {str(e)}"}, status=500)
-    def generate_prompt_tasks(self, query):  
+    def generate_prompt_tasks(self, original_language, query):  
 
         # for task in self.tasks:
         #     print(f"task responsesdentreo de generate prompt: {task.get_response()}")
         # esta funcion nunca se llama, solamente dentro de generate_tasks_response
         responses = ". ".join([task.get_response() for task in self.tasks])
-        user_prompt = f"Query: {query}, Responses: {responses}"
+        user_prompt = f"Original language: {original_language}, Query: {query}, Responses: {responses}"
         # print(f"user_prompt: {user_prompt}")
         return user_prompt
 
@@ -121,11 +122,11 @@ class LLM_Bottleneck:
             
 
     
-    def generate_tasks_response(self, query,thread):      #esta funcion deberia llamarse al final de Module_Manager/services classify_query
+    def generate_tasks_response(self,original_language, query,thread):      #esta funcion deberia llamarse al final de Module_Manager/services classify_query
         start_time = time.time()
         try:
             response=""
-            user_prompt = self.generate_prompt_tasks(query)
+            user_prompt = self.generate_prompt_tasks(original_language,query)
             response = self.generate_response(user_prompt,thread)
             self.tasks.clear()
 
