@@ -7,6 +7,7 @@ from File_Manager.SubTask import FMSubTask
 import json
 import os
 import re
+import time
 from .handlers.file_handlers import file_handlers
 from File_Manager.models import DocumentRequest
 class FileManager:
@@ -23,7 +24,7 @@ class FileManager:
             self.document_types_string = ""
             # self.products
             self.products_string = ""
-            self.prompt = None  
+            # self.prompt = None  
             self.assistant_id = os.getenv('FILE_MANAGER_ASSISTANT_ID')
             self.file_handler=file_handlers()
             response = self.load_data()
@@ -145,9 +146,6 @@ class FileManager:
         print("Subtarea creada y añadida:", fm_subtask)
         
 
-            
-
-
     def clear_historial(self):
         self.historial.clear()
 
@@ -198,59 +196,73 @@ class FileManager:
 
     #####################################################################
     def gather_parameters(self, missing_parameters, completed_parameters, thread):
-        # Crear el contenido del mensaje del usuario basado en lo que ya se ha proporcionado y lo que falta
-        user_content = (
-            f"He proporcionado los siguientes detalles: {completed_parameters}. "
-            # f"Pero aún necesito proporcionar: {missing_parameters}."
-        )
-
-        # Enviar el mensaje del usuario
-        chat = self.client.beta.threads.messages.create(
-            thread_id=thread.thread_id,
-            role="user", content=user_content
-        )
-
-        # Crear el contenido del mensaje del asistente para guiar al usuario
-        assistant_content = (
-            "You are an AI Product Specialist Assistant. Your primary role is to gather the specific parameters required for different document types based on user requests. "
-            "The user has already provided some details: "
-            f"{completed_parameters}. "
-            "Now, you need to gather the remaining information: "
-            f"{missing_parameters}. "
-            "Please request these missing parameters from the user in a clear and concise manner. Remember: Your task is strictly to gather and provide the necessary parameters, not to deliver documents or provide technical assistance."
-            f"documents can be: {self.document_types_string} and products can be: {self.products_string}. Do not return the list of products unless explicitly requested.."
-        )
-
-        # Enviar el mensaje del asistente
-        chat = self.client.beta.threads.messages.create(
-            thread_id=thread.thread_id,
-            role="assistant", content=assistant_content
-        )
-
-        # Ejecutar el run del asistente y esperar la respuesta
-        run = self.client.beta.threads.runs.create_and_poll(
-            thread_id=thread.thread_id,
-            assistant_id=self.assistant_id,
-        )
-
-        if run.status == 'completed':
-            messages_response = self.client.beta.threads.messages.list(
-                thread_id=thread.thread_id
+        try:
+            # Crear el contenido del mensaje del usuario basado en lo que ya se ha proporcionado y lo que falta
+            user_content = (
+                f"He proporcionado los siguientes detalles: {completed_parameters}. "
+                # f"Pero aún necesito proporcionar: {missing_parameters}."
             )
-            messages = messages_response.data
-            latest_message = messages[0]
 
-            if messages and hasattr(latest_message, 'content'):
-                content_blocks = latest_message.content
-                if isinstance(content_blocks, list) and len(content_blocks) > 0:
-                    text_block = content_blocks[0]
-                    if hasattr(text_block, 'text') and hasattr(text_block.text, 'value'):
-                        classification = text_block.text.value
-                        return classification
-        else:
-            print(run.status)
+            # Enviar el mensaje del usuario
+            chat = self.client.beta.threads.messages.create(
+                thread_id=thread.thread_id,
+                role="user", content=user_content
+            )
 
-        return None
+            # Crear el contenido del mensaje del asistente para guiar al usuario
+            assistant_content = (
+                "You are an AI Product Specialist Assistant. Your primary role is to gather the specific parameters required for different document types based on user requests. "
+                "The user has already provided some details: "
+                f"{completed_parameters}. "
+                "Now, you need to gather the remaining information: "
+                f"{missing_parameters}. "
+                "Please request these missing parameters from the user in a clear and concise manner. Remember: Your task is strictly to gather and provide the necessary parameters, not to deliver documents or provide technical assistance."
+                f"documents can be: {self.document_types_string} and products can be: {self.products_string}. Do not return the list of products unless explicitly requested.."
+            )
+
+            # Enviar el mensaje del asistente
+            chat = self.client.beta.threads.messages.create(
+                thread_id=thread.thread_id,
+                role="assistant", content=assistant_content
+            )
+
+            # Ejecutar el run del asistente y esperar la respuesta
+            run = self.client.beta.threads.runs.create_and_poll(
+                thread_id=thread.thread_id,
+                assistant_id=self.assistant_id,
+            )
+            
+            while run.status != 'completed':
+                print(f"Run status: {run.status}. Waiting for completion...")
+                time.sleep(0.5)  # Pausa de 2 segundos para evitar sobrecargar el servidor
+                run = self.client.beta.threads.runs.retrieve(
+                    thread_id=thread.thread_id,
+                    run_id=run.id
+                )
+                if run.status == 'failed':
+                    print("Error: la ejecución falló.")
+                    return None
+            if run.status == 'completed':
+                messages_response = self.client.beta.threads.messages.list(
+                    thread_id=thread.thread_id
+                )
+                messages = messages_response.data
+                latest_message = messages[0]
+
+                if messages and hasattr(latest_message, 'content'):
+                    content_blocks = latest_message.content
+                    if isinstance(content_blocks, list) and len(content_blocks) > 0:
+                        text_block = content_blocks[0]
+                        if hasattr(text_block, 'text') and hasattr(text_block.text, 'value'):
+                            classification = text_block.text.value
+                            print(f"classification gather param: {classification}")
+                            return classification
+            else:
+                print(run.status)
+        except Exception as e:
+            print(f"Error en gather_parameters: {e}")
+            return None        
+        
         
 
 

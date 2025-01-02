@@ -3,7 +3,7 @@ import json
 import requests
 from django.shortcuts import render, redirect
 from django.views import View
-
+from Module_Manager.web_handler import WebHandler
 import hashlib
 import bcrypt
 from passlib.hash import phpass
@@ -17,6 +17,7 @@ from Module_Manager.thread_manager import thread_manager_instance
 from django.contrib.auth.models import User
 from django.views.decorators.csrf import csrf_exempt
 from .whatsapp_handler import WhatsAppHandler
+from .web_handler import WebHandler
 from Module_Manager.models import ExternalUser
 from django.http import JsonResponse, HttpResponse
 from twilio.twiml.messaging_response import MessagingResponse
@@ -27,23 +28,43 @@ from dotenv import load_dotenv
 import os
 from threading import Thread
 from django.db import connections, DatabaseError
+import time
 
 load_dotenv()
 logger = logging.getLogger(__name__)
 
+
 def convertir_enlaces(texto):
-    url_regex = re.compile(r'(https?://[^\s]+)')
-    return url_regex.sub(r'<a href="\1" target="_blank">\1</a>', texto)
+    # Detectar enlaces con formato Markdown y convertirlos a HTML
+    markdown_link_regex = re.compile(r'\[([^\]]+)\]\((https?://[^\s]+)\)')
+    
+    # Reemplazar el formato Markdown con HTML
+    texto_converted = markdown_link_regex.sub(r'<a href="\2" target="_blank">\1</a>', texto)
+    
+    return texto_converted
+
+
 
 @method_decorator(csrf_exempt, name='dispatch')
 class ClassifyQueryView(View):
+    web_handler = WebHandler()
     def post(self, request):
+        start_time = time.time()
         try:
-            body = json.loads(request.body)
+            # Obtener el tipo de contenido antes de procesar el cuerpo de la solicitud
+            content_type = request.META.get('CONTENT_TYPE')
+
+            # Obtener 'user_id' independientemente del tipo de contenido
+            if request.content_type == 'application/json':
+                body = json.loads(request.body)
+            else:
+                body = request.POST
+
             user_id = body.get('user_id')
             if not user_id:
                 return JsonResponse({'error': 'No user ID provided'}, status=400)
 
+            # Verificar la existencia del usuario en la base de datos 'Terragene_Users_Database'
             try:
                 with connections['Terragene_Users_Database'].cursor() as cursor:
                     cursor.execute("SELECT ID, user_login, user_email, display_name FROM wp_users WHERE ID = %s", [user_id])
@@ -61,39 +82,130 @@ class ClassifyQueryView(View):
             # Reutilizar thread existente si es posible
             thread, module_manager = thread_manager_instance.get_or_create_active_thread(user_id)
 
-            query = body.get('query')
-            if not query:
-                return JsonResponse({'error': 'No query provided'}, status=400)
-            # task_type = None
-            try:
-                response, task_type = module_manager.classify_query(thread, query,user_id)
-                
-                response = convertir_enlaces(response)
-                
-                
-                # Guardar la interacción en la base de datos
-                UserInteraction.objects.create(
-                    thread_id=thread.thread_id,
-                    endpoint="ClassifyQueryView",
-                    user_id=user_id,
-                    user_login=user_login,
-                    user_email=user_email,
-                    display_name=display_name,
-                    query=query,
-                    response=response,
-                    task_type=task_type if task_type else '' 
-                )
-                return JsonResponse({'response': response})
-            except Exception as e:
-                logger.error(f"Error classifying query: {str(e)}")
-                return JsonResponse({'error': str(e)}, status=501)
+            # Manejo de archivo 'multipart/form-data'
+            if content_type.startswith('multipart/form-data'):
+                print(f"Files received: {request.FILES}")
+
+                file = request.FILES.get('file')  # Obtener el único archivo enviado
+                if not file:
+                    return JsonResponse({'error': 'No file provided'}, status=400)
+
+                file_type = file.content_type  # Obtener el tipo MIME del archivo
+                print(f"File received: {file.name}, size: {file.size} bytes, type: {file_type}")
+
+                if file_type.startswith('audio/'):
+                    # Manejo de archivo de audio
+                    print(f"Audio received: {file}")
+                    transcribed_text_body, task_type, response, response_audio_url = self.web_handler.handle_audio_message(file, user_id, module_manager, thread)
+
+                    # Guardar la interacción en la base de datos
+                    UserInteraction.objects.create(
+                        thread_id=thread.thread_id,
+                        endpoint="ClassifyQueryView",
+                        user_id=user_id,
+                        user_login=user_login,
+                        user_email=user_email,
+                        display_name=display_name,
+                        query=f"Audio received: {transcribed_text_body}",
+                        response=response,
+                        task_type=task_type
+                    )
+                    # print("###########################################")
+                    # print(f"response antes de convertir enlaces: {response}")
+                    response_text = convertir_enlaces(response)
+                    # response_text=response
+                    # print(f"response despuess de convertir enlaces: {response_text}")
+                    # print("*********************************************")
+                    return JsonResponse({'response': response_text, 'audio_response': response_audio_url})
+
+                elif file_type.startswith('image/'):
+                    # Manejo de archivo de imagen
+                    print(f"Image received: {file}")
+                    # Aquí podrías procesar la imagen o guardarla en el servidor
+                    task_type, response_text, s3_image_path = self.web_handler.handle_image_message(file, user_id,thread,module_manager)
+                    # Guardar la interacción en la base de datos
+                    UserInteraction.objects.create(
+                        thread_id=thread.thread_id,
+                        endpoint="ClassifyQueryView",
+                        user_id=user_id,
+                        user_login=user_login,
+                        user_email=user_email,
+                        display_name=display_name,
+                        query=f"Image received: {file.name}",
+                        response="Image processed",
+                        task_type='image_upload'
+                    )
+
+                    return JsonResponse({'response': response_text}, status=200)
+
+                elif file_type == 'application/octet-stream':
+                    # Manejo de archivo '.db'
+                    print(f"DB File received: {file}")
+                    response,task_type, db_path=self.web_handler.handle_db_message(file,user_id,module_manager,thread)
+                    # Guardar la interacción en la base de datos
+                    UserInteraction.objects.create(
+                        thread_id=thread.thread_id,
+                        endpoint="ClassifyQueryView",
+                        user_id=user_id,
+                        user_login=user_login,
+                        user_email=user_email,
+                        display_name=display_name,
+                        query=f"DB File received: {db_path}",
+                        response=response,
+                        task_type=task_type
+                    )
+                    print(f"response views:{response}")
+                    return JsonResponse({'response': response}, status=200)
+
+                else:
+                    return JsonResponse({'error': 'Unsupported file type'}, status=400)
+
+            # Manejo de mensajes de texto en formato 'application/json'
+            elif content_type.startswith('application/json'):
+                query = body.get('query')
+                if not query:
+                    return JsonResponse({'error': 'No query provided'}, status=400)
+
+                try:
+                    # Clasificar la consulta
+                    response_text, task_type = self.web_handler.handle_text_message(query, user_id, module_manager, thread)
+                    print("*********************************************")
+
+                    # print(f"response antes de convertir enlaces: {response_text}")
+                    response = convertir_enlaces(response_text)
+                    # print(f"response despuess de convertir enlaces: {response}")
+                    # print("*********************************************")
+                    # Guardar la interacción en la base de datos
+                    UserInteraction.objects.create(
+                        thread_id=thread.thread_id,
+                        endpoint="ClassifyQueryView",
+                        user_id=user_id,
+                        user_login=user_login,
+                        user_email=user_email,
+                        display_name=display_name,
+                        query=query,
+                        response=response,
+                        task_type=task_type if task_type else ''
+                    )
+
+                    return JsonResponse({'response': response})
+
+                except Exception as e:
+                    logger.error(f"Error classifying query: {str(e)}")
+                    return JsonResponse({'error': str(e)}, status=501)
+
+            else:
+                print("Unhandled content type.")
+                return JsonResponse({'error': 'Unsupported content type'}, status=400)
 
         except json.JSONDecodeError:
             return JsonResponse({'error': 'Invalid JSON'}, status=400)
         except Exception as e:
             logger.error(f"Initialization error: {str(e)}")
             return JsonResponse({'error': str(e)}, status=500)
- 
+        finally:
+            total_elapsed = time.time() - start_time
+            print(f"Total time for request in ClassifyQueryView: {total_elapsed:.2f} seconds") 
 
     def get(self, request):
         action = request.GET.get('action')  # Verificar si la acción es crear un nuevo thread
@@ -103,6 +215,7 @@ class ClassifyQueryView(View):
         else:
             return JsonResponse({'status': 'error', 'message': 'Acción no válida'}, status=400)
 
+
     def create_new_thread(self, request):
         user_id = request.session.get('ID')  # Obtener el ID del usuario de la sesión
         
@@ -110,6 +223,8 @@ class ClassifyQueryView(View):
             return JsonResponse({'status': 'error', 'message': 'No se encontró el ID del usuario en la sesión'}, status=400)
 
         try:
+            # Limpia las tareas antes de crear un nuevo thread
+            
             # Lógica para crear un nuevo thread
             print(f"Creando un nuevo thread para el usuario con ID: {user_id}")
             thread, module_manager = thread_manager_instance.create_thread(user_id)
@@ -124,8 +239,6 @@ class ClassifyQueryView(View):
             return JsonResponse({'status': 'error', 'message': f'Error al crear un nuevo thread: {str(e)}'}, status=500)
 
 
-
-        
 WHATSAPP_API_URL = os.getenv("WHATSAPP_API_URL")
 ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
 VERIFY_TOKEN = os.getenv("VERIFY_TOKEN")
@@ -207,14 +320,17 @@ def process_message(changes):
     phone_number = value['contacts'][0]['wa_id']
     phone_number = phone_number.replace("549", "54")
 
+     # Obtener o crear el thread y module_manager para procesar el mensaje
+    thread, module_manager = thread_manager_instance.get_or_create_active_thread(phone_number, is_whatsapp=True)
+
     # Check the message type and handle accordingly
     if message_type == 'text':
         text_body = message['text']['body']
         print(f"Processing text message: {text_body}")
 
         # Handle the text message
-        thread, task_type, response_text = whatsapp_handler.handle_text_message(text_body, phone_number)
-
+        response_text, task_type = whatsapp_handler.handle_text_message(text_body, phone_number, module_manager, thread)
+        print(f"response dentro de views: {response_text}")
         # Optionally, send a response back via WhatsApp (if needed)
         headers = {
             "Authorization": f"Bearer {ACCESS_TOKEN}",
@@ -246,7 +362,7 @@ def process_message(changes):
         print(f"Processing audio message with ID: {audio_id}")
 
         # Handle the audio message
-        transcribed_text_body, thread, task_type, response_text, response_audio_url = whatsapp_handler.handle_audio_message(audio_id, phone_number)
+        transcribed_text_body, task_type, response_text, response_audio_url = whatsapp_handler.handle_audio_message(audio_id, phone_number,module_manager, thread)
 
         # Send the transcribed text back as a message (optional)
         headers = {
@@ -291,7 +407,7 @@ def process_message(changes):
         print(f"Processing image message with ID: {image_id}")
 
         # Handle the image message
-        thread, task_type, response_text, saved_image_path = whatsapp_handler.handle_image_message(image_id, phone_number)
+        task_type, response_text, s3_image_path = whatsapp_handler.handle_image_message(image_id, phone_number, module_manager, thread)
 
         # Optionally send a text response back via WhatsApp
         headers = {
@@ -313,7 +429,7 @@ def process_message(changes):
             thread_id=thread.thread_id,
             endpoint="WhatsAppQueryView",
             phone_number=phone_number,
-            query=f'Image: {saved_image_path}',
+            query=f'Image: {s3_image_path}',
             response=response_text,
             task_type=task_type if task_type else '',
             message_id=message_id
@@ -358,10 +474,7 @@ class UserView(View):
 
         # Si el login falla, volvemos a mostrar el formulario de login
         return render(request, 'login.html')
-    
-   
-
-
+ 
 def logout_view(request):
     # Limpiar la sesión
     request.session.flush()
