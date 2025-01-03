@@ -95,8 +95,8 @@ class FileManager:
         
         # Extrae la respuesta generada por el modelo
         generated_text = response.choices[0].message.content
-        print("Json generado por -> extract_variables: ")
-        print(generated_text)
+        print(f"Json generado por -> extract_variables: {generated_text}")
+       
         return generated_text
 
         
@@ -372,10 +372,10 @@ class FileManager:
         while index < len(task.subtasks):
             subtask = task.subtasks[index]
             missing_str, completed_str = self.check_what_is_empty(task)
-            print("missing parameters: ")
-            print(missing_str)
-            print("completed param")
-            print(completed_str)
+            print(f"missing parameters: {missing_str}")
+            
+            print(f"completed param: {completed_str}")
+       
 
             if not missing_str:
                 file_link = self.get_file(task, user_identifier, thread.thread_id, is_whatsapp)

@@ -77,6 +77,7 @@ class ModuleManager:
             # print(f"ClassQuer Usando el thread ID: {thread_id} para clasificar la consulta.")
             logger.info(f"Usando el thread ID: {thread_id} para clasificar la consulta.")
             self.query = query
+            
             if self.LLM_BN.abort_signal:
                 self.LLM_BN.abort_signal=False
                 self.tasks.clear()
@@ -102,13 +103,14 @@ class ModuleManager:
             # else:
             #     self.tasks.clear()   
             # Traducción e idioma original
-            query_translation = classification_json.get("query_translation", {})
-            translated_query = query_translation.get("translated_query")
-            original_language = query_translation.get("original_language")
-            
-            self.query = translated_query
+                query_translation = classification_json.get("query_translation", {})
+                translated_query = query_translation.get("translated_query")
+                original_language = query_translation.get("original_language")
+                self.tasks[0].language=original_language
+                
+                self.query = translated_query
             completed_task_type = self.process_tasks(thread, user_identifier, is_whatsapp)
-            resp= self.LLM_BN.generate_tasks_response(original_language,translated_query,thread)
+            resp= self.LLM_BN.generate_tasks_response(self.query,thread, self.tasks[0].language)
             # print(f"respuesta en module_manager/classify_query: {resp}")
             return resp, completed_task_type 
         except Exception as e:
@@ -116,7 +118,7 @@ class ModuleManager:
             raise
         finally:
             elapsed_time = time.time() - start_time
-            print(f"classify_query completed in {elapsed_time:.2f} seconds")
+            # print(f"classify_query completed in {elapsed_time:.2f} seconds")
 
     def process_tasks(self, thread, user_identifier, is_whatsapp=False):
         start_time = time.time()
