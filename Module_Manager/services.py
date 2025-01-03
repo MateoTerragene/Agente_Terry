@@ -29,7 +29,7 @@ class ModuleManager:
                 - "technical_query" (consulta técnica) \
                 - "fileRequest" (solicitud de documentos) \
                 - "form" (intención de convertirse en distribuidor de Terragene) \
-                - "purchase_opportunity" (oportunidad de compra) \
+                
                 - "image_submission" (recepción de imagen) \
                 - "clear_DB" (blanqueo de contraseña). \
                 2. La consulta traducida al inglés. \
@@ -40,15 +40,16 @@ class ModuleManager:
                 Debes responder únicamente en el siguiente formato JSON: \
                 {{
                     "tasks": [
-                        "technical_query" | "fileRequest" | "form" | "purchase_opportunity" | "image_submission" | "clear_DB"
+                        "technical_query" | "fileRequest" | "form" | "image_submission" | "clear_DB" 
+                        
                     ],
                     "query_translation": {{
                         "translated_query": "consulta traducida al inglés",
                         "original_language": "idioma original"
                     }}
                 }}"""
-
-
+                # - "purchase_opportunity" (oportunidad de compra) \
+                # | "purchase_opportunity"  # Comentado: esta tarea ya no es relevante
             self.tasks = []
             # self.task = Task()
             self.file_manager = FileManager()
