@@ -19,11 +19,7 @@ boto3
 gunicorn
 bcrypt
 passlib
-<<<<<<< HEAD
-
-=======
 pydub
 pylibdmtx
 httpx==0.23.3 
 django-cors-headers==3.14.0
->>>>>>> testguille
