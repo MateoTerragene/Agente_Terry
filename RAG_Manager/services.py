@@ -1,9 +1,8 @@
 from openai import OpenAI
 import os
 from dotenv import load_dotenv
-import time
 
-load_dotenv()  # Load environment variables from .env file
+load_dotenv()
 
 class TechnicalQueryAssistant:
     def __init__(self):
