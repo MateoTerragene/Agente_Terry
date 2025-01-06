@@ -1,7 +1,6 @@
 from django.contrib import admin
 from django.urls import path, include
 from Module_Manager.views import WhatsAppQueryView,UserView, logout_view
-from django.contrib.auth import views as auth_views
 
 urlpatterns = [
     path('admin/', admin.site.urls),

@@ -10,7 +10,6 @@ class TechnicalQueryAssistant:
         self.assistant_id = os.getenv('ASSISTANT_ID')
        
     def handle_technical_query(self, query, task, thread):
-        # Actualizar el estado de la tarea a "en progreso"
         task.update_state('in_progress')
 
         try:

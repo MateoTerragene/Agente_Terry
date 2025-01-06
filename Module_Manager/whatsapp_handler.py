@@ -3,8 +3,6 @@ from openai import OpenAI
 import os
 import requests
 import logging
-import uuid
-import hashlib
 import time
 
 logger = logging.getLogger(__name__)

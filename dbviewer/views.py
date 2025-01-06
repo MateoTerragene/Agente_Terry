@@ -1,6 +1,5 @@
 from django.shortcuts import render
 from django.db import connection
-from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseBadRequest
 import logging
 from openai import OpenAI
@@ -10,7 +9,7 @@ from django.views import View
 from django.http import HttpResponseBadRequest
 import pandas as pd
 from django.http import HttpResponse
-# Configurar el logger
+
 logger = logging.getLogger(__name__)
 client= OpenAI()
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))

@@ -6,7 +6,6 @@ import tempfile
 from pylibdmtx import pylibdmtx
 from openai import OpenAI
 from PIL import Image
-from io import BytesIO
 import requests
 import re
 # from dbr import BarcodeReader  # Necesita Dynamsoft Barcode Reader SDK

@@ -5,8 +5,6 @@ import os
 import time
 import boto3
 import subprocess
-
-from django.conf import settings
 logger = logging.getLogger(__name__)
 
 class WebHandler:
