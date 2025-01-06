@@ -41,8 +41,8 @@ class ImageManager:
                 aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
                 region_name=os.getenv('AWS_REGION')
             )
-            self.bucket_name = os.getenv('S3_BUCKET_NAME')  # Añadir el nombre del bucket aquí
-            print(f"ImageManager initialized with bucket: {self.bucket_name}")  # Print para verificar el bucket
+            self.bucket_name = os.getenv('S3_BUCKET_NAME') 
+            print(f"ImageManager initialized with bucket: {self.bucket_name}") 
             # self.historial=[]
             self.RAG=TechnicalQueryAssistant()
         except Exception as e:
@@ -60,13 +60,13 @@ class ImageManager:
             str: URL firmada para acceder al archivo.
         """
         try:
-            print(f"Generating presigned URL for key: {s3_key} in bucket: {self.bucket_name}")  # Print para ver el s3_key y el bucket
+            print(f"Generating presigned URL for key: {s3_key} in bucket: {self.bucket_name}")
             response = self.s3_client.generate_presigned_url(
                 'get_object',
                 Params={'Bucket': self.bucket_name, 'Key': s3_key},
                 ExpiresIn=expiration
             )
-            print(f"Presigned URL generated: {response}")  # Print para ver la URL generada
+            print(f"Presigned URL generated: {response}")
             return response
         except Exception as e:
             print(f"Error al generar la URL firmada: {e}")
