@@ -44,7 +44,7 @@ class ModuleManager:
                         
                     ],
                     "query_translation": {{
-                        "translated_query": "consulta traducida al inglés",
+                        "translated_query": "consulta SIEMPRE traducida al inglés",
                         "original_language": "idioma original"
                     }}
                 }}"""
@@ -74,15 +74,18 @@ class ModuleManager:
         start_time = time.time()
         try:
             thread_id = thread.thread_id
-            # print(f"ClassQuer Usando el thread ID: {thread_id} para clasificar la consulta.")
+            print(f"[DEBUG] Thread ID: {thread_id}")
             logger.info(f"Usando el thread ID: {thread_id} para clasificar la consulta.")
             self.query = query
-            
+            print(f"[DEBUG] Initial query: {self.query}")
+
             if self.LLM_BN.abort_signal:
-                self.LLM_BN.abort_signal=False
+                print("[DEBUG] Abort signal detected. Clearing tasks.")
+                self.LLM_BN.abort_signal = False
                 self.tasks.clear()
+
             if not self.tasks or self.tasks[0].get_state() == 'pending':
-                print("entro a clasificar")
+                # print("[DEBUG] Entering classification block.")
                 
                 response = self.client.chat.completions.create(
                     model="gpt-4o-mini",
@@ -90,35 +93,65 @@ class ModuleManager:
                         {"role": "system", "content": self.prompt}, 
                         {"role": "user", "content": f"Clasifica la siguiente consulta y genera el JSON correspondiente: {query}"}
                     ]
-                    # thread_id=thread_id  # Asegúrate de que el thread_id es el correcto
                 )
-                classification = response.choices[0].message.content
-                classification_json = json.loads(classification)
-                for task_type in classification_json["tasks"]:
-                    task = Task()  # Crear una nueva instancia de Task (o la clase que estés utilizando)
-                    task.set_type(task_type)
-                    print(task.task_type)
-                    self.tasks.append(task)
-                # self.task = copy.deepcopy(self.tasks[0])
-            # else:
-            #     self.tasks.clear()   
-            # Traducción e idioma original
-                query_translation = classification_json.get("query_translation", {})
-                translated_query = query_translation.get("translated_query")
-                original_language = query_translation.get("original_language")
-                self.tasks[0].language=original_language
-                
-                self.query = translated_query
+                try:
+                    classification = response.choices[0].message.content
+                    print(f"[DEBUG] Classification response: {classification}")
+                    classification_json = json.loads(classification)
+                    # print(f"[DEBUG] Parsed classification JSON: {classification_json}")
+
+                    tasks = classification_json.get("tasks", [])
+                    # print(f"[DEBUG] Tasks extracted: {tasks}")
+
+                    if not tasks:
+                        # print("[DEBUG] No tasks detected in classification.")
+                        thread.language = classification_json.get("query_translation", {}).get("original_language", "Unknown")
+                        thread.save()  # Guarda el idioma detectado en el thread
+                        response = self.LLM_BN.generate_tasks_response(query, thread, thread.language)
+                        return response, None
+
+                    for task_type in tasks:
+                        task = Task()
+                        task.set_type(task_type)
+                        self.tasks.append(task)
+                        # print(f"[DEBUG] Task added: {task.task_type}")
+
+                    # print(f"[DEBUG] All tasks: {[task.task_type for task in self.tasks]}")
+
+                    query_translation = classification_json.get("query_translation", {})
+                    translated_query = query_translation.get("translated_query")
+                    original_language = query_translation.get("original_language")
+                    # print(f"[DEBUG] Query translation: {query_translation}")
+
+                    # Almacenar el idioma únicamente en el thread
+                    thread.language = original_language if original_language else "Unknown"
+                    thread.save()
+
+                    self.query = translated_query if translated_query else self.query
+                    # print(f"[DEBUG] Final query after translation: {self.query}")
+
+                except (json.JSONDecodeError, KeyError) as e:
+                    print(f"[ERROR] Error al procesar la clasificación: {e}")
+                    return "Classification error", None
+
+            # print(f"[DEBUG] Tasks before processing: {[task.task_type for task in self.tasks]}")
             completed_task_type = self.process_tasks(thread, user_identifier, is_whatsapp)
-            resp= self.LLM_BN.generate_tasks_response(self.query,thread, self.tasks[0].language)
-            # print(f"respuesta en module_manager/classify_query: {resp}")
-            return resp, completed_task_type 
+            # print(f"[DEBUG] Completed task type: {completed_task_type}")
+
+            # Usar el idioma desde el thread
+            resp = self.LLM_BN.generate_tasks_response(self.query, thread, thread.language)
+
+            print(f"[DEBUG] Response from LLM_Bottleneck: {resp}")
+            return resp, completed_task_type
+
         except Exception as e:
             logger.error(f"Error in classify_query: {e}")
+            print(f"[ERROR] Exception in classify_query: {e}")
             raise
         finally:
             elapsed_time = time.time() - start_time
-            # print(f"classify_query completed in {elapsed_time:.2f} seconds")
+            print(f"[DEBUG] classify_query completed in {elapsed_time:.2f} seconds")
+
 
     def process_tasks(self, thread, user_identifier, is_whatsapp=False):
         start_time = time.time()

@@ -341,73 +341,76 @@ class FileManager:
 
  ############################################# Nueva Version de Resolve_task ###################################
     def resolve_task(self, query, task, thread, user_identifier, is_whatsapp=False):
-        # print(f"thread : {self.client.beta.threads.messages.list(thread_id=thread.thread_id).data[4].content[0].text.value }")
-        # print(f"thread : {self.client.beta.threads.messages.list(thread_id=thread.thread_id).data[0].content[0].text.value }")
-        task.response=""
-        if task.state=='pending':
+        print(f"[DEBUG] Starting resolve_task for task type: {task.task_type}, state: {task.state}")
+        print(f"[DEBUG] Initial subtasks: {len(task.subtasks)} subtasks")
+
+        task.response = ""
+        if task.state == 'pending':
             messages = self.client.beta.threads.messages.list(thread_id=thread.thread_id).data
+            print(f"[DEBUG] Messages retrieved from thread: {len(messages)} messages")
 
             if len(messages) > 4:
+                print("[DEBUG] Adding messages to historial")
                 self.historial.append({"role": "user", "content": str(messages[4].content[0].text.value)})
-                self.historial.append({"role": "assistant", "content": str(self.client.beta.threads.messages.list(thread_id=thread.thread_id).data[0].content[0].text.value )})
-        # task = task
-        parameters = self.extract_variables(query,thread)
-        
-        # Verificar si no hay subtareas y actualizar el estado si es necesario
-        if task.state=='pending':
+                self.historial.append({"role": "assistant", "content": str(self.client.beta.threads.messages.list(thread_id=thread.thread_id).data[0].content[0].text.value)})
 
+        parameters = self.extract_variables(query, thread)
+        print(f"[DEBUG] Extracted parameters: {parameters}")
+
+        if task.state == 'pending':
+            print("[DEBUG] Task is pending. Updating state.")
             self.update_state(task, parameters)
-            # print(f"creo la subtask:{task.subtasks}")
+            print(f"[DEBUG] State updated. Current subtasks: {len(task.subtasks)}")
             task.update_state()
-            # task.update_state(task.state)
         else:
-            # Llenar los campos de la primera subtarea con los parámetros extraídos
+            print("[DEBUG] Task is not pending. Filling fields.")
             self.fill_fields(task, parameters)
-            # print("entro al else")
-
-        
-            
 
         index = 0
         while index < len(task.subtasks):
             subtask = task.subtasks[index]
+            print(f"[DEBUG] Processing subtask at index {index}: {subtask}")
+
             missing_str, completed_str = self.check_what_is_empty(task)
-            print(f"missing parameters: {missing_str}")
-            
-            print(f"completed param: {completed_str}")
-       
+            print(f"[DEBUG] Missing parameters: {missing_str}")
+            print(f"[DEBUG] Completed parameters: {completed_str}")
 
             if not missing_str:
+                print("[DEBUG] No missing parameters. Getting file.")
                 file_link = self.get_file(task, user_identifier, thread.thread_id, is_whatsapp)
+                print(f"[DEBUG] File link obtained: {file_link}")
+
                 if task.response:
                     task.response = str(file_link) + ", " + str(task.response)
                 else:
                     task.response = str(file_link)
 
-                
                 del task.subtasks[index]
-                # No incrementas el índice porque la lista se acorta
+                print(f"[DEBUG] Subtask removed. Remaining subtasks: {len(task.subtasks)}")
             else:
-                index += 1  # Solo incrementas si no se elimina nada
+                print("[DEBUG] Missing parameters detected. Gathering additional information.")
+                generated_question = self.gather_parameters(missing_str, completed_str, thread)
+                print(f"[DEBUG] Generated question: {generated_question}")
+                self.clear_historial()
+                task.response = str(generated_question) + ", " + str(task.response)
+                break
 
         task.update_state()
-        # print(task.update_state())
-        # task.update_state(task.state)                
+        print(f"[DEBUG] Task state after processing subtasks: {task.state}")
 
-        if task.state!='completed' :
-            # Verificar qué parámetros están vacíos y cuáles están completos
+        if task.state != 'completed':
             missing_parameters, completed_parameters = self.check_what_is_empty(task)
+            print(f"[DEBUG] Missing parameters: {missing_parameters}, Completed parameters: {completed_parameters}")
 
-            # Generar la pregunta para recopilar los parámetros que faltan
-            generated_question = self.gather_parameters(missing_parameters, completed_parameters,thread)
+            generated_question = self.gather_parameters(missing_parameters, completed_parameters, thread)
+            print(f"[DEBUG] Generated follow-up question: {generated_question}")
             self.clear_historial()
-            # Construir la respuesta final
             task.response = str(generated_question) + ", " + str(task.response)
-        #self.clear_historial()
-        # Establecer la respuesta en la tarea
-        # print(f"response: {task.response}")
+
         self.historial.append({"role": "assistant", "content": task.response})
-        if task.state=='completed':
+        if task.state == 'completed':
+            print("[DEBUG] Task completed. Clearing historial.")
             self.clear_historial()
+
         task.set_response(task.response)
-    
+        print(f"[DEBUG] Final task response: {task.response}")

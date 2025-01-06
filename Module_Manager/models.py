@@ -12,6 +12,7 @@ class Thread(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     last_activity = models.DateTimeField(auto_now=True)
     thread_id = models.CharField(max_length=255, default=uuid.uuid4)
+    language = models.CharField(max_length=50, default="Unknown")  # Nuevo campo para almacenar el idioma
 
     def update_last_activity(self):
         self.last_activity = timezone.now()
