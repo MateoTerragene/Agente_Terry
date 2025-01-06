@@ -69,15 +69,7 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
-    },
-    "Terragene_Users_Database": {
-        "ENGINE": "django.db.backends.mysql",
-        "NAME": os.getenv('MYSQL_DB_NAME'),
-        "USER": os.getenv('MYSQL_DB_USER'),
-        "PASSWORD": os.getenv('MYSQL_DB_PASSWORD'),
-        "HOST": os.getenv('MYSQL_DB_HOST'),
-        "PORT": os.getenv('MYSQL_DB_PORT'),
-    },
+    }
 }
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -102,8 +94,6 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 
 USE_TZ = True
-
-STATIC_URL = "static/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

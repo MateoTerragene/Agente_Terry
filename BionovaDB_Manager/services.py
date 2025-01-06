@@ -37,7 +37,7 @@ class BionovaDBManager:
             str: URL firmada para acceder al archivo.
         """
         try:
-            # print(f"Generating presigned URL for key: {s3_key} in bucket: {self.bucket_name}")
+            # print(f"Generating presigned URL for key: {s3_key} in bucket: {self.bucket_name}") 
             response = self.s3_client.generate_presigned_url(
                 'get_object',
                 Params={'Bucket': self.bucket_name, 'Key': s3_key},
@@ -99,6 +99,7 @@ class BionovaDBManager:
                 url = self.get_presigned_url(s3_key)
                 if url:
                     os.makedirs('tmp', exist_ok=True)
+
                     self.db_path = os.path.join('tmp', os.path.basename(s3_key))
                     self.download_db(url)
                 else:
@@ -114,6 +115,7 @@ class BionovaDBManager:
 
             # Comandos disponibles
             commands = ["open", "decrypt", "reset", "encrypt"]
+
             results = []
 
             executable_path = os.path.join('BionovaDB_Manager', 'BioReset')
@@ -153,6 +155,7 @@ class BionovaDBManager:
                 task.response = self.clear_pass(query,task, user_identifier, thread)
                 task.state = 'completed'
             else:
+
                 pass
 
         except Exception as e:

@@ -62,7 +62,7 @@ class Task:
                 for i, subtask in enumerate(self.subtasks):
                     subtask_response = subtask.get_response()
                     if subtask_response:  # Ensure the subtask has a response
-                        responses += f"{subtask_response} "  # Concatenate responses with a space
+                        responses += f"{subtask_response} " 
                 return responses.strip()  # Remove any trailing spaces
 
     def get_next_pending_subtask(self):
@@ -75,7 +75,7 @@ class Task:
     
 class SubTask:
     def __init__(self):
-        self.state = 'pending'  # or 'in_progress', 'waiting_for_info', 'completed'
+        self.state = 'pending' 
         self.response = None
         self.language = None
     def update_state(self, state):
@@ -88,5 +88,3 @@ class SubTask:
         return self.response
     def get_language(self):
         return self.language
-    # def resolve(self):
-    #     raise NotImplementedError("This method should be overridden by subclasses")

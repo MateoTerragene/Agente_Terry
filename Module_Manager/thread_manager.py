@@ -30,7 +30,6 @@ class ThreadManager:
                 # Si no hay threads recientes, crear uno nuevo usando el número de teléfono
                 return self.create_thread(user_id, is_whatsapp=True)
             else:
-                # Verificar que el usuario existe en la base de datos MySQL usando ExternalUser
                 user = ExternalUser.objects.using('Terragene_Users_Database').get(id=user_id)
                 logger.info(f"Usuario encontrado: {user.user_login} (ID: {user.id})")
 
@@ -43,7 +42,6 @@ class ThreadManager:
                         thread.update_last_activity()
                         return thread, self.module_manager
 
-                # Si no hay threads recientes, crear uno nuevo
                 return self.create_thread(user)
 
         except ExternalUser.DoesNotExist:

@@ -46,22 +46,19 @@ class file_handlers:
         else:
             return None
     
-    def limpiar_texto(self, texto): 
+    def limpiar_texto(self, texto):
         if texto is None:
             return ''
         return re.sub(r'[^a-zA-Z0-9]', '', str(texto)).lower()   
 
     def get_most_recent_pdf(self, url):
         try:
-            # print(f"Accediendo a la URL: {url}")
             response = requests.get(url)
             
             if response.status_code == 200:
-                # print(f"Acceso exitoso a {url}")
                 soup = BeautifulSoup(response.text, 'html.parser')
                 rows = soup.find_all('tr')
-                # print(f"Número de filas encontradas: {len(rows)}")
-                
+
                 most_recent_url = None
                 most_recent_date = None
 
@@ -95,7 +92,6 @@ class file_handlers:
                     return "No se encontraron archivos PDF recientes."
             
             else:
-                # print(f"No se pudo acceder a la página, código de estado: {response.status_code}")
                 return "No se pudo acceder a la página."
         
         except requests.RequestException as e:

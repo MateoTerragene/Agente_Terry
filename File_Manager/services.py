@@ -17,13 +17,10 @@ class FileManager:
             self.document_types = None
             # self.prompt_gather_parameters = None
             self.historial = []
-            # task=Task()
             self.client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
             self.document_types
             self.document_types_string = ""
-            # self.products
             self.products_string = ""
-            # self.prompt = None  
             self.assistant_id = os.getenv('FILE_MANAGER_ASSISTANT_ID')
             self.file_handler=file_handlers()
             response = self.load_data()
@@ -58,12 +55,10 @@ class FileManager:
             file_path = os.path.join(os.path.dirname(__file__), 'data.json')
             with open(file_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-                # self.prompt_extract_parameters = data.get("prompt_extract_parameters")
                 self.products = data.get("products")
                 self.products_string = ", ".join(self.products)
                 self.document_types = data.get("document_types")
                 self.document_types_string = ", ".join(self.document_types)
-                # self.prompt_gather_parameters = data.get("prompt_gather_parameters")
             self.historial = [{"role": "system", "content": "Eres un asistente que reune parámetros."}]
             return None
         except FileNotFoundError:
@@ -74,8 +69,6 @@ class FileManager:
             return JsonResponse({'error': f"An error occurred while loading data: {str(e)}"}, status=500)
         
     def extract_variables(self, conversation,thread):
-        # print("el mensaje anterior: ")
-        # print(self.client.beta.threads.messages.list(thread_id=thread.thread_id).data[-1].content[-1].text.value )
         
         self.historial.append({"role": "user", "content": str(conversation)})
         
@@ -84,15 +77,14 @@ class FileManager:
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": self.prompt},
-                *self.historial  # Incluye todo el historial y la nueva consulta
+                *self.historial
             ],
             max_tokens=200,
             n=1, 
             stop=None,
             temperature=0.5,
         )
-        
-        # Extrae la respuesta generada por el modelo
+
         generated_text = response.choices[0].message.content
         print(f"Json generado por -> extract_variables: {generated_text}")
        
@@ -104,7 +96,6 @@ class FileManager:
             # Registro detallado del contenido recibido
             # print(f"Contenido completo recibido: {extracted_params}")
             
-            # Usa una expresión regular para encontrar todos los bloques JSON en el texto
             json_blocks = re.findall(r'\{.*?\}', extracted_params, re.DOTALL)
             # print(f"Bloques JSON identificados: {json_blocks}")
             

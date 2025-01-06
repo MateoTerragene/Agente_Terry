@@ -20,7 +20,7 @@ client.api_key = os.getenv('OPENAI_API_KEY')
 
 class DBViewerView(LoginRequiredMixin, View):
     template_name = ''
-    login_url = '/dbviewer/login/' 
+    login_url = '/dbviewer/login/'  
     def export_to_excel(self, columns, rows, file_name='export.xlsx'):
         """Función para exportar los datos de una tabla a formato Excel."""
         df = pd.DataFrame(rows, columns=columns)
@@ -116,7 +116,7 @@ class CustomSQLQueryView(DBViewerView):
             'columns': columns,
             'rows': rows,
             'tables': self.get_tables(),
-            'error_message': error_message  # Mostramos el mensaje de error en pantalla
+            'error_message': error_message 
         })
 
 
@@ -135,7 +135,7 @@ class IntelligentQueryView(DBViewerView):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        # Definir el system prompt como un atributo de la instancia
+        
         self.system_prompt = """
         Eres un asistente que genera consultas SQL a partir de las preguntas de los usuarios. 
         Las funcionalidades del chatbot incluyen:
@@ -174,7 +174,7 @@ class IntelligentQueryView(DBViewerView):
 
     def post(self, request):
         instruction = request.POST.get("instruction", "").strip()
-        sql_query = request.POST.get("generated_sql", None)  # SQL generado previamente
+        sql_query = request.POST.get("generated_sql", None)  
         error_message = None
 
         if 'download_excel' in request.POST:

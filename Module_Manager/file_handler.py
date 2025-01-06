@@ -7,7 +7,7 @@ from openai import OpenAI
 from dotenv import load_dotenv
 import time
 load_dotenv()
-# from pydub.utils import mediainfo
+import shutil
 
 AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
 AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
@@ -16,7 +16,6 @@ logger = logging.getLogger(__name__)
 
 class FileHandler:
     def __init__(self):
-        # Inicializar cliente OpenAI con la clave de API
         
         self.client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
         
@@ -142,21 +141,18 @@ class FileHandler:
                     for chunk in image_file.chunks():
                         destination.write(chunk)
 
-            # Verificar que el archivo existe antes de subirlo a S3
             if not os.path.exists(local_image_path):
                 logger.error(f"El archivo de imagen {local_image_path} no existe.")
                 return None
             
-            # Subir la imagen a S3 utilizando la nueva función
             s3_image_url = self.save_file_to_s3(local_image_path,  'image')
             print(f"s3_image_url: {s3_image_url}")
 
             if not s3_image_url:
                 raise ValueError("Error guardando la imagen en S3")
 
-            # Clasificar la consulta utilizando la URL de S3
             response_text, task_type = module_manager.classify_query(thread, s3_image_url, identifier, is_whatsapp)
-            # Verificar si el archivo temporal generado (con la extensión correcta) existe antes de eliminarlo
+
             if os.path.exists(local_image_path):
                 os.remove(local_image_path)
                 logger.info(f"Archivo temporal eliminado: {local_image_path}")
@@ -176,34 +172,32 @@ class FileHandler:
         """
         try:
             print("Iniciando manejo del archivo en file_handler...")
-            # Obtener la extensión del archivo recibido
+
             file_extension = os.path.splitext(file.name)[1]  # Obtiene la extensión con el punto (e.g., '.db')
             print(f"Extensión del archivo recibido: {file_extension}")
 
-            # Define la ruta temporal donde se almacenará el archivo .db
+            
             temp_dir = "tmp"
             if not os.path.exists(temp_dir):
                 print(f"El directorio {temp_dir} no existe. Creándolo...")
-                os.makedirs(temp_dir)  # Crear el directorio si no existe
+                os.makedirs(temp_dir)
 
             local_db_path = f"{temp_dir}/{identifier}_{int(time.time())}{file_extension}"
             print(f"Ruta temporal asignada para el archivo .db: {local_db_path}")
             
-            # Guardar el archivo .db localmente
             print("Guardando archivo localmente...")
             with open(local_db_path, 'wb+') as destination:
                 for chunk in file.chunks():
                     destination.write(chunk)
             print("Archivo guardado localmente.")
 
-            # Verificar si el archivo existe antes de intentar subirlo a S3
             if not os.path.exists(local_db_path):
                 logger.error(f"El archivo .db {local_db_path} no existe.")
                 print(f"Error: El archivo {local_db_path} no se encuentra en el sistema.")
                 return None, None
             
             print("Archivo encontrado. Subiendo a S3...")
-            # Subir el archivo .db a S3
+
             s3_db_url = self.save_file_to_s3(local_db_path, 'db')
             print(f"URL del archivo en S3: {s3_db_url}")
 
@@ -211,11 +205,11 @@ class FileHandler:
                 raise ValueError("Error guardando el archivo .db en S3")
 
             print("Clasificando consulta con la URL del archivo en S3...")
-            # Clasificar la consulta utilizando la URL del archivo .db en S3
+
             response_text, task_type = module_manager.classify_query(thread, s3_db_url, identifier, is_whatsapp)
             print(f"Clasificación completada: task_type={task_type}, response_text={response_text}")
 
-            # Verificar si el archivo temporal generado existe antes de eliminarlo
+
             if os.path.exists(local_db_path):
                 os.remove(local_db_path)
                 logger.info(f"Archivo temporal eliminado: {local_db_path}")
@@ -325,6 +319,4 @@ class FileHandler:
     def remover_enlaces(self, texto):
         # Expresión regular para detectar enlaces en formato Markdown
         url_regex = re.compile(r'\[([^\]]+)\]\((https?://[^\s]+)\)')
-        
-        # Reemplazar los enlaces con solo el texto visible
         return url_regex.sub(r'\1', texto)
