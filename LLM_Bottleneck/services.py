@@ -1,6 +1,5 @@
 # llm_bottleneck/services.py
 import os
-import re
 from openai import OpenAI
 from Module_Manager import Tasks
 from django.http import JsonResponse
@@ -32,7 +31,6 @@ class LLM_Bottleneck:
             )
             
             self.tasks = []
-            # self.task_responses = ""
             self.assistant_id = os.getenv('LLM_BOTTLENECK_ASSISTANT_ID')
         except FileNotFoundError:
             return JsonResponse({'error': "The file 'data.json' was not found."}, status=404)
@@ -102,7 +100,6 @@ class LLM_Bottleneck:
                                     # print(f"respuesta en generate_response: {response}")
                                     return response
                                 else:
-                                    # Devuelve un error si el formato no es el esperado
                                     return {'error': 'Invalid response format'}
                             
                             except json.JSONDecodeError as e:

@@ -13,14 +13,13 @@ from Form_Manager.services import FormManager
 from PO_Manager.services import PurchaseOpportunity
 from BionovaDB_Manager.services import BionovaDBManager
 from Image_Manager.services import ImageManager
-# Importar otros managers aquí cuando estén disponibles
+
 logger = logging.getLogger(__name__)
-load_dotenv()  # Cargar las variables de entorno desde el archivo .env
+load_dotenv()
 
 class ModuleManager:
     def __init__(self):
         try:
-            # print("ADENTRO DEL CONSTRUCTOR")
             self.client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
             self.docs = "COA = certificado de calidad = certificado de analisis, IFU = Prospecto , PD = Descripcion de producto = Ficha tecnica, SDS = Hoja de seguridad, CC = Color chart, FDA = Certificado FDA = 510K "
             self.prompt = f"""Eres un asistente que clasifica consultas de usuarios e identifica tareas a realizar. Puede haber múltiples tareas en una consulta. \
@@ -51,7 +50,6 @@ class ModuleManager:
                 # - "purchase_opportunity" (oportunidad de compra) \
                 # | "purchase_opportunity"  # Comentado: esta tarea ya no es relevante
             self.tasks = []
-            # self.task = Task()
             self.file_manager = FileManager()
             self.form_manager=FormManager()
             self.PO_manager = PurchaseOpportunity()
@@ -85,7 +83,6 @@ class ModuleManager:
                 self.tasks.clear()
 
             if not self.tasks or self.tasks[0].get_state() == 'pending':
-                # print("[DEBUG] Entering classification block.")
                 
                 response = self.client.chat.completions.create(
                     model="gpt-4o-mini",
@@ -106,7 +103,7 @@ class ModuleManager:
                     if not tasks:
                         # print("[DEBUG] No tasks detected in classification.")
                         thread.language = classification_json.get("query_translation", {}).get("original_language", "Unknown")
-                        thread.save()  # Guarda el idioma detectado en el thread
+                        thread.save() 
                         response = self.LLM_BN.generate_tasks_response(query, thread, thread.language)
                         return response, None
 
@@ -138,7 +135,6 @@ class ModuleManager:
             completed_task_type = self.process_tasks(thread, user_identifier, is_whatsapp)
             # print(f"[DEBUG] Completed task type: {completed_task_type}")
 
-            # Usar el idioma desde el thread
             resp = self.LLM_BN.generate_tasks_response(self.query, thread, thread.language)
 
             print(f"[DEBUG] Response from LLM_Bottleneck: {resp}")
@@ -197,8 +193,6 @@ class ModuleManager:
            
             self.LLM_BN.receive_task(self.tasks[0].clone())
             # task.update_state('completed')
-            # Lógica para resolver reclamo
-
 
         elif self.tasks[0].task_type == "purchase_opportunity":
             print("Resolviendo oportunidad de compra...")
@@ -222,5 +216,5 @@ class ModuleManager:
         else:
             print(f"Tarea desconocida: {self.tasks[0].task_type}")
             if self.tasks[0].state == 'completed':
-                self.tasks.pop(0)  # Eliminar la tarea completada
+                self.tasks.pop(0)
 

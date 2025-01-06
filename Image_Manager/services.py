@@ -2,14 +2,11 @@ import os
 import json
 import boto3
 import tempfile
-
 from pylibdmtx import pylibdmtx
 from openai import OpenAI
 from PIL import Image
-from io import BytesIO
 import requests
 import re
-# from dbr import BarcodeReader  # Necesita Dynamsoft Barcode Reader SDK
 
 from RAG_Manager.services import TechnicalQueryAssistant
 ci_dictionary = {
@@ -42,9 +39,8 @@ class ImageManager:
                 aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
                 region_name=os.getenv('AWS_REGION')
             )
-            self.bucket_name = os.getenv('S3_BUCKET_NAME')  # Añadir el nombre del bucket aquí
-            print(f"ImageManager initialized with bucket: {self.bucket_name}")  # Print para verificar el bucket
-            # self.historial=[]
+            self.bucket_name = os.getenv('S3_BUCKET_NAME') 
+            print(f"ImageManager initialized with bucket: {self.bucket_name}")
             self.RAG=TechnicalQueryAssistant()
         except Exception as e:
             print(f"Error al inicializar ImageManager: {e}")
@@ -61,26 +57,17 @@ class ImageManager:
             str: URL firmada para acceder al archivo.
         """
         try:
-            print(f"Generating presigned URL for key: {s3_key} in bucket: {self.bucket_name}")  # Print para ver el s3_key y el bucket
+            print(f"Generating presigned URL for key: {s3_key} in bucket: {self.bucket_name}")
             response = self.s3_client.generate_presigned_url(
                 'get_object',
                 Params={'Bucket': self.bucket_name, 'Key': s3_key},
                 ExpiresIn=expiration
             )
-            print(f"Presigned URL generated: {response}")  # Print para ver la URL generada
+            print(f"Presigned URL generated: {response}")
             return response
         except Exception as e:
             print(f"Error al generar la URL firmada: {e}")
             return None
-    # Diccionario de productos basado en la estructura de `ciDictionary`
-
-
-    # def initialize_reader(self):
-    #     print("Inicializando el lector de códigos de barras...")
-    #     reader = BarcodeReader()
-    #     reader.init_license("clavedynam")  # Reemplaza con la clave de Dynamsoft
-    #     print("Lector inicializado.")
-    #     return reader
 
     def extract_gtin_from_dtx(self, dtx_code):
         """Extrae el GTIN del código DTX basado en el patrón '01XXXXXXXXXXXXXX'."""
@@ -106,22 +93,21 @@ class ImageManager:
                 response = requests.get(image_url)
                 temp_image.write(response.content)
                 temp_image.flush()
-                temp_image_path = temp_image.name  # Almacena la ruta temporal
+                temp_image_path = temp_image.name 
                 
             # Decodificar el código Data Matrix usando la ruta temporal
             print("Decoding the image for DTX codes...")
             with Image.open(temp_image_path) as image:
-                max_size = (1200, 1200)  # Define a maximum size for resizing
+                max_size = (1200, 1200)  
                 image.thumbnail(max_size, Image.LANCZOS)
                 results = pylibdmtx.decode(image)
             
-            print(f"Raw results from decode: {results}")  # Verifica el resultado
+            print(f"Raw results from decode: {results}") 
 
             if not results:
                 print("No codes found in the image.")
                 return []
 
-            # Extraer y mostrar los códigos DTX
             dtx_codes = [result.data.decode("utf-8") for result in results]
             for code in dtx_codes:
                 print(f"DTX detected: {code}")
@@ -172,7 +158,7 @@ class ImageManager:
             dict: Respuesta generada por OpenAI en formato JSON.
         """
         try:
-            print(f"Analyzing image at URL: {image_url}")  # Print para ver la URL de la imagen
+            print(f"Analyzing image at URL: {image_url}")
             response = self.client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
@@ -211,7 +197,6 @@ class ImageManager:
                 max_tokens=300,
             )
             
-            # Extraer el texto generado
             generated_text = response.choices[0].message.content
             print("Respuesta generada -> analyze_image: ")
             print(generated_text)
@@ -242,7 +227,6 @@ class ImageManager:
                 task.state = 'completed'
                 return
 
-            # Extract S3 key from the URL
             try:
                 if s3_url.startswith(f"https://{self.bucket_name}.s3.amazonaws.com/"):
                     s3_key = s3_url[len(f"https://{self.bucket_name}.s3.amazonaws.com/"):]
@@ -259,7 +243,6 @@ class ImageManager:
 
             print(f"Processing image with S3 key: {s3_key}")
 
-            # Generate presigned URL
             try:
                 presigned_url = self.get_presigned_url(s3_key)
                 if presigned_url is None:

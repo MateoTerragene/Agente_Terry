@@ -4,25 +4,17 @@ import requests
 from django.shortcuts import render, redirect
 from django.views import View
 from Module_Manager.web_handler import WebHandler
-import hashlib
-import bcrypt
 from passlib.hash import phpass
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.db import connections, DatabaseError
-from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
-from .thread_manager import ThreadManager
 from Module_Manager.thread_manager import thread_manager_instance
-from django.contrib.auth.models import User
 from django.views.decorators.csrf import csrf_exempt
 from .whatsapp_handler import WhatsAppHandler
 from .web_handler import WebHandler
-from Module_Manager.models import ExternalUser
 from django.http import JsonResponse, HttpResponse
-from twilio.twiml.messaging_response import MessagingResponse
 import re
-from datetime import datetime, timezone
 from .models import UserInteraction
 from dotenv import load_dotenv
 import os

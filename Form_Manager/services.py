@@ -1,71 +1,17 @@
 from dotenv import load_dotenv
 from openai import OpenAI
-from pydantic import BaseModel, Field
-import openai
 import os
 import json
-from .models import FormDetails  # Importar el modelo desde models.py
+from .models import FormDetails 
 
-load_dotenv()  # Cargar las variables de entorno desde el archivo .env
-
-
-
-# class FormDetails(BaseModel):
-#     first_name: str = Field(
-#         "",
-#         description="First name of the contact"
-#     )
-#     surname: str = Field(
-#         "",
-#         description="Surname of the contact"
-#     )
-#     company: str = Field(
-#         "",
-#         description="Company name"
-#     )
-#     email: str = Field(
-#         "",
-#         description="Contact email address"
-#     )
-#     phone_number: str = Field(
-#         "",
-#         description="Phone number"
-#     )
-#     city: str = Field(
-#         "",
-#         description="City"
-#     )
-#     country: str = Field(
-#         "",
-#         description="Country"
-#     )
-#     how_did_you_know_about_us: str = Field(
-#         "",
-#         description="How did you know about us?"
-#     )
-#     level_of_knowledge_of_products: str = Field(
-#         "",
-#         description="Level of knowledge of product range"
-#     )
-#     # subject: str = Field(
-#     #     "",
-#     #     description="Subject of the form"
-#     # )
-#     additional_comments: str = Field(
-#         "",
-#         description="Additional comments"
-#     )
-
-#     def __init__(self, **data):
-#         super().__init__(**{**{field: "" for field in self.__fields__}, **data})
-
+load_dotenv() 
 
 class FormManager:
     def __init__(self):
         try:
             self.client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
             self.assistant_id = os.getenv('COMPLAINT_ASSISTANT_ID')
-            self.form = FormDetails()  # Instancia del modelo Django
+            self.form = FormDetails()
             print(f"FormManager inicializado correctamente. Tipo de self.form: {type(self.form)}")
         except Exception as e:
             raise RuntimeError(f"An error occurred while loading data: {str(e)}")
@@ -74,7 +20,7 @@ class FormManager:
         ask_for = []
         for field in form_details_form._meta.fields:
             field_name = field.name
-            if field_name == 'id':  # Ignorar el campo 'id'
+            if field_name == 'id': 
                 continue
             value = getattr(form_details_form, field_name)
             if value in [None, "", 0]:
@@ -163,7 +109,8 @@ class FormManager:
             ai_response = self.ask_for_info(ask_for, thread)
 
             if not ask_for or (len(ask_for) == 1 and "additional_comments" in ask_for):
-                print("[DEBUG] Form completed.")
+                self.form.save()  # Guardar el formulario completo
+                print("[DEBUG] Formulario guardado en la base de datos.")
                 ai_response = (
                     "¡Gracias por completar el formulario! Hemos recibido toda la información necesaria. "
                     "Un representante se pondrá en contacto contigo pronto."
