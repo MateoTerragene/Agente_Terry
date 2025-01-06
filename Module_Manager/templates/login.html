@@ -17,41 +17,46 @@
 <body>
     <!-- Frase inicial con la mano en el centro -->
     <div class="frase-circ" id="welcome-message">
-        <h2 id="circulo">Hi There, can I help you?</h2>
+        <div id="circulo">Hi There, can I help you?</div>
         <img class="hand-01" alt="Hand" src="{% static 'img/hand.svg' %}" id="hand-icon" />
     </div>
 
-    <!-- Formulario de login oculto al principio -->
-    <div class="chat-container hidden" id="login-container">
-        
+    <!-- Formulario de login oculto al principio 
+    <div class="chat-container hidden" id="login-container">-->
+    <div class="grupo-707">
         <!-- Cabecera del login -->
-        <div class="chat-header">
-            <div class="frase">
-                <b class="tell-me">Hi there!</b>
-                <b class="can-i-help">I'm Terry.IA</b>
-            </div>
+
+
+        <img class="grupo-179-icon" alt="" src="{% static 'img/grupo-179.svg' %}" />
+        <img class="expand-icon" alt="" src="{% static 'img/grupo-641.svg' %}" />
+        <img class="grupo-409-icon" alt="" src="{% static 'img/hand.svg' %}" />
+        <div class="frase">
+            <b class="tell-me">Hi there!</b>
+            <b class="can-i-help">I'm Terry.IA</b>
+        </div>
+       
+
+        <!-- Formulario de login 
+        <div class="chat-messages">-->
+            
+        <div class="subfrase">
+            Ready to assist you with anything you need, from answering questions to providing recommendations.
+            <b>Please, enter your login details!</b>
         </div>
 
-        <!-- Formulario de login -->
-        <div class="chat-messages">
-            
-            <div class="subfrase">
-                Ready to assist you with anything you need, from answering questions to providing recommendations.
-                <b>Please, enter your login details!</b>
-            </div>
-
             <!-- Formulario de login -->
-            <div class="form-login">
+        <div class="chat-box">
+            <div class="form-login1">
                 <form method="POST">
                     {% csrf_token %}
-                    <label for="username">Username:</label>
-                    <input type="text" id="username" name="username" required><br><br>
-                    <label for="password">Password:</label>
-                    <input type="password" id="password" name="password" required><br><br>
+                    
+                    <input type="text" id="username" name="username" placeholder="Username" required><br><br>
+                   
+                    <input type="password" id="password" name="password" placeholder="Password" required><br><br>
                     <button type="submit">Login</button>
                 </form>
             </div>
-
+        </div>
             {% if messages %}
             <ul>
                 {% for message in messages %}
@@ -59,7 +64,7 @@
                 {% endfor %}
             </ul>
             {% endif %}
-        </div>
+       <!-- </div>-->
 
     </div>
 

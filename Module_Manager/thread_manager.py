@@ -52,9 +52,10 @@ class ThreadManager:
         except Exception as e:
             logger.error(f"Error inesperado al obtener o crear thread para usuario {user_id}: {str(e)}")
             raise
-
+      
     def create_thread(self, user_id, is_whatsapp=False, retries=3, delay=5):
         try:
+            self.module_manager.reset_tasks()
             # Ajustar el identificador para WhatsApp o ID de usuario
             if is_whatsapp:
                 # Para WhatsApp asumimos que user_id es un número de teléfono o identificador similar (string o int)
@@ -79,12 +80,12 @@ class ThreadManager:
                         raise e
 
             # Crear el thread en la base de datos (SQLite o Postgres)
-            print(f"Creando thread en la base de datos Postgres SQL para el usuario con identificador {identifier}...")
+            print(f"Creando thread en la base de datos SQLite para el usuario con identificador {identifier}...")
 
             # Convertimos el ID a string para almacenarlo correctamente en el campo CharField
-            thread = Thread.objects.using('default').create(user_id=str(identifier), thread_id=thread_id)
+            thread = Thread.objects.using('default').create(user_id=str(identifier), thread_id=thread_id,language="Unknown" )
             thread.update_last_activity()
-            print(f"Thread guardado en la base de datos Postgres SQL con ID {thread.thread_id}")
+            print(f"Thread guardado en la base de datos SQLite con ID {thread.thread_id}")
 
             return thread, self.module_manager
         except Exception as e:

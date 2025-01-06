@@ -11,9 +11,7 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'fallback_secret_key')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']
-
-# Application definition
+ALLOWED_HOSTS = ['terragene.online', 'www.terragene.online','100.27.3.89', 'localhost', '127.0.0.1']
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -26,13 +24,13 @@ INSTALLED_APPS = [
     'File_Manager',
     'RAG_Manager',
     'PO_Manager',
-    'Complaint_Manager',
+    'Form_Manager',
     'LLM_Bottleneck',
     'rest_framework',
     'dbviewer',
-   
+    'Image_Manager',
+    'BionovaDB_Manager',   
 ]
-
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -41,7 +39,7 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
-    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",  
 ]
 
 ROOT_URLCONF = "Agente_Terry.urls"
@@ -67,10 +65,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "Agente_Terry.wsgi.application"
 
-
-# Database
-# https://docs.djangoproject.com/en/5.0/ref/settings/#databases
-
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -85,11 +79,6 @@ DATABASES = {
         "PORT": os.getenv('MYSQL_DB_PORT'),
     },
 }
-
-
-
-# Password validation
-# https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -106,10 +95,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
-# Internationalization
-# https://docs.djangoproject.com/en/5.0/topics/i18n/
-
 LANGUAGE_CODE = "en-us"
 
 TIME_ZONE = "UTC"
@@ -118,14 +103,7 @@ USE_I18N = True
 
 USE_TZ = True
 
-
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.0/howto/static-files/
-
 STATIC_URL = "static/"
-
-# Default primary key field type
-# https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

@@ -1,96 +1,103 @@
-import mimetypes
-import logging
-import requests
-from Module_Manager.thread_manager import thread_manager_instance
-from .models import UserInteraction
-from datetime import datetime, timezone
-import os
+from .file_handler import FileHandler
 from openai import OpenAI
-import hashlib
-import uuid
-from dotenv import load_dotenv
-import boto3
-# Cargar las variables de entorno desde el archivo .env
-load_dotenv()
+import os
+import requests
+import logging
+import time
 
-AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
-AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
-AWS_REGION = os.getenv('AWS_REGION')
 logger = logging.getLogger(__name__)
-WHATSAPP_API_URL = os.getenv("WHATSAPP_API_URL")
 ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
 PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
-
-
 class WhatsAppHandler:
+
     def __init__(self):
-        
+        self.file_handler = FileHandler()
+        self.processed_messages = set()
         self.client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-        self.processed_messages = set()  # Keep track of processed messages
-        self.phone_number = None  # Añadido para almacenar el número de teléfono
 
-    def handle_audio_message(self, audio_id, phone_number):
-        print("**************************************************")
-        print("LLAMO A HANDLE_AUDIO_MESSAGE")
-        print("**************************************************")
+    def handle_text_message(self, message, phone_number, module_manager, thread):
+        """
+        Maneja un mensaje de texto de WhatsApp.
+        """
+        response, task_type = self.file_handler.handle_text(thread, message, phone_number, module_manager, is_whatsapp=True)
+        print(f"response dentro de whatsapp_handler: {response}")
+        return response, task_type
 
-        self.phone_number = phone_number 
+    def handle_audio_message(self, audio_id, phone_number, module_manager, thread):
+        """
+        Maneja un mensaje de audio de WhatsApp.
+        """
+        audio_path = self.download_audio(audio_id, phone_number)
+        if not audio_path:
+            raise ValueError("No se pudo descargar el audio")
+
+        response_text, tts_audio_path, s3_audio_path, transcribed_text_body, task_type = self.file_handler.handle_audio(audio_path, phone_number, module_manager, thread)
+
+        # Subir el archivo de respuesta de TTS a WhatsApp
+        response_audio_url = self.upload_audio(tts_audio_path)
+        if not response_audio_url:
+            raise ValueError("Error subiendo el archivo de audio")
+
+        return transcribed_text_body, task_type, response_text, response_audio_url
+
+    def handle_image_message(self, image_id, phone_number, module_manager, thread):
+        """
+        Maneja una imagen enviada por WhatsApp.
+        """
+        image_path = self.download_image(image_id, phone_number)
+        if not image_path:
+            raise ValueError("No se pudo descargar la imagen")
+
+        task_type, response_text, s3_image_path = self.file_handler.handle_image(image_path, phone_number,module_manager, thread, is_whatsapp=True )
+        return task_type, response_text, s3_image_path
+
+    # Métodos auxiliares para descargar audio e imágenes desde la API de WhatsApp...
+    def download_image(self, image_id, phone_number, save_path='/tmp'):
         try:
-            print(f"Handling audio message for audio_id: {audio_id} and phone_number: {phone_number}")
-            if audio_id in self.processed_messages:
-                logger.info(f"Audio {audio_id} has already been processed.")
-                return None, None,None,None,None
+            # URL para obtener el archivo de imagen
+            url = f"https://graph.facebook.com/v20.0/{image_id}?access_token={ACCESS_TOKEN}"
+            headers = {"Authorization": f"Bearer {ACCESS_TOKEN}"}
 
-            logger.debug(f"Processing audio message for {phone_number}")
+            # Solicitud para obtener la URL del archivo de imagen
+            response = requests.get(url, headers=headers)
+            if response.status_code == 200:
+                media_url = response.json().get("url")
+                
+                # Descargar el archivo de imagen desde la URL obtenida
+                image_response = requests.get(media_url, headers=headers, stream=True)
+                if image_response.status_code == 200:
+                    # Crear un nombre de archivo basado en phone_number e image_id
+                    image_name = f"{phone_number}_{image_id}.jpg"
+                    temp_image_path = os.path.join(save_path, image_name)
 
-            # Descargar el archivo de audio utilizando el audio_id
-            audio_path = self.download_audio(audio_id)
-            if not audio_path:
-                raise ValueError("No se pudo descargar el audio")
+                    # Guardar la imagen descargada
+                    with open(temp_image_path, 'wb') as f:
+                        for chunk in image_response.iter_content(chunk_size=8192):
+                            f.write(chunk)
 
-            # Transcribir el audio utilizando Whisper
-            with open(audio_path, "rb") as audio_file:
-                transcript = self.client.audio.transcriptions.create(
-                    model="whisper-1",
-                    file=audio_file
-                )
-            transcribed_text = transcript.text
-
-            if not transcribed_text:
-                raise ValueError("Error en la transcripción de audio")
-             # Eliminar el archivo después de procesar
-            if os.path.exists(audio_path):
-                os.remove(audio_path)
-                print(f"Archivo de audio {audio_path} eliminado exitosamente.")
+                    print(f"Imagen descargada exitosamente en: {temp_image_path}")
+                    return temp_image_path
+                else:
+                    logger.error(f"Error descargando la imagen. Código de estado: {image_response.status_code}")
             else:
-                print(f"El archivo de audio {audio_path} no existe.")
-            # Procesar el texto transcrito como un mensaje de texto
-            thread, task_type, response_text = self.handle_text_message(transcribed_text, phone_number)
-
-            # Generar respuesta de audio usando TTS
-            tts_audio_path = self.generate_tts_audio(thread,response_text)
-            if not tts_audio_path:
-                raise ValueError("Error generando audio de respuesta TTS")
-
-            # Subir el archivo de audio a WhatsApp
-            media_id = self.upload_audio(tts_audio_path)
-            if not media_id:
-                raise ValueError("Error subiendo el archivo de audio")
-
-            # Marcar el audio como procesado
-            self.processed_messages.add(audio_id)
-
-            return transcribed_text,thread, task_type, response_text, media_id
+                logger.error(f"Error obteniendo la URL de la imagen: {response.status_code}")
+            return None
 
         except Exception as e:
-            logger.error(f"Error procesando audio para {phone_number}: {str(e)}")
-            return None, None, None, None,None
-
-    def download_audio(self, media_id, save_path='/tmp/audio.ogg'):
+            logger.error(f"Error en download_image: {str(e)}")
+            return None
+        
+    def download_audio(self, media_id,phone_number ):
         try:
             url = f"https://graph.facebook.com/v20.0/{media_id}?access_token={ACCESS_TOKEN}"
             headers = {"Authorization": f"Bearer {ACCESS_TOKEN}"}
-
+            #file_extension .ogg funciona bien
+            # file_extension = os.path.splitext(file.name)[1]  # Obtiene la extensión con el punto (e.g., '.wav')
+            # Define la ruta temporal donde se almacenará el archivo de audio con la extensión correcta
+            file_extension='.ogg'
+            
+            save_path = f"tmp/{phone_number}_{int(time.time())}{file_extension}"
+            print(f"Ruta temporal del audio: {save_path}")
             response = requests.get(url, headers=headers)
             if response.status_code == 200:
                 media_url = response.json().get("url")
@@ -105,39 +112,6 @@ class WhatsAppHandler:
             logger.error(f"Error en download_audio: {str(e)}")
         return None
 
-    def generate_tts_audio(self, thread, text, output_audio_path='/tmp/response_audio.ogg'):
-        # Define las voces disponibles
-        VOICES = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
-        
-        def get_voice_for_thread(thread_id):
-            # Calcula un hash del thread_id y toma un valor entre 0 y len(VOICES) - 1
-            hash_value = int(hashlib.md5(thread_id.encode()).hexdigest(), 16)
-            return VOICES[hash_value % len(VOICES)]
-        
-        try:
-            # Asegúrate de que `thread.id` sea una cadena
-            if not isinstance(thread.id, uuid.UUID):
-                raise TypeError("El identificador del hilo debe ser un UUID.")
-            
-            # Convierte el UUID a una cadena hexadecimal
-            thread_id_str = thread.id.hex
-            
-            # Obtén la voz basada en el thread
-            voice = get_voice_for_thread(thread_id_str)
-            
-            response = self.client.audio.speech.create(
-                model="tts-1",
-                voice=voice,
-                input=text
-            )
-            if response and response.content:
-                with open(output_audio_path, 'wb') as f:
-                    f.write(response.content)
-                return output_audio_path
-            raise ValueError("No se pudo generar el archivo de audio.")
-        except Exception as e:
-            logger.error(f"Error generando TTS audio: {str(e)}")
-            return None
     def upload_audio(self, file_path):
         try:
             url = f"https://graph.facebook.com/v20.0/{PHONE_NUMBER_ID}/media"
@@ -185,127 +159,4 @@ class WhatsAppHandler:
 
         except Exception as e:
             print(f"Error en upload_audio: {str(e)}")
-            return None
-
-    def handle_text_message(self, message, phone_number):
-        self.phone_number = phone_number 
-        try:
-            thread, module_manager = thread_manager_instance.get_or_create_active_thread(phone_number, is_whatsapp=True)
-            
-            run_status = self.client.beta.threads.runs.list(thread_id=thread.thread_id)
-            if any(run.status == 'in_progress' for run in run_status.data):
-                print(f"Run activo detectado para el thread {thread.thread_id}. Esperando a que termine.")
-                return None, None, None  # Detener si ya hay un run activo
-            
-            response, task_type = module_manager.classify_query(thread, message, phone_number, is_whatsapp=True)
-
-            # Defer saving to DB until after sending the response
-            return thread, task_type, response
-        except Exception as e:
-            logger.error(f"Error procesando mensaje de texto para {self.phone_number}: {str(e)}")
-            return  str(e)
-    def handle_image_message(self, image_id, phone_number):
-        print("**************************************************")
-        print("LLAMO A HANDLE_IMAGE_MESSAGE")
-        print("**************************************************")
-
-        self.phone_number = phone_number
-        try:
-            print(f"Handling image message for image_id: {image_id} and phone_number: {phone_number}")
-            if image_id in self.processed_messages:
-                logger.info(f"Image {image_id} has already been processed.")
-                return None, None, None,None
-
-            logger.debug(f"Processing image message for {phone_number}")
-
-            # Descargar el archivo de imagen utilizando el image_id desde la API de WhatsApp
-            image_path = self.download_image(image_id, phone_number)
-            if not image_path:
-                raise ValueError("No se pudo descargar la imagen")
-
-            # Verificar si el archivo existe
-            if not os.path.exists(image_path):
-                raise ValueError(f"El archivo de imagen {image_path} no existe.")
-
-            # Guardar la imagen en S3
-            saved_image_path = self.save_image_to_s3(image_path, phone_number, image_id)
-            if not saved_image_path:
-                raise ValueError("Error guardando la imagen en S3")
-
-            # Procesar la URL de la imagen en S3 como un mensaje de texto
-            thread, task_type, response_text = self.handle_text_message(saved_image_path, phone_number)
-
-            # Marcar la imagen como procesada
-            self.processed_messages.add(image_id)
-
-            # Retornar la URL de la imagen guardada en S3, el thread, task_type, response_text y el id de la imagen
-            return thread, task_type, response_text, saved_image_path
-
-        except Exception as e:
-            logger.error(f"Error procesando imagen para {phone_number}: {str(e)}")
-            return None, None, None,None
-
-
-    def save_image_to_s3(self, image_path, phone_number, image_id):
-        try:
-            # Crear un cliente de S3 usando las credenciales del .env
-            s3 = boto3.client(
-                's3',
-                aws_access_key_id=AWS_ACCESS_KEY_ID,
-                aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
-                region_name=AWS_REGION
-            )
-
-            # Definir el nombre del archivo en S3 basado en phone_number, thread_id e image_id
-            s3_file_name = f"images/{phone_number}_{image_id}.jpg"
-            
-            # Nombre del bucket
-            bucket_name = 'agente-terry'
-
-            # Subir el archivo a S3 en la carpeta 'images'
-            s3.upload_file(image_path, bucket_name, s3_file_name)
-
-            # Generar una URL pública del archivo en S3 (opcional, si el bucket tiene permisos públicos)
-            file_url = f"https://{bucket_name}.s3.amazonaws.com/{s3_file_name}"
-            
-            print(f"Archivo subido exitosamente a S3. URL: {file_url}")
-            return file_url
-
-        except Exception as e:
-            print(f"Error subiendo la imagen a S3: {str(e)}")
-            return None
-        
-    def download_image(self, image_id, phone_number, save_path='/tmp'):
-        try:
-            # URL para obtener el archivo de imagen
-            url = f"https://graph.facebook.com/v20.0/{image_id}?access_token={ACCESS_TOKEN}"
-            headers = {"Authorization": f"Bearer {ACCESS_TOKEN}"}
-
-            # Solicitud para obtener la URL del archivo de imagen
-            response = requests.get(url, headers=headers)
-            if response.status_code == 200:
-                media_url = response.json().get("url")
-                
-                # Descargar el archivo de imagen desde la URL obtenida
-                image_response = requests.get(media_url, headers=headers, stream=True)
-                if image_response.status_code == 200:
-                    # Crear un nombre de archivo basado en phone_number e image_id
-                    image_name = f"{phone_number}_{image_id}.jpg"
-                    temp_image_path = os.path.join(save_path, image_name)
-
-                    # Guardar la imagen descargada
-                    with open(temp_image_path, 'wb') as f:
-                        for chunk in image_response.iter_content(chunk_size=8192):
-                            f.write(chunk)
-
-                    print(f"Imagen descargada exitosamente en: {temp_image_path}")
-                    return temp_image_path
-                else:
-                    logger.error(f"Error descargando la imagen. Código de estado: {image_response.status_code}")
-            else:
-                logger.error(f"Error obteniendo la URL de la imagen: {response.status_code}")
-            return None
-
-        except Exception as e:
-            logger.error(f"Error en download_image: {str(e)}")
             return None

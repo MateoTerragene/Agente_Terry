@@ -2,11 +2,11 @@
 from openai import OpenAI
 from .SubTask import FMSubTask
 from django.http import JsonResponse
-from Module_Manager.Tasks import Task
 from File_Manager.SubTask import FMSubTask
 import json
 import os
 import re
+import time
 from .handlers.file_handlers import file_handlers
 from File_Manager.models import DocumentRequest
 class FileManager:
@@ -23,7 +23,7 @@ class FileManager:
             self.document_types_string = ""
             # self.products
             self.products_string = ""
-            self.prompt = None  
+            # self.prompt = None  
             self.assistant_id = os.getenv('FILE_MANAGER_ASSISTANT_ID')
             self.file_handler=file_handlers()
             response = self.load_data()
@@ -94,8 +94,8 @@ class FileManager:
         
         # Extrae la respuesta generada por el modelo
         generated_text = response.choices[0].message.content
-        print("Json generado por -> extract_variables: ")
-        print(generated_text)
+        print(f"Json generado por -> extract_variables: {generated_text}")
+       
         return generated_text
 
         
@@ -144,9 +144,6 @@ class FileManager:
         task.subtasks.append(fm_subtask)
         print("Subtarea creada y añadida:", fm_subtask)
         
-
-            
-
 
     def clear_historial(self):
         self.historial.clear()
@@ -198,59 +195,73 @@ class FileManager:
 
     #####################################################################
     def gather_parameters(self, missing_parameters, completed_parameters, thread):
-        # Crear el contenido del mensaje del usuario basado en lo que ya se ha proporcionado y lo que falta
-        user_content = (
-            f"He proporcionado los siguientes detalles: {completed_parameters}. "
-            # f"Pero aún necesito proporcionar: {missing_parameters}."
-        )
-
-        # Enviar el mensaje del usuario
-        chat = self.client.beta.threads.messages.create(
-            thread_id=thread.thread_id,
-            role="user", content=user_content
-        )
-
-        # Crear el contenido del mensaje del asistente para guiar al usuario
-        assistant_content = (
-            "You are an AI Product Specialist Assistant. Your primary role is to gather the specific parameters required for different document types based on user requests. "
-            "The user has already provided some details: "
-            f"{completed_parameters}. "
-            "Now, you need to gather the remaining information: "
-            f"{missing_parameters}. "
-            "Please request these missing parameters from the user in a clear and concise manner. Remember: Your task is strictly to gather and provide the necessary parameters, not to deliver documents or provide technical assistance."
-            f"documents can be: {self.document_types_string} and products can be: {self.products_string}. Do not return the list of products unless explicitly requested.."
-        )
-
-        # Enviar el mensaje del asistente
-        chat = self.client.beta.threads.messages.create(
-            thread_id=thread.thread_id,
-            role="assistant", content=assistant_content
-        )
-
-        # Ejecutar el run del asistente y esperar la respuesta
-        run = self.client.beta.threads.runs.create_and_poll(
-            thread_id=thread.thread_id,
-            assistant_id=self.assistant_id,
-        )
-
-        if run.status == 'completed':
-            messages_response = self.client.beta.threads.messages.list(
-                thread_id=thread.thread_id
+        try:
+            # Crear el contenido del mensaje del usuario basado en lo que ya se ha proporcionado y lo que falta
+            user_content = (
+                f"He proporcionado los siguientes detalles: {completed_parameters}. "
+                # f"Pero aún necesito proporcionar: {missing_parameters}."
             )
-            messages = messages_response.data
-            latest_message = messages[0]
 
-            if messages and hasattr(latest_message, 'content'):
-                content_blocks = latest_message.content
-                if isinstance(content_blocks, list) and len(content_blocks) > 0:
-                    text_block = content_blocks[0]
-                    if hasattr(text_block, 'text') and hasattr(text_block.text, 'value'):
-                        classification = text_block.text.value
-                        return classification
-        else:
-            print(run.status)
+            # Enviar el mensaje del usuario
+            chat = self.client.beta.threads.messages.create(
+                thread_id=thread.thread_id,
+                role="user", content=user_content
+            )
 
-        return None
+            # Crear el contenido del mensaje del asistente para guiar al usuario
+            assistant_content = (
+                "You are an AI Product Specialist Assistant. Your primary role is to gather the specific parameters required for different document types based on user requests. "
+                "The user has already provided some details: "
+                f"{completed_parameters}. "
+                "Now, you need to gather the remaining information: "
+                f"{missing_parameters}. "
+                "Please request these missing parameters from the user in a clear and concise manner. Remember: Your task is strictly to gather and provide the necessary parameters, not to deliver documents or provide technical assistance."
+                f"documents can be: {self.document_types_string} and products can be: {self.products_string}. Do not return the list of products unless explicitly requested.."
+            )
+
+            # Enviar el mensaje del asistente
+            chat = self.client.beta.threads.messages.create(
+                thread_id=thread.thread_id,
+                role="assistant", content=assistant_content
+            )
+
+            # Ejecutar el run del asistente y esperar la respuesta
+            run = self.client.beta.threads.runs.create_and_poll(
+                thread_id=thread.thread_id,
+                assistant_id=self.assistant_id,
+            )
+            
+            while run.status != 'completed':
+                print(f"Run status: {run.status}. Waiting for completion...")
+                time.sleep(0.5)  # Pausa de 2 segundos para evitar sobrecargar el servidor
+                run = self.client.beta.threads.runs.retrieve(
+                    thread_id=thread.thread_id,
+                    run_id=run.id
+                )
+                if run.status == 'failed':
+                    print("Error: la ejecución falló.")
+                    return None
+            if run.status == 'completed':
+                messages_response = self.client.beta.threads.messages.list(
+                    thread_id=thread.thread_id
+                )
+                messages = messages_response.data
+                latest_message = messages[0]
+
+                if messages and hasattr(latest_message, 'content'):
+                    content_blocks = latest_message.content
+                    if isinstance(content_blocks, list) and len(content_blocks) > 0:
+                        text_block = content_blocks[0]
+                        if hasattr(text_block, 'text') and hasattr(text_block.text, 'value'):
+                            classification = text_block.text.value
+                            print(f"classification gather param: {classification}")
+                            return classification
+            else:
+                print(run.status)
+        except Exception as e:
+            print(f"Error en gather_parameters: {e}")
+            return None        
+        
         
 
 
@@ -329,73 +340,76 @@ class FileManager:
 
  ############################################# Nueva Version de Resolve_task ###################################
     def resolve_task(self, query, task, thread, user_identifier, is_whatsapp=False):
-        # print(f"thread : {self.client.beta.threads.messages.list(thread_id=thread.thread_id).data[4].content[0].text.value }")
-        # print(f"thread : {self.client.beta.threads.messages.list(thread_id=thread.thread_id).data[0].content[0].text.value }")
-        task.response=""
-        if task.state=='pending':
+        print(f"[DEBUG] Starting resolve_task for task type: {task.task_type}, state: {task.state}")
+        print(f"[DEBUG] Initial subtasks: {len(task.subtasks)} subtasks")
+
+        task.response = ""
+        if task.state == 'pending':
             messages = self.client.beta.threads.messages.list(thread_id=thread.thread_id).data
+            print(f"[DEBUG] Messages retrieved from thread: {len(messages)} messages")
 
             if len(messages) > 4:
+                print("[DEBUG] Adding messages to historial")
                 self.historial.append({"role": "user", "content": str(messages[4].content[0].text.value)})
-                self.historial.append({"role": "assistant", "content": str(self.client.beta.threads.messages.list(thread_id=thread.thread_id).data[0].content[0].text.value )})
-        # task = task
-        parameters = self.extract_variables(query,thread)
-        
-        # Verificar si no hay subtareas y actualizar el estado si es necesario
-        if task.state=='pending':
+                self.historial.append({"role": "assistant", "content": str(self.client.beta.threads.messages.list(thread_id=thread.thread_id).data[0].content[0].text.value)})
 
+        parameters = self.extract_variables(query, thread)
+        print(f"[DEBUG] Extracted parameters: {parameters}")
+
+        if task.state == 'pending':
+            print("[DEBUG] Task is pending. Updating state.")
             self.update_state(task, parameters)
-            # print(f"creo la subtask:{task.subtasks}")
+            print(f"[DEBUG] State updated. Current subtasks: {len(task.subtasks)}")
             task.update_state()
-            # task.update_state(task.state)
         else:
-            # Llenar los campos de la primera subtarea con los parámetros extraídos
+            print("[DEBUG] Task is not pending. Filling fields.")
             self.fill_fields(task, parameters)
-            # print("entro al else")
-
-        
-            
 
         index = 0
         while index < len(task.subtasks):
             subtask = task.subtasks[index]
+            print(f"[DEBUG] Processing subtask at index {index}: {subtask}")
+
             missing_str, completed_str = self.check_what_is_empty(task)
-            print("missing parameters: ")
-            print(missing_str)
-            print("completed param")
-            print(completed_str)
+            print(f"[DEBUG] Missing parameters: {missing_str}")
+            print(f"[DEBUG] Completed parameters: {completed_str}")
 
             if not missing_str:
+                print("[DEBUG] No missing parameters. Getting file.")
                 file_link = self.get_file(task, user_identifier, thread.thread_id, is_whatsapp)
+                print(f"[DEBUG] File link obtained: {file_link}")
+
                 if task.response:
                     task.response = str(file_link) + ", " + str(task.response)
                 else:
                     task.response = str(file_link)
 
-                
                 del task.subtasks[index]
-                # No incrementas el índice porque la lista se acorta
+                print(f"[DEBUG] Subtask removed. Remaining subtasks: {len(task.subtasks)}")
             else:
-                index += 1  # Solo incrementas si no se elimina nada
+                print("[DEBUG] Missing parameters detected. Gathering additional information.")
+                generated_question = self.gather_parameters(missing_str, completed_str, thread)
+                print(f"[DEBUG] Generated question: {generated_question}")
+                self.clear_historial()
+                task.response = str(generated_question) + ", " + str(task.response)
+                break
 
         task.update_state()
-        # print(task.update_state())
-        # task.update_state(task.state)                
+        print(f"[DEBUG] Task state after processing subtasks: {task.state}")
 
-        if task.state!='completed' :
-            # Verificar qué parámetros están vacíos y cuáles están completos
+        if task.state != 'completed':
             missing_parameters, completed_parameters = self.check_what_is_empty(task)
+            print(f"[DEBUG] Missing parameters: {missing_parameters}, Completed parameters: {completed_parameters}")
 
-            # Generar la pregunta para recopilar los parámetros que faltan
-            generated_question = self.gather_parameters(missing_parameters, completed_parameters,thread)
+            generated_question = self.gather_parameters(missing_parameters, completed_parameters, thread)
+            print(f"[DEBUG] Generated follow-up question: {generated_question}")
             self.clear_historial()
-            # Construir la respuesta final
             task.response = str(generated_question) + ", " + str(task.response)
-        #self.clear_historial()
-        # Establecer la respuesta en la tarea
-        # print(f"response: {task.response}")
+
         self.historial.append({"role": "assistant", "content": task.response})
-        if task.state=='completed':
+        if task.state == 'completed':
+            print("[DEBUG] Task completed. Clearing historial.")
             self.clear_historial()
+
         task.set_response(task.response)
-    
+        print(f"[DEBUG] Final task response: {task.response}")
