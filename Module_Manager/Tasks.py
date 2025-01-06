@@ -7,7 +7,7 @@ class Task:
         self.subtasks = []
         self.context = {}
         self.response = None  # This can be a single response or a dictionary of responses
-
+        self.language=None
     def add_subtask(self, subtask):
         self.subtasks.append(subtask)
 
@@ -48,7 +48,8 @@ class Task:
                 raise IndexError("Subtask index out of range")
         else:
             self.response = response
-
+    def get_language(self):
+        return self.language
     def get_response(self, indice=None):
         if len(self.subtasks)==0:
                 return self.response
@@ -76,7 +77,7 @@ class SubTask:
     def __init__(self):
         self.state = 'pending'  # or 'in_progress', 'waiting_for_info', 'completed'
         self.response = None
-
+        self.language = None
     def update_state(self, state):
         self.state = state
 
@@ -85,6 +86,7 @@ class SubTask:
 
     def get_response(self):
         return self.response
-
+    def get_language(self):
+        return self.language
     # def resolve(self):
     #     raise NotImplementedError("This method should be overridden by subclasses")

@@ -80,12 +80,12 @@ class ThreadManager:
                         raise e
 
             # Crear el thread en la base de datos (SQLite o Postgres)
-            print(f"Creando thread en la base de datos Postgres SQL para el usuario con identificador {identifier}...")
+            print(f"Creando thread en la base de datos SQLite para el usuario con identificador {identifier}...")
 
             # Convertimos el ID a string para almacenarlo correctamente en el campo CharField
-            thread = Thread.objects.using('default').create(user_id=str(identifier), thread_id=thread_id)
+            thread = Thread.objects.using('default').create(user_id=str(identifier), thread_id=thread_id,language="Unknown" )
             thread.update_last_activity()
-            print(f"Thread guardado en la base de datos Postgres SQL con ID {thread.thread_id}")
+            print(f"Thread guardado en la base de datos SQLite con ID {thread.thread_id}")
 
             return thread, self.module_manager
         except Exception as e:

@@ -122,7 +122,7 @@ class LLM_Bottleneck:
             
 
     
-    def generate_tasks_response(self,original_language, query,thread):      #esta funcion deberia llamarse al final de Module_Manager/services classify_query
+    def generate_tasks_response(self, query,thread ,original_language=None):      #esta funcion deberia llamarse al final de Module_Manager/services classify_query
         start_time = time.time()
         try:
             response=""
@@ -135,7 +135,7 @@ class LLM_Bottleneck:
             print(f"abort signal: {self.abort_signal}")
             print("Respuesta del LLM_Bottleneck:  ")
             print(response)
-            print("******************************************************************************")
+            
             return response
         except Exception as e:
             logger.error(f"Error in LLM_Bottleneck: {e}")
@@ -143,6 +143,7 @@ class LLM_Bottleneck:
         finally:
             elapsed_time = time.time() - start_time
             print(f"LLM_Bottleneck/generate_task_response completed in {elapsed_time:.2f} seconds")
+            print("******************************************************************************")
     def receive_task(self, task):        # esta funcion deberia llamarse al final de cada "if  y elif" de Module_Manager/services handle_task 
         self.tasks.append(task)
 

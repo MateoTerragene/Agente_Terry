@@ -169,7 +169,7 @@ class ClassifyQueryView(View):
                 try:
                     # Clasificar la consulta
                     response_text, task_type = self.web_handler.handle_text_message(query, user_id, module_manager, thread)
-                    print("*********************************************")
+                    # print("*********************************************")
 
                     # print(f"response antes de convertir enlaces: {response_text}")
                     response = convertir_enlaces(response_text)

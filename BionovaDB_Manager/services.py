@@ -39,7 +39,7 @@ class BionovaDBManager:
             str: URL firmada para acceder al archivo.
         """
         try:
-            print(f"Generating presigned URL for key: {s3_key} in bucket: {self.bucket_name}")
+            # print(f"Generating presigned URL for key: {s3_key} in bucket: {self.bucket_name}")  # Print para ver el s3_key y el bucket
             response = self.s3_client.generate_presigned_url(
                 'get_object',
                 Params={'Bucket': self.bucket_name, 'Key': s3_key},
