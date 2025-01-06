@@ -7,11 +7,12 @@ User = get_user_model()
 
 class Thread(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user_id = models.CharField(max_length=255)  # Cambiado a CharField
+    user_id = models.CharField(max_length=255) 
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     last_activity = models.DateTimeField(auto_now=True)
     thread_id = models.CharField(max_length=255, default=uuid.uuid4)
+    language = models.CharField(max_length=50, default="Unknown")
 
     def update_last_activity(self):
         self.last_activity = timezone.now()
@@ -27,12 +28,11 @@ class ExternalUser(models.Model):
 
     class Meta:
         managed = False  # No permitir que Django gestione la tabla
-        db_table = 'wp_users'  # Nombre de la tabla en la base de datos externa
+        db_table = 'wp_users'  
         # app_label = 'Module_Manager'
 
-# Definir el modelo WhatsAppUser
 class WhatsAppUser(models.Model):
-    phone_number = models.CharField(max_length=50, unique=True)  # Increased from 20 to 50
+    phone_number = models.CharField(max_length=50, unique=True) 
     first_name = models.CharField(max_length=255, blank=True, null=True)
     last_name = models.CharField(max_length=255, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -54,6 +54,6 @@ class UserInteraction(models.Model):
     query = models.TextField()
     response = models.TextField()
     task_type = models.CharField(max_length=50, blank=True, null=True)
-    message_id = models.CharField(max_length=255, blank=True, null=True, unique=True)  # Nuevo campo
+    message_id = models.CharField(max_length=255, blank=True, null=True, unique=True) 
     class Meta:
-        db_table = 'Module_Manager_userinteraction'  # Nombre de la tabla
+        db_table = 'Module_Manager_userinteraction' 

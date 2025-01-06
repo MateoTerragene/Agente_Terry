@@ -10,23 +10,18 @@ from django.views import View
 from django.http import HttpResponseBadRequest
 import pandas as pd
 from django.http import HttpResponse
-# Configurar el logger
+
 logger = logging.getLogger(__name__)
 client= OpenAI()
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
-
-
-
-# Configurar el logger
 logger = logging.getLogger(__name__)
 
-# Configurar OpenAI API
 client.api_key = os.getenv('OPENAI_API_KEY')
 
 class DBViewerView(LoginRequiredMixin, View):
     template_name = ''
-    login_url = '/dbviewer/login/'  # URL de inicio de sesión
+    login_url = '/dbviewer/login/'  
     def export_to_excel(self, columns, rows, file_name='export.xlsx'):
         """Función para exportar los datos de una tabla a formato Excel."""
         df = pd.DataFrame(rows, columns=columns)
@@ -50,7 +45,6 @@ class DBViewerView(LoginRequiredMixin, View):
             columns = [col[0] for col in cursor.description]
             rows = cursor.fetchall()
 
-        # Devuelve los datos de la tabla (columnas y filas)
         return {'columns': columns, 'rows': rows}
     def render_response(self, request, context):
         """Método de ayuda para renderizar la respuesta."""
@@ -124,7 +118,7 @@ class CustomSQLQueryView(DBViewerView):
             'columns': columns,
             'rows': rows,
             'tables': self.get_tables(),
-            'error_message': error_message  # Mostramos el mensaje de error en pantalla
+            'error_message': error_message 
         })
 
 
@@ -144,7 +138,7 @@ class IntelligentQueryView(DBViewerView):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        # Definir el system prompt como un atributo de la instancia
+        
         self.system_prompt = """
         Eres un asistente que genera consultas SQL a partir de las preguntas de los usuarios. 
         Las funcionalidades del chatbot incluyen:
@@ -180,14 +174,12 @@ class IntelligentQueryView(DBViewerView):
         Genera una consulta SQL que corresponda a la pregunta del usuario utilizando esta información.
         Basándote en la información anterior, genera una consulta SQL válida. **Responde únicamente con la consulta SQL sin explicaciones adicionales.**
         """
-        #  Los productos disponibles son: [Lista completa de productos].
 
     def post(self, request):
         instruction = request.POST.get("instruction", "").strip()
-        sql_query = request.POST.get("generated_sql", None)  # SQL generado previamente
+        sql_query = request.POST.get("generated_sql", None)  
         error_message = None
 
-        # Si se solicitó descargar Excel
         if 'download_excel' in request.POST:
             if sql_query:
                 columns = []
