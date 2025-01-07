@@ -9,57 +9,6 @@ from .models import FormDetails  # Importar el modelo desde models.py
 load_dotenv()  # Cargar las variables de entorno desde el archivo .env
 
 
-
-# class FormDetails(BaseModel):
-#     first_name: str = Field(
-#         "",
-#         description="First name of the contact"
-#     )
-#     surname: str = Field(
-#         "",
-#         description="Surname of the contact"
-#     )
-#     company: str = Field(
-#         "",
-#         description="Company name"
-#     )
-#     email: str = Field(
-#         "",
-#         description="Contact email address"
-#     )
-#     phone_number: str = Field(
-#         "",
-#         description="Phone number"
-#     )
-#     city: str = Field(
-#         "",
-#         description="City"
-#     )
-#     country: str = Field(
-#         "",
-#         description="Country"
-#     )
-#     how_did_you_know_about_us: str = Field(
-#         "",
-#         description="How did you know about us?"
-#     )
-#     level_of_knowledge_of_products: str = Field(
-#         "",
-#         description="Level of knowledge of product range"
-#     )
-#     # subject: str = Field(
-#     #     "",
-#     #     description="Subject of the form"
-#     # )
-#     additional_comments: str = Field(
-#         "",
-#         description="Additional comments"
-#     )
-
-#     def __init__(self, **data):
-#         super().__init__(**{**{field: "" for field in self.__fields__}, **data})
-
-
 class FormManager:
     def __init__(self):
         try:
@@ -163,7 +112,8 @@ class FormManager:
             ai_response = self.ask_for_info(ask_for, thread)
 
             if not ask_for or (len(ask_for) == 1 and "additional_comments" in ask_for):
-                print("[DEBUG] Form completed.")
+                self.form.save()  # Guardar el formulario completo
+                print("[DEBUG] Formulario guardado en la base de datos.")
                 ai_response = (
                     "¡Gracias por completar el formulario! Hemos recibido toda la información necesaria. "
                     "Un representante se pondrá en contacto contigo pronto."
