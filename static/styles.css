@@ -720,3 +720,62 @@ background-color: #005c4b; /* Color de la barra de volumen */
 max-width: 100%; /* Asegura que las imágenes no superen el ancho del contenedor */
 border-radius: 8px; /* Bordes redondeados como en WhatsApp */
 }
+
+@media screen and (max-width:450px) {
+  .frase-circ {
+      height:93px;
+      width:93px;
+      bottom: 1%;
+      right: 3%;
+  }
+
+  #circulo {
+      transform: rotate(-21deg);
+      top: -1%;
+      left: 55%;
+      height:180px;
+  }
+
+  #circulo span {
+    width:17px;
+    height: 51px;
+    font-size: 10px;
+  }
+  .grupo-707.show-grupo {
+      width: 90%;
+  }
+  .grupo-409-icon {
+      top: 2.95%;
+      width: 21%;
+  }
+  .expand-icon {
+      display:none;
+  }
+
+  .disclaimer {
+      font-size:13px;
+  }
+
+  /* Estilo para el ícono de adjuntar archivo */
+  .attach-icon, .mic-icon {
+      width: 15px;
+      height: 15px;
+  }
+
+/* Estilo para la imagen del botón de enviar */
+  .send-icon {
+      width: 18px;
+      height: 18px;
+  }
+
+  .input-container {
+      border-radius: 10px;
+      padding:6px;
+  }
+  .input-container input {
+      padding: 6px;    
+      border-radius: 10px;
+      font-size: 13px;
+  }
+
+}
