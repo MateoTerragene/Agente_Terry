@@ -46,7 +46,7 @@ class file_handlers:
         else:
             return None
     
-    def limpiar_texto(self, texto):  # elimina caracteres extraños
+    def limpiar_texto(self, texto): 
         if texto is None:
             return ''
         return re.sub(r'[^a-zA-Z0-9]', '', str(texto)).lower()   

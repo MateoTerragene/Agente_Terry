@@ -7,7 +7,6 @@ from openai import OpenAI
 from dotenv import load_dotenv
 import time
 load_dotenv()
-import shutil
 # from pydub.utils import mediainfo
 
 AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')

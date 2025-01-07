@@ -2,7 +2,6 @@
 from openai import OpenAI
 from .SubTask import FMSubTask
 from django.http import JsonResponse
-from Module_Manager.Tasks import Task
 from File_Manager.SubTask import FMSubTask
 import json
 import os

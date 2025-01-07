@@ -112,7 +112,11 @@ class FormManager:
             ai_response = self.ask_for_info(ask_for, thread)
 
             if not ask_for or (len(ask_for) == 1 and "additional_comments" in ask_for):
+<<<<<<< HEAD
                 self.form.save()  # Guardar el formulario completo
+=======
+                self.form.save()
+>>>>>>> 51007a4d3c2085692a8121b028bf8ef486d42f2f
                 print("[DEBUG] Formulario guardado en la base de datos.")
                 ai_response = (
                     "¡Gracias por completar el formulario! Hemos recibido toda la información necesaria. "

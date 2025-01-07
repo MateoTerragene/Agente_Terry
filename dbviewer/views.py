@@ -1,6 +1,5 @@
 from django.shortcuts import render
 from django.db import connection
-from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseBadRequest
 import logging
 from openai import OpenAI
@@ -10,23 +9,18 @@ from django.views import View
 from django.http import HttpResponseBadRequest
 import pandas as pd
 from django.http import HttpResponse
-# Configurar el logger
+
 logger = logging.getLogger(__name__)
 client= OpenAI()
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
-
-
-
-# Configurar el logger
 logger = logging.getLogger(__name__)
 
-# Configurar OpenAI API
 client.api_key = os.getenv('OPENAI_API_KEY')
 
 class DBViewerView(LoginRequiredMixin, View):
     template_name = ''
-    login_url = '/dbviewer/login/'  # URL de inicio de sesión
+    login_url = '/dbviewer/login/' 
     def export_to_excel(self, columns, rows, file_name='export.xlsx'):
         """Función para exportar los datos de una tabla a formato Excel."""
         df = pd.DataFrame(rows, columns=columns)
@@ -50,7 +44,6 @@ class DBViewerView(LoginRequiredMixin, View):
             columns = [col[0] for col in cursor.description]
             rows = cursor.fetchall()
 
-        # Devuelve los datos de la tabla (columnas y filas)
         return {'columns': columns, 'rows': rows}
     def render_response(self, request, context):
         """Método de ayuda para renderizar la respuesta."""
@@ -85,7 +78,7 @@ class CustomSQLQueryView(DBViewerView):
             'columns': [],
             'rows': [],
             'tables': self.get_tables(),
-            'error_message': None,  # Inicializamos sin mensaje de error
+            'error_message': None,
         })
 
     def post(self, request):
@@ -115,7 +108,6 @@ class CustomSQLQueryView(DBViewerView):
             logger.error(f"Error al ejecutar la consulta: {str(e)}")
             error_message = f"Error en la consulta SQL: {str(e)}"
 
-        # Si el usuario solicita la descarga en Excel
         if 'download_excel' in request.POST and not error_message:
             return self.export_to_excel(columns, rows, 'custom_sql_query.xlsx')
 
@@ -136,7 +128,6 @@ class CustomSQLQueryView(DBViewerView):
             columns = [col[0] for col in cursor.description]
             rows = cursor.fetchall()
 
-        # Devuelve los datos de la tabla (columnas y filas)
         return {'columns': columns, 'rows': rows}
 
 class IntelligentQueryView(DBViewerView):
@@ -180,14 +171,12 @@ class IntelligentQueryView(DBViewerView):
         Genera una consulta SQL que corresponda a la pregunta del usuario utilizando esta información.
         Basándote en la información anterior, genera una consulta SQL válida. **Responde únicamente con la consulta SQL sin explicaciones adicionales.**
         """
-        #  Los productos disponibles son: [Lista completa de productos].
 
     def post(self, request):
         instruction = request.POST.get("instruction", "").strip()
         sql_query = request.POST.get("generated_sql", None)  # SQL generado previamente
         error_message = None
 
-        # Si se solicitó descargar Excel
         if 'download_excel' in request.POST:
             if sql_query:
                 columns = []
@@ -267,7 +256,7 @@ class IntelligentQueryView(DBViewerView):
         except Exception as e:
             logger.error(f"Error al generar o ejecutar la consulta SQL: {str(e)}")
             return HttpResponseBadRequest(f"Error al ejecutar la consulta SQL: {str(e)}")
-                # Si el usuario solicita la descarga en Excel
+
         if 'download_excel' in request.POST:
             return self.export_to_excel(columns, rows, 'intelligent_query.xlsx')
         return self.render_response(request, {
@@ -321,7 +310,6 @@ class ShowTableContentView(DBViewerView):
             columns = [col[0] for col in cursor.description]
             rows = cursor.fetchall()
 
-        # Si el usuario solicita la descarga en Excel
         if 'download_excel' in request.GET:
             return self.export_to_excel(columns, rows, f'{table_name}.xlsx')
 

@@ -1,9 +1,8 @@
 from openai import OpenAI
 import os
 from dotenv import load_dotenv
-import time
 
-load_dotenv()  # Load environment variables from .env file
+load_dotenv()
 
 class TechnicalQueryAssistant:
     def __init__(self):
@@ -11,7 +10,6 @@ class TechnicalQueryAssistant:
         self.assistant_id = os.getenv('ASSISTANT_ID')
        
     def handle_technical_query(self, query, task, thread):
-        # Actualizar el estado de la tarea a "en progreso"
         task.update_state('in_progress')
 
         try:

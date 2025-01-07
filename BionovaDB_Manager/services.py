@@ -1,7 +1,5 @@
-import hashlib
 import os
 import boto3
-import sqlite3
 import subprocess
 from dotenv import load_dotenv
 import requests
@@ -12,7 +10,7 @@ load_dotenv()
 class BionovaDBManager:
     def __init__(self):
         try:
-            self.bdstr = 'a7ZEyiDhJt'  # Contraseña de cifrado
+            self.bdstr = 'a7ZEyiDhJt' 
             self.client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
             self.s3_client = boto3.client(
                 's3',
@@ -20,7 +18,7 @@ class BionovaDBManager:
                 aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
                 region_name=os.getenv('AWS_REGION')
             )
-            self.bucket_name = os.getenv('S3_BUCKET_NAME')  # Nombre del bucket de S3
+            self.bucket_name = os.getenv('S3_BUCKET_NAME')
             
             self.db_path = None
             self.assistant_id = os.getenv('BIONOVA_DB_MANAGER_ASSISTANT_ID')
@@ -39,13 +37,13 @@ class BionovaDBManager:
             str: URL firmada para acceder al archivo.
         """
         try:
-            # print(f"Generating presigned URL for key: {s3_key} in bucket: {self.bucket_name}")  # Print para ver el s3_key y el bucket
+            # print(f"Generating presigned URL for key: {s3_key} in bucket: {self.bucket_name}")
             response = self.s3_client.generate_presigned_url(
                 'get_object',
                 Params={'Bucket': self.bucket_name, 'Key': s3_key},
                 ExpiresIn=expiration
             )
-            print(f"Presigned URL generated: {response}")  # Print para ver la URL generada
+            print(f"Presigned URL generated: {response}")
             return response
         except Exception as e:
             print(f"Error al generar la URL firmada: {e}")
@@ -62,17 +60,14 @@ class BionovaDBManager:
         try:
             response = requests.get(url, stream=True)
             
-            # Imprimir información detallada sobre la respuesta
             print(f"Estado de la respuesta HTTP: {response.status_code}")
             print(f"Encabezados de la respuesta: {response.headers}")
             
             if response.status_code == 200:
                 print("Respuesta exitosa, descargando el archivo...")
                 
-                # Garantizar que tmp/ existe
                 os.makedirs('tmp', exist_ok=True)
 
-                # Guardar el archivo en tmp/
                 self.db_path = os.path.join('tmp', 'downloaded_db.db')
                 print(f"Guardando el archivo en la ruta local: {self.db_path}")
                 
@@ -103,10 +98,7 @@ class BionovaDBManager:
                 s3_key = s3_db_path[len(f"https://{self.bucket_name}.s3.amazonaws.com/"):]
                 url = self.get_presigned_url(s3_key)
                 if url:
-                    # Garantizar que tmp/ existe
                     os.makedirs('tmp', exist_ok=True)
-
-                    # Guardar archivo en tmp/ con el mismo nombre que en S3
                     self.db_path = os.path.join('tmp', os.path.basename(s3_key))
                     self.download_db(url)
                 else:
@@ -116,17 +108,14 @@ class BionovaDBManager:
                 print("Error: La URL proporcionada no coincide con el bucket.")
                 return "Error: La URL proporcionada no coincide con el bucket."
 
-            # Verificar si el archivo existe
             if not os.path.exists(self.db_path):
                 print(f"Error: El archivo dentro de clear_pass {self.db_path} no existe.")
                 return "Error: Archivo no encontrado."
 
             # Comandos disponibles
             commands = ["open", "decrypt", "reset", "encrypt"]
-            # commands = ["open", "reset"]
             results = []
 
-            # Ejecutar cada comando
             executable_path = os.path.join('BionovaDB_Manager', 'BioReset')
             for command in commands:
                 try:
@@ -164,7 +153,6 @@ class BionovaDBManager:
                 task.response = self.clear_pass(query,task, user_identifier, thread)
                 task.state = 'completed'
             else:
-                # Aquí podrías manejar consultas generales, como en el ejemplo anterior.
                 pass
 
         except Exception as e:
