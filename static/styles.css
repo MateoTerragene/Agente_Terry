@@ -207,7 +207,6 @@ padding:10px;
   margin-right: 10px;
   font-size: 16px; /* Ajusta la fuente para evitar el zoom */
   -webkit-appearance: none; /* Elimina los estilos predeterminados de iOS */
-  caret-color: #fff;
 }
 
 /* Asegura que el campo de entrada no tenga sombras o bordes adicionales en iOS */
