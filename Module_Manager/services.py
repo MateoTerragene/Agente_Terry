@@ -63,6 +63,7 @@ class ModuleManager:
                 }}
             }}
             """
+
                 # - "purchase_opportunity" (oportunidad de compra) \
                 # | "purchase_opportunity"  # Comentado: esta tarea ya no es relevante
             self.tasks = []
