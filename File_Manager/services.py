@@ -233,7 +233,7 @@ class FileManager:
             
             while run.status != 'completed':
                 print(f"Run status: {run.status}. Waiting for completion...")
-                time.sleep(0.5)  # Pausa de 2 segundos para evitar sobrecargar el servidor
+                time.sleep(0.2)  # Pausa de 2 segundos para evitar sobrecargar el servidor
                 run = self.client.beta.threads.runs.retrieve(
                     thread_id=thread.thread_id,
                     run_id=run.id
