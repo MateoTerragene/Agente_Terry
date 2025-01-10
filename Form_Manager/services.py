@@ -1,12 +1,11 @@
 from dotenv import load_dotenv
 from openai import OpenAI
 from pydantic import BaseModel, Field
-import openai
 import os
 import json
-from .models import FormDetails  # Importar el modelo desde models.py
+from .models import FormDetails
 
-load_dotenv()  # Cargar las variables de entorno desde el archivo .env
+load_dotenv()
 
 
 class FormManager:
