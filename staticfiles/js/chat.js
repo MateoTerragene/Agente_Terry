@@ -120,7 +120,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     messages.innerHTML += `<div class="message received">Error: ${data.error}</div>`;
                 }
             } else {
-                messages.innerHTML += `<div class="message received">Error: La respuesta no es válida o es HTML en lugar de JSON.</div>`;
+                messages.innerHTML += `<div class="message received">Error: La respuesta no es válida o es HTML en lugar de JSeON.${contentType}</div>`;
             }
         } catch (error) {
             console.error("Error: ", error);
