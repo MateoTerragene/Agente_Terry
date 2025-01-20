@@ -25,7 +25,8 @@ class FileHandler:
         Procesa un mensaje de texto.
         """
         response, task_type = module_manager.classify_query(thread, message, identifier, is_whatsapp)
-        # print(f"response dentro de file_handler: {response}")
+        print(f"response dentro de file_handler: {response}")
+        print(f"response dentro de file_handler de tasktype: {task_type}")
         return response, task_type
 
     def handle_audio(self, audio_path, identifier, module_manager, thread):

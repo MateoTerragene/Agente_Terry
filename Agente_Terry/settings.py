@@ -11,7 +11,7 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'fallback_secret_key')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['terragene.online', 'www.terragene.online','100.27.3.89', 'localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['terragene.online', 'www.terragene.online','100.27.3.89', 'localhost', '127.0.0.1', "100.24.135.108"]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
