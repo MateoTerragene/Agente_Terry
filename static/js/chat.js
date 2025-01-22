@@ -78,7 +78,7 @@ document.addEventListener('DOMContentLoaded', function () {
     
         try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s timeout
+            const timeoutId = setTimeout(() => controller.abort(), 75000); // 75s timeout
     
             const response = await fetch('/module_manager/web-service/', {
                 method: 'POST',
@@ -165,8 +165,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     ⚠️ Timeout Error<br>
                     <small>Our systems are temporarily unavailable. Please:<br>
                     1. Try again in 2-3 minutes<br>
-                    2. Check <a href="https://status.terragene.com" target="_blank" style="color: #4CAF50; text-decoration: underline;">our status page</a><br>
-                    3. Contact <span style="color: #4CAF50;">support@terragene.com</span> for urgent issues</small>
+                    2. Check <a href="https://terragene.com" target="_blank" style="color: #4CAF50; text-decoration: underline;">our page</a><br>
+                    3. Contact <span style="color: #4CAF50;">info@terragene.com</span> for urgent issues</small>
                 `;
             } else if (error.message.includes('NetworkError')) {
                 errorMessage.innerHTML = `
