@@ -51,8 +51,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!userId || query === '') return;
     
         const sendButton = document.getElementById('sendButton');
-        sendButton.style.pointerEvents = 'none';  // Disable send button temporarily
-    
+        sendButton.style.pointerEvents = 'none';
         const messages = document.getElementById('messages');
     
         // Add user's message
@@ -75,23 +74,31 @@ document.addEventListener('DOMContentLoaded', function () {
             messages.appendChild(messageContainer);
             document.getElementById("query").value = '';
             messages.scrollTop = messages.scrollHeight;
-        } else {
-            sendButton.style.pointerEvents = 'auto';
-            return;
         }
     
         try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s timeout
+    
             const response = await fetch('/module_manager/web-service/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ user_id: userId, query })
+                body: JSON.stringify({ user_id: userId, query }),
+                signal: controller.signal
             });
+    
+            clearTimeout(timeoutId);
+    
+            // Detectar específicamente el error 504 de Nginx
+            if (response.status === 504) {
+                throw new Error('504 Gateway Time-out');
+            }
     
             const contentType = response.headers.get('content-type');
             
-            if (contentType && contentType.includes('application/json')) {
+            if (contentType?.includes('application/json')) {
                 const data = await response.json();
     
                 if (response.ok) {
@@ -115,15 +122,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     messageContainerReceived.appendChild(messageTextReceived);
                     messageContainerReceived.appendChild(timeStampReceived);
                     messages.appendChild(messageContainerReceived);
-                    messages.scrollTop = messages.scrollHeight;
                 } else {
                     const errorContainer = document.createElement("div");
                     errorContainer.classList.add("message", "received");
-                    errorContainer.textContent = `Error: ${data.error}`;
+                    errorContainer.innerHTML = `⚠️ Server Error: ${data.error || 'Unknown error'}`;
                     messages.appendChild(errorContainer);
                 }
             } else {
-                // Handle HTML response
                 const htmlContent = await response.text();
                 
                 const messageContainerReceived = document.createElement("div");
@@ -142,16 +147,54 @@ document.addEventListener('DOMContentLoaded', function () {
                 messageContainerReceived.appendChild(contentWrapper);
                 messageContainerReceived.appendChild(timeStampReceived);
                 messages.appendChild(messageContainerReceived);
-                messages.scrollTop = messages.scrollHeight;
             }
+    
+            messages.scrollTop = messages.scrollHeight;
+    
         } catch (error) {
-            console.error("Error: ", error);
-            const errorContainer = document.createElement("div");
-            errorContainer.classList.add("message", "received");
-            errorContainer.textContent = "Error al procesar la consulta.";
-            messages.appendChild(errorContainer);
+            console.error("Error:", error);
+            
+            const messageContainerReceived = document.createElement("div");
+            messageContainerReceived.classList.add("message", "received");
+    
+            const errorMessage = document.createElement("p");
+            
+            // Manejo avanzado de errores
+            if (error.name === 'AbortError' || error.message.includes('504')) {
+                errorMessage.innerHTML = `
+                    ⚠️ Timeout Error<br>
+                    <small>Our systems are temporarily unavailable. Please:<br>
+                    1. Try again in 2-3 minutes<br>
+                    2. Check <a href="https://status.terragene.com" target="_blank" style="color: #4CAF50; text-decoration: underline;">our status page</a><br>
+                    3. Contact <span style="color: #4CAF50;">support@terragene.com</span> for urgent issues</small>
+                `;
+            } else if (error.message.includes('NetworkError')) {
+                errorMessage.innerHTML = `
+                    🌐 Connection Lost<br>
+                    <small>Please check your internet connection and try again</small>
+                `;
+            } else {
+                errorMessage.innerHTML = `
+                    ⚠️ Unexpected Error<br>
+                    <small>${error.message || 'Please try again later'}</small>
+                `;
+            }
+    
+            const timeStampReceived = document.createElement("span");
+            timeStampReceived.classList.add("time");
+            timeStampReceived.textContent = new Date().toLocaleTimeString([], { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+    
+            messageContainerReceived.appendChild(errorMessage);
+            messageContainerReceived.appendChild(timeStampReceived);
+            messages.appendChild(messageContainerReceived);
+            messages.scrollTop = messages.scrollHeight;
+    
         } finally {
-            sendButton.style.pointerEvents = 'auto';  // Re-enable send button
+            sendButton.style.pointerEvents = 'auto';
+            document.getElementById('query').focus();
         }
     }
 
