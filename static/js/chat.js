@@ -46,42 +46,40 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 
-    // Función para enviar consulta con texto personalizado o el input del usuario
     async function sendQuery(prefixedQuery = '') {
         const query = prefixedQuery || document.getElementById('query').value.trim();
         if (!userId || query === '') return;
-
+    
         const sendButton = document.getElementById('sendButton');
-        sendButton.style.pointerEvents = 'none';  // Desactiva el botón de enviar temporalmente
-
+        sendButton.style.pointerEvents = 'none';  // Disable send button temporarily
+    
         const messages = document.getElementById('messages');
-
-        // Validación para evitar enviar mensajes vacíos o solo con espacios en blanco
+    
+        // Add user's message
         if (query) {
             const messageContainer = document.createElement("div");
             messageContainer.classList.add("message", "sent");
-
+    
             const messageText = document.createElement("p");
             messageText.textContent = query;
-
+    
             const timeStamp = document.createElement("span");
             timeStamp.classList.add("time");
-            timeStamp.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
+            timeStamp.textContent = new Date().toLocaleTimeString([], { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+    
             messageContainer.appendChild(messageText);
             messageContainer.appendChild(timeStamp);
-
             messages.appendChild(messageContainer);
-
-            document.getElementById("query").value = ''; // Limpiar el input
-
-            // Scroll automático al final del chat
+            document.getElementById("query").value = '';
             messages.scrollTop = messages.scrollHeight;
         } else {
-            sendButton.style.pointerEvents = 'auto';  // Reactivar el botón si no hay texto
+            sendButton.style.pointerEvents = 'auto';
             return;
         }
-
+    
         try {
             const response = await fetch('/module_manager/web-service/', {
                 method: 'POST',
@@ -90,44 +88,70 @@ document.addEventListener('DOMContentLoaded', function () {
                 },
                 body: JSON.stringify({ user_id: userId, query })
             });
-
+    
             const contentType = response.headers.get('content-type');
+            
             if (contentType && contentType.includes('application/json')) {
                 const data = await response.json();
-
+    
                 if (response.ok) {
                     let formattedResponse = data.response
                         .replace(/\n/g, '<br>')
                         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-
+    
                     const messageContainerReceived = document.createElement("div");
                     messageContainerReceived.classList.add("message", "received");
-
+    
                     const messageTextReceived = document.createElement("p");
                     messageTextReceived.innerHTML = formattedResponse;
-
+    
                     const timeStampReceived = document.createElement("span");
                     timeStampReceived.classList.add("time");
-                    timeStampReceived.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
+                    timeStampReceived.textContent = new Date().toLocaleTimeString([], { 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                    });
+    
                     messageContainerReceived.appendChild(messageTextReceived);
                     messageContainerReceived.appendChild(timeStampReceived);
-
                     messages.appendChild(messageContainerReceived);
-
-                    // Scroll automático al final del chat
                     messages.scrollTop = messages.scrollHeight;
                 } else {
-                    messages.innerHTML += `<div class="message received">Error: ${data.error}</div>`;
+                    const errorContainer = document.createElement("div");
+                    errorContainer.classList.add("message", "received");
+                    errorContainer.textContent = `Error: ${data.error}`;
+                    messages.appendChild(errorContainer);
                 }
             } else {
-                messages.innerHTML += `<div class="message received"> I’m sorry I couldn’t help with that. Please refresh the page and try again or visit terragene.com for more comprehensive informatiion.${contentType}</div>`;
+                // Handle HTML response
+                const htmlContent = await response.text();
+                
+                const messageContainerReceived = document.createElement("div");
+                messageContainerReceived.classList.add("message", "received");
+    
+                const contentWrapper = document.createElement("div");
+                contentWrapper.innerHTML = htmlContent;
+    
+                const timeStampReceived = document.createElement("span");
+                timeStampReceived.classList.add("time");
+                timeStampReceived.textContent = new Date().toLocaleTimeString([], { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                });
+    
+                messageContainerReceived.appendChild(contentWrapper);
+                messageContainerReceived.appendChild(timeStampReceived);
+                messages.appendChild(messageContainerReceived);
+                messages.scrollTop = messages.scrollHeight;
             }
         } catch (error) {
             console.error("Error: ", error);
-            messages.innerHTML += `<div class="message received">Error al procesar la consulta.</div>`;
+            const errorContainer = document.createElement("div");
+            errorContainer.classList.add("message", "received");
+            errorContainer.textContent = "Error al procesar la consulta.";
+            messages.appendChild(errorContainer);
         } finally {
-            sendButton.style.pointerEvents = 'auto';  // Reactiva el botón de envío
+            sendButton.style.pointerEvents = 'auto';  // Re-enable send button
         }
     }
 
