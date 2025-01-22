@@ -78,7 +78,7 @@ document.addEventListener('DOMContentLoaded', function () {
     
         try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 75000); // 75s timeout
+            const timeoutId = setTimeout(() => controller.abort(), 120000); // 120s timeout
     
             const response = await fetch('/module_manager/web-service/', {
                 method: 'POST',
