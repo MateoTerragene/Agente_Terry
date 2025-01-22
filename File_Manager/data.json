@@ -171,14 +171,15 @@
             "PRO1MICRO",
             "PRO1 RT",
             "PRO1 VT",
+            "PRO1 ENDO",            
             "IC1020",
             "IC1020FR",
             "IC1020FRLCD",
             "IC10201024",
-            "MINIBIO",
-            "MINIPRO",
-            "PHOTON",
-            "TRAZANTO",
+            "MiniBio",
+            "MiniPro",
+            "Photon",
+            "Trazanto",
             "PD",
             "Hyper",
             "ICTP",
@@ -196,7 +197,9 @@
         "DP",
         "CC",
         "FDA",
-        "ISO"
+        "ISO",
+        "MANUAL"
+
     ]
 
 }

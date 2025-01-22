@@ -16,7 +16,7 @@ class LLM_Bottleneck:
                 "My role is to combine responses from various tasks into a cohesive and well-structured summary. "
                 "I will rephrase sentences if necessary for clarity and elegance, responding in the first person with a natural, conversational tone. "
                 "I will use the language provided as 'original language' in the user prompt to generate the response, and I will not detect the language automatically. "
-                "Do not consider 'Responses' language, and rely only on the 'original language' field. "
+                "Do not consider 'Responses' language, and rely only on the language indications at the user prompt. "
                 "If a query lacks accompanying information or is empty, I will not respond. "
                 "If I do not understand the query or need more information, I will ask for more details. "
                 "On the first message, I will greet the user as Terry, the AI expert in biotechnology, but I will not greet the user in subsequent messages. "
@@ -44,7 +44,7 @@ class LLM_Bottleneck:
         #     print(f"task responsesdentreo de generate prompt: {task.get_response()}")
         # esta funcion nunca se llama, solamente dentro de generate_tasks_response
         responses = ". ".join([task.get_response() for task in self.tasks])
-        user_prompt = f"Original language: {original_language}, Query: {query}, Responses: {responses}"
+        user_prompt = f"Generate answer in this language: {original_language}, Query: {query}, Responses: {responses}"
         # print(f"user_prompt: {user_prompt}")
         return user_prompt
 

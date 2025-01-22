@@ -34,7 +34,7 @@ class FileManager:
                 "Eres un experto en la extracción de información de conversaciones. Extrae las variables importantes y devuélvelas en formato JSON estrictamente válido, "
                 "únicamente cuando hayas extraído toda la información requerida para cada tipo de documento. Para los Certificates of Analysis (COA), "
                 "extrae el PRODUCT y el LOT. Para las Instructions for Use (IFU), Product Description or technical data sheet (DP), Safety Data Sheet (SDS), "
-                "Color Charts (CC) y FDA certificates 510K (FDA), extrae solo el PRODUCT. Para los certificados ISO DNV(ISO) no se necesitan otras variables. Devuelve un JSON por CADA documento solicitado solo si se ha extraído toda la información requerida. "
+                "Color Charts (CC), FDA certificates 510K (FDA) y Manuales, extrae solo el PRODUCT. Para los certificados ISO DNV(ISO) no se necesitan otras variables. Devuelve un JSON por CADA documento solicitado solo si se ha extraído toda la información requerida. "
                 "Retorna 'documento: ','producto: ' y 'lote: ' si es necesario. Siempre devuelve en el mismo idioma que te preguntaron. Tu rol NO es devolver documentos. Documento solo puede ser igual a "
                 f"{self.document_types_string}. Producto solo puede ser igual a {self.products_string}. Si no puedes extraer alguna variable, déjala vacía. Si el usuario solicita un COA y quiere el último LOTE disponible, en 'lote' devuelve 'last'. "
                 "Utiliza el historial de la conversación para completar cualquier información faltante. NO PIDAS CONFIRMACIÓN. "
@@ -166,7 +166,8 @@ class FileManager:
             "SDS": lambda: self.file_handler.get_sds_file(product),
             "CC": lambda: self.file_handler.get_cc_file(product),
             "FDA": lambda: self.file_handler.get_fda_file(product),
-            "ISO": lambda: self.file_handler.get_iso_file()
+            "ISO": lambda: self.file_handler.get_iso_file(),
+            "MANUAL": lambda: self.file_handler.get_user_manual_file(product)
         }
 
         handler = document_handlers.get(document)
