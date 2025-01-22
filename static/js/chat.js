@@ -121,7 +121,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     messages.innerHTML += `<div class="message received">Error: ${data.error}</div>`;
                 }
             } else {
-                messages.innerHTML += `<div class="message received"> I’m sorry I couldn’t help with that. Please refresh the page and try again or visit terragene.com for more comprehensive information.</div>`;
+                messages.innerHTML += `<div class="message received"> I’m sorry I couldn’t help with that. Please refresh the page and try again or visit terragene.com for more comprehensive informatiion.${contentType}</div>`;
             }
         } catch (error) {
             console.error("Error: ", error);
