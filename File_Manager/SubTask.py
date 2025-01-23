@@ -9,4 +9,5 @@ class FMSubTask(SubTask):
         self.documento=None
         self.producto=None
         self.lote=None
+        self.NS=None
         
