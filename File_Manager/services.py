@@ -298,7 +298,7 @@ class FileManager:
                     missing_parameters.append("lote")
                 else:
                     completed_parameters.append("lote")
-                if first_subtask.producto.upper() in ["IC1020", "IC1020FR", "IC1020FRLCD", "TRAZANTO", "MINIBIO", "MINIPRO", "PHOTON","HYPER" , "TRAZANTO"]: 
+                if first_subtask.producto and  first_subtask.producto.upper() in ["IC1020", "IC1020FR", "IC1020FRLCD", "TRAZANTO", "MINIBIO", "MINIPRO", "PHOTON","HYPER" , "TRAZANTO"]: 
                     print("entro a incubadoras")
                     if not first_subtask.NS:
                         missing_parameters.append("Número de serie")
@@ -347,6 +347,7 @@ class FileManager:
             if documento in self.document_types:
                 first_subtask.documento = documento    
             if producto in self.products:
+                print("producto esta en self.products")
                 first_subtask.producto = producto
             if lote:  # "lote" es opcional, por lo que solo se asigna si está presente
                 first_subtask.lote = lote
