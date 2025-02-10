@@ -322,7 +322,7 @@ def process_message(changes):
 
         # Handle the text message
         response_text, task_type = whatsapp_handler.handle_text_message(text_body, phone_number, module_manager, thread)
-        print(f"response dentro de views: {response_text}")
+        # print(f"response dentro de views: {response_text}")
         # Optionally, send a response back via WhatsApp (if needed)
         headers = {
             "Authorization": f"Bearer {ACCESS_TOKEN}",

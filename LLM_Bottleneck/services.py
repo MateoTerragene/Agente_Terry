@@ -43,7 +43,7 @@ class LLM_Bottleneck:
         # for task in self.tasks:
         #     print(f"task responsesdentreo de generate prompt: {task.get_response()}")
         # esta funcion nunca se llama, solamente dentro de generate_tasks_response
-        responses = ". ".join([task.get_response() for task in self.tasks])
+        responses = ". ".join([task.response for task in self.tasks])
         user_prompt = f"Generate answer in this language: {original_language}, Query: {query}, Responses: {responses}"
         # print(f"user_prompt: {user_prompt}")
         return user_prompt
@@ -140,7 +140,7 @@ class LLM_Bottleneck:
             raise
         finally:
             elapsed_time = time.time() - start_time
-            print(f"LLM_Bottleneck/generate_task_response completed in {elapsed_time:.2f} seconds")
+            # print(f"LLM_Bottleneck/generate_task_response completed in {elapsed_time:.2f} seconds")
             print("******************************************************************************")
     def receive_task(self, task):        # esta funcion deberia llamarse al final de cada "if  y elif" de Module_Manager/services handle_task 
         self.tasks.append(task)

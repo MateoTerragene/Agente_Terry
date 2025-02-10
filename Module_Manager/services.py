@@ -157,7 +157,7 @@ class ModuleManager:
             # Usar el idioma desde el thread
             resp = self.LLM_BN.generate_tasks_response(self.query, thread, thread.language)
 
-            print(f"[DEBUG] Response from LLM_Bottleneck: {resp}")
+            # print(f"[DEBUG] Response from LLM_Bottleneck: {resp}")
             return resp, completed_task_type
 
         except Exception as e:
@@ -166,7 +166,7 @@ class ModuleManager:
             raise
         finally:
             elapsed_time = time.time() - start_time
-            print(f"[DEBUG] classify_query completed in {elapsed_time:.2f} seconds")
+            # print(f"[DEBUG] classify_query completed in {elapsed_time:.2f} seconds")
 
 
     def process_tasks(self, thread, user_identifier, is_whatsapp=False):
@@ -188,7 +188,7 @@ class ModuleManager:
             raise
         finally:
             total_elapsed = time.time() - start_time
-            print(f"process_tasks completed in {total_elapsed:.2f} seconds")
+            # print(f"process_tasks completed in {total_elapsed:.2f} seconds")
             
     def handle_task(self, thread, user_identifier, is_whatsapp=False):
         if self.tasks[0].task_type == "fileRequest":
