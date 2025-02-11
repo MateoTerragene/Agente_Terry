@@ -29,7 +29,7 @@ class ModuleManager:
             ### Clasificación de tareas
             Tu respuesta debe ser un JSON que indique lo siguiente:
             1. Las tareas detectadas en la consulta. Estas pueden ser:
-            - "technical_query" (consulta técnica)
+            - "technical_query" (consulta técnica o consultas generales)
             - "fileRequest" (solicitud de documentos)
             - "form" (intención de convertirse en distribuidor de Terragene)
             - "image_submission" (recepción de imagen)

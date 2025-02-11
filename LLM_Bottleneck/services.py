@@ -5,6 +5,7 @@ from django.http import JsonResponse
 import json
 import time
 import logging
+import re
 logger = logging.getLogger(__name__)
 class LLM_Bottleneck:
     def __init__(self):
@@ -14,7 +15,10 @@ class LLM_Bottleneck:
             self.prompt = (
                 "I am an assistant designed to merge and organize the responses provided to me. "
                 "My role is to combine responses from various tasks into a cohesive and well-structured summary. "
-                "I will rephrase sentences if necessary for clarity and elegance, responding in the first person with a natural, conversational tone. "
+                "I will only use the provided responses to generate an answer. "
+                "If the responses do not contain valid information, I will explicitly say: 'No information available from the database.' "
+                "I will not generate an answer based on my own knowledge, and I will not infer information from the query alone. "
+                "If the response indicates that no information was found in the databases, I will explain this in a polite way and attempt to retrieve available contact details stored in the vector database (Contact_information.json) using RAG for further assistance."
                 "I will use the language provided as 'original language' in the user prompt to generate the response, and I will not detect the language automatically. "
                 "Do not consider 'Responses' language, and rely only on the language indications at the user prompt. "
                 "If a query lacks accompanying information or is empty, I will not respond. "
@@ -73,6 +77,11 @@ class LLM_Bottleneck:
             if run.status == 'completed':
                 # Recupera los mensajes de la conversación
                 messages_response = self.client.beta.threads.messages.list(thread_id=thread.thread_id)
+                
+                # print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
+                # print("messages_response en LLM_Bottleneck: ")
+                # # print(messages_response)
+                # print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
                 messages = messages_response.data
                 latest_message = messages[0] if messages else None
                 
@@ -90,22 +99,26 @@ class LLM_Bottleneck:
                             
                             # Intenta parsear el JSON devuelto por el modelo
                             try:
-                                response_json = json.loads(classification)
-                                # print(f"response_json: {response_json}")
-                                
+                                # 🔹 **Limpiar la respuesta eliminando bloques de código (```json ... ```)**
+                                classification_cleaned = re.sub(r"```json\n|\n```", "", classification).strip()
+
+                                # print(f"✅ JSON limpio recibido: {classification_cleaned}")
+
+                                response_json = json.loads(classification_cleaned)
+
                                 # Verifica que el JSON contiene los campos esperados
                                 if 'response' in response_json and 'abort' in response_json:
                                     response = response_json.get('response')
                                     self.abort_signal = response_json.get('abort')
-                                    # print(f"respuesta en generate_response: {response}")
                                     return response
                                 else:
                                     # Devuelve un error si el formato no es el esperado
                                     return {'error': 'Invalid response format'}
-                            
+
                             except json.JSONDecodeError as e:
-                                print(f"JSON decode error: {e}")
+                                print(f"⚠️ JSON decode error: {e}")
                                 return {'error': 'Response is not a valid JSON'}
+
                 else:
                     return {'error': 'No content found in latest message'}
             else:
@@ -130,10 +143,11 @@ class LLM_Bottleneck:
 
             
             print("******************************************************************************")
+            # print("user prompt: ", user_prompt)
             print(f"abort signal: {self.abort_signal}")
             print("Respuesta del LLM_Bottleneck:  ")
             print(response)
-            
+            print("******************************************************************************")
             return response
         except Exception as e:
             logger.error(f"Error in LLM_Bottleneck: {e}")
@@ -141,7 +155,7 @@ class LLM_Bottleneck:
         finally:
             elapsed_time = time.time() - start_time
             # print(f"LLM_Bottleneck/generate_task_response completed in {elapsed_time:.2f} seconds")
-            print("******************************************************************************")
+            # print("******************************************************************************")
     def receive_task(self, task):        # esta funcion deberia llamarse al final de cada "if  y elif" de Module_Manager/services handle_task 
         self.tasks.append(task)
 

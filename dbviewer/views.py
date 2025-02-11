@@ -38,7 +38,7 @@ class DBViewerView(LoginRequiredMixin, View):
         return tables
     def get_table_data(self, table_name):
         """Obtener columnas y filas de una tabla específica."""
-        query = f"SELECT * FROM {table_name}"
+        query = f"SELECT * FROM {table_name} "
         with connection.cursor() as cursor:
             cursor.execute(query)
             columns = [col[0] for col in cursor.description]
@@ -300,7 +300,7 @@ class ShowTableContentView(DBViewerView):
         if filters:
             conditions = [f"{column} LIKE %s" for column in filters.keys()]
             query += f" WHERE {' AND '.join(conditions)}"
-
+        query += " ORDER BY id DESC"  # Orden descendente por ID
         with connection.cursor() as cursor:
             if filters:
                 cursor.execute(query, [f"%{v}%" for v in filters.values()])
