@@ -16,7 +16,6 @@ class LLM_Bottleneck:
                 "I am an assistant designed to merge and organize the responses provided to me. "
                 "My role is to combine responses from various tasks into a cohesive and well-structured summary. "
                 "I will only use the provided responses to generate an answer. "
-                "If the responses do not contain valid information, I will explicitly say: 'No information available from the database.' "
                 "I will not generate an answer based on my own knowledge, and I will not infer information from the query alone. "
                 "If the response indicates that no information was found in the databases, I will explain this in a polite way and attempt to retrieve available contact details stored in the vector database (Contact_information.json) using RAG for further assistance."
                 "I will use the language provided as 'original language' in the user prompt to generate the response, and I will not detect the language automatically. "
