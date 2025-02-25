@@ -46,8 +46,15 @@ class LLM_Bottleneck:
         # for task in self.tasks:
         #     print(f"task responsesdentreo de generate prompt: {task.get_response()}")
         # esta funcion nunca se llama, solamente dentro de generate_tasks_response
-        responses = ". ".join([task.response for task in self.tasks])
-        user_prompt = f"Generate answer in this language: {original_language}, Query: {query}, Responses: {responses}"
+        # responses = ". ".join([task.response for task in self.tasks])
+        # user_prompt = f"Generate answer in this language: {original_language}, Query: {query}, Responses: {responses}"
+        user_prompt = (
+        f"Given the following responses from different sources, generate a clear and concise answer in {original_language}.\n\n"
+        f"Query: {query}\n\n"
+        "Responses:\n"
+        + "\n".join(f"- {task.response}" for task in self.tasks) +
+        "\n\nProvide a well-structured final response considering all the above inputs."
+)
         # print(f"user_prompt: {user_prompt}")
         return user_prompt
 
@@ -79,7 +86,7 @@ class LLM_Bottleneck:
                 
                 # print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
                 # print("messages_response en LLM_Bottleneck: ")
-                # # print(messages_response)
+                # print(messages_response)
                 # print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
                 messages = messages_response.data
                 latest_message = messages[0] if messages else None
@@ -101,7 +108,7 @@ class LLM_Bottleneck:
                                 # 🔹 **Limpiar la respuesta eliminando bloques de código (```json ... ```)**
                                 classification_cleaned = re.sub(r"```json\n|\n```", "", classification).strip()
 
-                                # print(f"✅ JSON limpio recibido: {classification_cleaned}")
+                                print(f"✅ JSON limpio recibido: {classification_cleaned}")
 
                                 response_json = json.loads(classification_cleaned)
 
@@ -109,7 +116,11 @@ class LLM_Bottleneck:
                                 if 'response' in response_json and 'abort' in response_json:
                                     response = response_json.get('response')
                                     self.abort_signal = response_json.get('abort')
-                                    return response
+                                     # Si la respuesta es un diccionario, conviértela en string JSON
+                                    if isinstance(response, dict):
+                                        response = json.dumps(response, ensure_ascii=False)
+
+                                    return response if isinstance(response, str) else str(response)
                                 else:
                                     # Devuelve un error si el formato no es el esperado
                                     return {'error': 'Invalid response format'}
@@ -118,15 +129,15 @@ class LLM_Bottleneck:
                                 print(f"⚠️ JSON decode error: {e}")
                                 return {'error': 'Response is not a valid JSON'}
 
-                else:
-                    return {'error': 'No content found in latest message'}
+                return json.dumps({'error': 'No content found in latest message'})
+
             else:
                 print(f"Run status: {run.status}")
-                return {'error': f'Run did not complete, status: {run.status}'}
-        
+                return json.dumps({'error': f'Run did not complete, status: {run.status}'})
+
         except Exception as e:
             print(f"Exception in generate_response: {e}")
-            return {'error': f'Unexpected error: {str(e)}'}
+            return json.dumps({'error': f'Unexpected error: {str(e)}'})
 
 
             

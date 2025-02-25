@@ -53,17 +53,23 @@ class FileManager:
         try:
             promptPending = (
                     "Eres un experto en la extracción de información de conversaciones. Extrae las variables importantes y devuélvelas en formato JSON estrictamente válido, "
-                    "únicamente cuando hayas extraído toda la información requerida para cada tipo de documento. Para los Certificates of Analysis (COA), "
-                    "extrae el PRODUCT y el LOT. Si el usuario solicita un COA de producto 'IC1020', 'IC1020FR', 'IC1020FRLCD', 'Trazanto', 'MiniBio', 'MiniPro', 'Photon','Hyper' o 'Trazanto' extrae tambien el Numero de serie. Para las Instructions for Use (IFU), Product Description or technical data sheet (DP), Safety Data Sheet (SDS), "
-                    "Color Charts (CC), FDA certificates 510K (FDA) y Manuales, extrae solo el PRODUCT. Para los certificados ISO DNV(ISO) no se necesitan otras variables. Devuelve un JSON por CADA documento solicitado solo si se ha extraído toda la información requerida. "
-                    "Retorna 'documento: ','producto: ' y 'lote: ' si es necesario. Siempre devuelve en el mismo idioma que te preguntaron. Tu rol NO es devolver documentos. Documento solo puede ser igual a "
-                    f"{self.document_types_string}. Producto solo puede ser igual a {self.products_string}. El campo lote puede ser **cualquier cadena alfanumérica**. El campo ns puede ser **cualquier cadena numérica**. Puedes recibir lote y ns en mensajes aislados sin texto adicional. Si no puedes extraer alguna variable, déjala vacía. Si el usuario solicita un COA y quiere el último LOTE disponible, en 'lote' devuelve 'last'. "
+                    "Para los Certificates of Analysis o certificados de calidad (COA) , extrae el PRODUCT y el LOT. "
+                    "Si el usuario solicita un COA de producto 'IC1020', 'IC1020FR', 'IC1020FRLCD', 'Trazanto', 'MiniBio', 'MiniPro', 'Photon','Hyper' o 'Trazanto' extrae tambien el Numero de serie." 
+                    "Para las Instructions for Use (IFU), Product Description or technical data sheet (DP), Safety Data Sheet (SDS), Color Charts (CC), FDA certificates 510K (FDA) y Manuales, extrae solo el PRODUCT. "
+                    "Para los certificados ISO DNV(ISO) no se necesitan otras variables." 
+                    "Devuelve un JSON ESTRICTAMENTE válido en formato de LISTA, con un objeto por cada documento solicitado. Cada objeto debe contener 'documento', 'producto', 'lote' y 'ns' si aplica.  "
+                    "Retorna 'documento: ','producto: ' y 'lote: ' si es necesario. Tu rol NO es devolver documentos. Documento solo puede ser igual a "
+                    f"{self.document_types_string}. Producto solo puede ser igual a {self.products_string}."
+                    "El campo lote puede ser **cualquier cadena alfanumérica**."
+                    "El campo ns puede ser **cualquier cadena numérica**. Puedes recibir lote y ns en mensajes aislados sin texto adicional."
+                    "Si no puedes extraer alguna variable, déjala vacía."
+                    "Si el usuario solicita un COA y explícitamente pide 'el último lote disponible' o 'el lote más reciente', en 'lote' devuelve 'last'. Si el usuario especifica un número de lote, usa ese valor sin alteraciones. "
                     "Utiliza el historial de la conversación para completar cualquier información faltante. NO PIDAS CONFIRMACIÓN. "
                     "Asegúrate de que cada par clave-valor en el JSON esté rodeado de comillas dobles, y que las claves estén en minúsculas. "
                     "El JSON debe tener la siguiente estructura: "
                     "{ 'documento': 'tipo_de_documento', 'producto': 'nombre_del_producto', 'lote': 'numero_de_lote', 'NS'='numero_de_serie' }. "
                     "Ejemplo de JSON válido: { 'documento': '', 'producto': '', 'lote': '', 'ns': '' }. "
-                    "Solo devuelve el JSON puro, sin texto adicional ni explicaciones."
+                    "Solo devuelve el JSON puro, sin texto adicional ni explicaciones. Si no puedes extraer información devuelve el JSON con los campos vacios."
                     
                 )
             
@@ -77,11 +83,11 @@ class FileManager:
                 # print(f"promptinProgress: {missing_parameters}")
                 string=""
                 if missing_parameters[0].upper()=="DOCUMENTO":
-                    string= f" 'documento' solo puede ser igual a: {self.document_types_string}. El usuario puede usar distintas nomenclaturas:  Certificates of Analysis o certificado de calidad (COA),  Product Description or technical data sheet (DP), Safety Data Sheet (SDS), Color Charts (CC), FDA certificates 510K (FDA), Manuales y certificados ISO DNV(ISO) "
+                    string= f" 'documento' solo puede ser igual a: {self.document_types_string}. El usuario puede usar distintas nomenclaturas:  Certificates of Analysis o certificado de calidad o Quality Certificate(COA),  Product Description or technical data sheet (DP), Safety Data Sheet (SDS), Color Charts (CC), FDA certificates 510K (FDA), Manuales y certificados ISO DNV(ISO) "
                 if missing_parameters[0].upper()=="PRODUCTO":
                     string=f" 'producto' solo puede ser igual a {self.products_string}"
                 if missing_parameters[0].upper()=="LOTE":
-                    string=" 'lote' solo puede ser puede ser **cualquier cadena alfanumérica**. Puedes recibirlo en un mensaje aislado sin texto adicional. Si el usuario quiere el último LOTE disponible, en 'lote' devuelve 'last'." 
+                    string=" 'lote' solo puede ser puede ser **cualquier cadena alfanumérica**. Puedes recibirlo en un mensaje aislado sin texto adicional. Si el usuario solicita un COA y explícitamente pide 'el último lote disponible' o 'el lote más reciente', en 'lote' devuelve 'last'. Si el usuario especifica un número de lote, usa ese valor sin alteraciones." 
                 if missing_parameters[0].upper()=="NS":
                     string=" 'ns' es el numero de serie y solo puede ser puede ser **cualquier cadena numérica**. Puedes recibirlo en un mensaje aislado sin texto adicional. "        
                 promptInProgress = f"""
@@ -113,8 +119,10 @@ class FileManager:
             
             # Extrae la respuesta generada por el modelo
             generated_text = response.choices[0].message.content
+            
+            generated_text = self.clean_json_output(generated_text)
             print(f"Json generado por -> extract_variables: {generated_text}")
-        
+            
             return generated_text
         except Exception as e:
             print(f"[ERROR] Failed to extract variables: {str(e)}")
@@ -231,6 +239,18 @@ class FileManager:
             return None
 
     #####################################################################
+    def clean_json_output(self,text):
+        # Verificar si el texto contiene "```json" o "```"
+        if "```json" in text or "```" in text:
+            # Eliminar líneas que contienen "```json" o "```"
+            cleaned_text = re.sub(r'```json\n|```\n|```', '', text)
+            
+            # Eliminar prefijos como "web-1  | "
+            cleaned_text = re.sub(r'web-\d+  \| ', '', cleaned_text)
+            
+            return cleaned_text.strip()
+        return text.strip()
+
     def gather_parameters( self,task, missing_parameters, completed_parameters, thread):
         try:
             completed_str = ", ".join(completed_parameters)
@@ -307,6 +327,7 @@ class FileManager:
                         if hasattr(text_block, 'text') and hasattr(text_block.text, 'value'):
                             classification = text_block.text.value
                             # print(f"classification gather param: {classification}")
+                            classification = self.clean_json_output(classification)
                             return classification
             else:
                 print(run.status)

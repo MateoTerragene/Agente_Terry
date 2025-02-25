@@ -35,17 +35,10 @@ class ModuleManager:
             - "image_submission" (recepción de imagen)
             - "clear_DB" (blanqueo de contraseña).
 
-            2. La consulta traducida al inglés y optimizada según estas pautas:
-            - Analiza la consulta para identificar conceptos clave e intención.
-            - Identifica términos ambiguos y sugiere sinónimos o aclaraciones.
-            - Considera términos relacionados, sinónimos y frases alternativas para mejorar la búsqueda.
-            - Expande siglas o abreviaturas si es aplicable.
-            - Incorpora cualquier contexto relevante o conocimiento específico del dominio.
-            - Asegúrate de que la consulta optimizada mantenga la intención original del usuario.
-            - Prioriza claridad y especificidad en la consulta optimizada.
-            - Si la consulta original ya es óptima, simplemente tradúcela al inglés sin cambios.
+            2. La consulta traducida al inglés :
 
-            3. El idioma original de la consulta como un nombre de idioma (por ejemplo, 'Spanish', 'English', 'French').
+
+            3. El idioma original de la consulta. Para esto deberas analizar la consulta y detectar su idioma.
 
             Los documentos que te puede pedir el usuario son: {self.docs}.
             Si recibes algo que contenga 'https://agente-terry.s3.amazonaws.com/images/', clasifícalo como 'image_submission'.
@@ -58,8 +51,8 @@ class ModuleManager:
                     "technical_query" | "fileRequest" | "form" | "image_submission" | "clear_DB"
                 ],
                 "query_translation": {{
-                    "translated_query": "consulta traducida y optimizada en inglés",
-                    "original_language": "idioma original"
+                    "translated_query": "consulta traducida en inglés",
+                    "original_language": "idioma detectado en la consulta"
                 }}
             }}
             """
@@ -107,7 +100,7 @@ class ModuleManager:
                     model="gpt-4o-mini",
                     messages=[
                         {"role": "system", "content": self.prompt}, 
-                        {"role": "user", "content": f"Clasifica la siguiente consulta y genera el JSON correspondiente: {query}"}
+                        {"role": "user", "content": f"Clasifica la siguiente consulta, detecta su idioma y genera el JSON correspondiente: {query}"}
                     ]
                 )
                 try:
