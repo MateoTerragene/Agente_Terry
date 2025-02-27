@@ -66,7 +66,7 @@ class ThreadManager:
 
             for attempt in range(retries):
                 try:
-                    print(f"Intentando crear un thread en OpenAI para el usuario {identifier}...")
+                    # print(f"Intentando crear un thread en OpenAI para el usuario {identifier}...")
                     openai_thread = self.client.beta.threads.create()
                     thread_id = openai_thread.id
                     print(f"Thread creado en OpenAI con ID: {thread_id}")

@@ -86,7 +86,7 @@ class ModuleManager:
             print(f"[DEBUG] Thread ID: {thread_id}")
             logger.info(f"Usando el thread ID: {thread_id} para clasificar la consulta.")
             self.query = query
-            print(f"[DEBUG] Initial query: {self.query}")
+            print(f"❔❓ Initial query: {self.query}")
 
             if self.LLM_BN.abort_signal:
                 print("[DEBUG] Abort signal detected. Clearing tasks.")
@@ -185,7 +185,7 @@ class ModuleManager:
             
     def handle_task(self, thread, user_identifier, is_whatsapp=False):
         if self.tasks[0].task_type == "fileRequest":
-            print("Resolviendo solicitud de documentos...")
+            print("📁 Resolviendo solicitud de documentos...")
             self.file_manager.resolve_task(self.query,self.tasks[0],thread,user_identifier, is_whatsapp)
             # print("estado de la task FM")
             # print(task.get_state())
@@ -193,7 +193,7 @@ class ModuleManager:
  
 
         elif self.tasks[0].task_type == "technical_query":
-            print("Resolviendo consulta técnica...")
+            print("📚 Resolviendo consulta técnica...")
 
             self.technical_query_assistant.handle_technical_query(self.query,self.tasks[0],thread)
            
@@ -201,7 +201,7 @@ class ModuleManager:
     
             
         elif self.tasks[0].task_type == "form":
-            print("Resolviendo Form...")
+            print("📋 Resolviendo Form...")
             self.form_manager.handle_form(self.query,self.tasks[0],thread)
            
             self.LLM_BN.receive_task(self.tasks[0].clone())
@@ -216,13 +216,13 @@ class ModuleManager:
             self.LLM_BN.receive_task(self.tasks[0].clone())
         
         elif self.tasks[0].task_type == "image_submission":
-            print("Resolviendo recepción de imagen...")
+            print("📸 Resolviendo recepción de imagen...")
             self.image_manager.process_image(self.tasks[0],self.query,thread)
            
             self.LLM_BN.receive_task(self.tasks[0].clone())
             
         elif self.tasks[0].task_type == "clear_DB":
-            print("Resolviendo blanqueo de clave...")
+            print("🔑 Resolviendo blanqueo de clave...")
 
             self.DB_manager.handle_Bionova_DB(self.query,self.tasks[0],user_identifier, thread)
            

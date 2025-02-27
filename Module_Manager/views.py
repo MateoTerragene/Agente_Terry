@@ -218,7 +218,7 @@ class ClassifyQueryView(View):
             # Limpia las tareas antes de crear un nuevo thread
             
             # Lógica para crear un nuevo thread
-            print(f"Creando un nuevo thread para el usuario con ID: {user_id}")
+            print(f"🧵 Creando un nuevo thread para el usuario con ID: {user_id}")
             thread, module_manager = thread_manager_instance.create_thread(user_id)
 
             # Guardar el thread_id en la sesión

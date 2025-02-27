@@ -83,7 +83,7 @@ class TechnicalQueryAssistant:
                         thread_id=thread_id,
                         message_id=message_id
                     )
-                    print(f"✅ Mensaje {message_id} eliminado del thread {thread_id}.")
+                    print(f"🗑 Mensaje {message_id} eliminado del thread {thread_id}.")
 
                     # Esperar un momento para asegurar que la eliminación se procese
                     time.sleep(2)

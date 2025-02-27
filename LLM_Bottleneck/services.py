@@ -108,7 +108,7 @@ class LLM_Bottleneck:
                                 # 🔹 **Limpiar la respuesta eliminando bloques de código (```json ... ```)**
                                 classification_cleaned = re.sub(r"```json\n|\n```", "", classification).strip()
 
-                                print(f"✅ JSON limpio recibido: {classification_cleaned}")
+                                # print(f"✅ JSON limpio recibido: {classification_cleaned}")
 
                                 response_json = json.loads(classification_cleaned)
 
@@ -155,7 +155,7 @@ class LLM_Bottleneck:
             print("******************************************************************************")
             # print("user prompt: ", user_prompt)
             print(f"abort signal: {self.abort_signal}")
-            print("Respuesta del LLM_Bottleneck:  ")
+            print("✅ Respuesta del LLM_Bottleneck:  ")
             print(response)
             print("******************************************************************************")
             return response

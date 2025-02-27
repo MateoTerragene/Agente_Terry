@@ -526,7 +526,7 @@ class FileManager:
                 if not missing_str:
                     print("[DEBUG] No missing parameters. Getting file.")
                     file_link = self.get_file(task, user_identifier, thread.thread_id, is_whatsapp)
-                    print(f"[DEBUG] File link obtained: {file_link}")
+                    print(f"[DEBUG] 🔗 File link obtained: {file_link}")
 
                     if task.response:
                         task.response = str(file_link) + " [- next answer -] " + str(task.response)
