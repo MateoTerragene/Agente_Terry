@@ -464,6 +464,7 @@ class UserView(View):
 
                 if row:
                     user_id, contraseña_hash = row
+                    print(repr(contraseña_hash), len(contraseña_hash))
                     if phpass.verify(password, contraseña_hash):
                         # Si la autenticación es exitosa, guardamos la sesión
                         request.session['user_authenticated'] = True
