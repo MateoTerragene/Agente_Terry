@@ -30,15 +30,15 @@ class FileManager:
             self.prompt = (
                 "Eres un experto en la extracción de información de conversaciones. Extrae las variables importantes y devuélvelas en formato JSON estrictamente válido, "
                 "únicamente cuando hayas extraído toda la información requerida para cada tipo de documento. Para los Certificates of Analysis (COA), "
-                "extrae el PRODUCT y el LOT. Para las Instructions for Use (IFU), Product Description or technical data sheet (DP), Safety Data Sheet (SDS), "
-                "Color Charts (CC) y FDA certificates 510K (FDA), extrae solo el PRODUCT. Para los certificados ISO DNV(ISO) no se necesitan otras variables. Devuelve un JSON por CADA documento solicitado solo si se ha extraído toda la información requerida. "
+                "extrae el PRODUCT y el LOT. Si el usuario solicita un COA de producto 'IC1020', 'IC1020FR', 'IC1020FRLCD', 'Trazanto', 'MiniBio', 'MiniPro', 'Photon','Hyper' o 'Trazanto' extrae tambien el Numero de serie. Para las Instructions for Use (IFU), Product Description or technical data sheet (DP), Safety Data Sheet (SDS), "
+                "Color Charts (CC), FDA certificates 510K (FDA) y Manuales, extrae solo el PRODUCT. Para los certificados ISO DNV(ISO) no se necesitan otras variables. Devuelve un JSON por CADA documento solicitado solo si se ha extraído toda la información requerida. "
                 "Retorna 'documento: ','producto: ' y 'lote: ' si es necesario. Siempre devuelve en el mismo idioma que te preguntaron. Tu rol NO es devolver documentos. Documento solo puede ser igual a "
                 f"{self.document_types_string}. Producto solo puede ser igual a {self.products_string}. Si no puedes extraer alguna variable, déjala vacía. Si el usuario solicita un COA y quiere el último LOTE disponible, en 'lote' devuelve 'last'. "
                 "Utiliza el historial de la conversación para completar cualquier información faltante. NO PIDAS CONFIRMACIÓN. "
                 "Asegúrate de que cada par clave-valor en el JSON esté rodeado de comillas dobles, y que las claves estén en minúsculas. "
                 "El JSON debe tener la siguiente estructura: "
-                "{ 'documento': 'tipo_de_documento', 'producto': 'nombre_del_producto', 'lote': 'numero_de_lote' }. "
-                "Ejemplo de JSON válido: { 'documento': '', 'producto': '', 'lote': '' }. "
+                "{ 'documento': 'tipo_de_documento', 'producto': 'nombre_del_producto', 'lote': 'numero_de_lote', 'NS'='numero_de_serie' }. "
+                "Ejemplo de JSON válido: { 'documento': '', 'producto': '', 'lote': '', 'ns': '' }. "
                 "Solo devuelve el JSON puro, sin texto adicional ni explicaciones."
                 
             )
@@ -115,6 +115,7 @@ class FileManager:
         documento=None
         producto=None
         lote=None
+        ns=None
         # Verificar si "documento" y "producto" están presentes y son válidos antes de asignarlos
         if data.get("documento"):
             documento = data.get("documento")
@@ -122,6 +123,8 @@ class FileManager:
             producto = data.get("producto")
         if data.get("lote"):
             lote = data.get("lote")
+        if data.get("ns"):
+            ns = data.get("ns")
 
         # Solo proceder si "documento" y "producto" son válidos
         if documento in self.document_types:
@@ -130,7 +133,8 @@ class FileManager:
             fm_subtask.producto = producto
         if lote:  # "lote" es opcional, por lo que solo se asigna si está presente
             fm_subtask.lote = lote
-            
+        if ns:
+            fm_subtask.NS=ns   
             # Agregar la subtarea a la lista de subtareas
         task.subtasks.append(fm_subtask)
         print("Subtarea creada y añadida:", fm_subtask)
@@ -149,15 +153,16 @@ class FileManager:
         document = first_subtask.documento
         product = first_subtask.producto
         lot = first_subtask.lote
-
+        ns= first_subtask.NS
         document_handlers = {
             "IFU": lambda: self.file_handler.get_ifu_file(product),
-            "COA": lambda: self.file_handler.get_coa_file(product, lot),
+            "COA": lambda: self.file_handler.get_coa_file(product, lot,ns),
             "DP": lambda: self.file_handler.get_dp_file(product),
             "SDS": lambda: self.file_handler.get_sds_file(product),
             "CC": lambda: self.file_handler.get_cc_file(product),
             "FDA": lambda: self.file_handler.get_fda_file(product),
-            "ISO": lambda: self.file_handler.get_iso_file()
+            "ISO": lambda: self.file_handler.get_iso_file(),
+            "MANUAL": lambda: self.file_handler.get_user_manual_file(product)
         }
 
         handler = document_handlers.get(document)
@@ -224,7 +229,7 @@ class FileManager:
             
             while run.status != 'completed':
                 print(f"Run status: {run.status}. Waiting for completion...")
-                time.sleep(0.5)  # Pausa de 2 segundos para evitar sobrecargar el servidor
+                time.sleep(0.2)  # Pausa de 2 segundos para evitar sobrecargar el servidor
                 run = self.client.beta.threads.runs.retrieve(
                     thread_id=thread.thread_id,
                     run_id=run.id
@@ -284,6 +289,13 @@ class FileManager:
                     missing_parameters.append("lote")
                 else:
                     completed_parameters.append("lote")
+                if first_subtask.producto and  first_subtask.producto.upper() in ["IC1020", "IC1020FR", "IC1020FRLCD", "TRAZANTO", "MINIBIO", "MINIPRO", "PHOTON","HYPER" , "TRAZANTO"]: 
+                    print("entro a incubadoras")
+                    if not first_subtask.NS:
+                        missing_parameters.append("Número de serie")
+                    else:
+                        completed_parameters.append("Número de serie")  
+                    
             if first_subtask.documento == "ISO":
                 missing_parameters=[]
                 
@@ -301,6 +313,7 @@ class FileManager:
         documento=None
         producto=None
         lote=None
+        ns=None
         try:
             parameters = parameters.replace("'", '"')
             json_data = json.loads(parameters)
@@ -317,15 +330,20 @@ class FileManager:
                 # print(producto)
             if json_data.get("lote"):
                 lote = json_data.get("lote")
+                
+            if json_data.get("ns"):
+                ns= json_data.get("ns")
 
             # Solo proceder si "documento" y "producto" son válidos
             if documento in self.document_types:
                 first_subtask.documento = documento    
             if producto in self.products:
+                print("producto esta en self.products")
                 first_subtask.producto = producto
             if lote:  # "lote" es opcional, por lo que solo se asigna si está presente
                 first_subtask.lote = lote
-
+            if ns:
+                first_subtask.NS=ns
         except json.JSONDecodeError as e:
             print(f"Error al parsear JSON en fill_fields: {e}")
 

@@ -22,31 +22,47 @@ class ModuleManager:
         try:
             self.client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
             self.docs = "COA = certificado de calidad = certificado de analisis, IFU = Prospecto , PD = Descripcion de producto = Ficha tecnica, SDS = Hoja de seguridad, CC = Color chart, FDA = Certificado FDA = 510K "
-            self.prompt = f"""Eres un asistente que clasifica consultas de usuarios e identifica tareas a realizar. Puede haber múltiples tareas en una consulta. \
-                Tu respuesta debe ser un JSON que indique lo siguiente: \
-                1. Las tareas detectadas en la consulta. Estas pueden ser: \
-                - "technical_query" (consulta técnica) \
-                - "fileRequest" (solicitud de documentos) \
-                - "form" (intención de convertirse en distribuidor de Terragene) \
-                
-                - "image_submission" (recepción de imagen) \
-                - "clear_DB" (blanqueo de contraseña). \
-                2. La consulta traducida al inglés. \
-                3. El idioma original de la consulta como un nombre de idioma, no un código (por ejemplo, 'Spanish', 'English', 'French'). \
-                Los documentos que te puede pedir el usuario son: {self.docs}.\
-                Si recibes algo que contenga 'https://agente-terry.s3.amazonaws.com/images/', clasifícalo como 'image_submission'.\
-                Si recibes algo que contenga 'https://agente-terry.s3.amazonaws.com/db/', clasifícalo como 'clear_DB'.\
-                Debes responder únicamente en el siguiente formato JSON: \
-                {{
-                    "tasks": [
-                        "technical_query" | "fileRequest" | "form" | "image_submission" | "clear_DB" 
-                        
-                    ],
-                    "query_translation": {{
-                        "translated_query": "consulta SIEMPRE traducida al inglés",
-                        "original_language": "idioma original"
-                    }}
-                }}"""
+            self.prompt = f"""
+            Eres un asistente que clasifica consultas de usuarios, identifica tareas a realizar y optimiza las consultas para que sean más claras y efectivas. Puede haber múltiples tareas en una consulta.
+
+            ### Clasificación de tareas
+            Tu respuesta debe ser un JSON que indique lo siguiente:
+            1. Las tareas detectadas en la consulta. Estas pueden ser:
+            - "technical_query" (consulta técnica)
+            - "fileRequest" (solicitud de documentos)
+            - "form" (intención de convertirse en distribuidor de Terragene)
+            - "image_submission" (recepción de imagen)
+            - "clear_DB" (blanqueo de contraseña).
+
+            2. La consulta traducida al inglés y optimizada según estas pautas:
+            - Analiza la consulta para identificar conceptos clave e intención.
+            - Identifica términos ambiguos y sugiere sinónimos o aclaraciones.
+            - Considera términos relacionados, sinónimos y frases alternativas para mejorar la búsqueda.
+            - Expande siglas o abreviaturas si es aplicable.
+            - Incorpora cualquier contexto relevante o conocimiento específico del dominio.
+            - Asegúrate de que la consulta optimizada mantenga la intención original del usuario.
+            - Prioriza claridad y especificidad en la consulta optimizada.
+            - Si la consulta original ya es óptima, simplemente tradúcela al inglés sin cambios.
+
+            3. El idioma original de la consulta como un nombre de idioma (por ejemplo, 'Spanish', 'English', 'French').
+
+            Los documentos que te puede pedir el usuario son: {self.docs}.
+            Si recibes algo que contenga 'https://agente-terry.s3.amazonaws.com/images/', clasifícalo como 'image_submission'.
+            Si recibes algo que contenga 'https://agente-terry.s3.amazonaws.com/db/', clasifícalo como 'clear_DB'.
+
+            ### Formato de salida
+            Debes responder únicamente en el siguiente formato JSON:
+            {{
+                "tasks": [
+                    "technical_query" | "fileRequest" | "form" | "image_submission" | "clear_DB"
+                ],
+                "query_translation": {{
+                    "translated_query": "consulta traducida y optimizada en inglés",
+                    "original_language": "idioma original"
+                }}
+            }}
+            """
+
                 # - "purchase_opportunity" (oportunidad de compra) \
                 # | "purchase_opportunity"  # Comentado: esta tarea ya no es relevante
             self.tasks = []

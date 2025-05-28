@@ -36,7 +36,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         const data = await response.json();
-        console.log(data); // Agrega esta línea temporalmente
         if (data.status === 'success') {
             console.log('Thread creado con éxito:', data.message);
         } else {
@@ -44,39 +43,19 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Control de envío de texto y manejo de los íconos
-    const queryInput = document.getElementById('query');
-    const attachButton = document.getElementById('attachButton');
-    const micButton = document.getElementById('micButton');  // El botón de grabar
-    const sendButton = document.getElementById('sendButton');
-    const fileInput = document.getElementById('fileInput');
-    const messages = document.getElementById('messages');
 
-    // Ocultar los botones de mic y attach cuando se empieza a escribir
-    if (queryInput) {
-        queryInput.addEventListener('input', function () {
-            if (queryInput.value.trim() !== "") {
-                attachButton.style.display = 'none';
-                micButton.style.display = 'none';
-                sendButton.style.display = 'inline-block';  // Mostrar el botón de enviar
-            } else {
-                attachButton.style.display = 'inline-block';
-                micButton.style.display = 'inline-block';
-                sendButton.style.display = 'none';  // Ocultar el botón de enviar
-            }
-        });
-    }
 
-    if (sendButton) {
-        sendButton.addEventListener('click', () => sendQuery());
-    }
-
+    // Función para enviar consulta con texto personalizado o el input del usuario
     async function sendQuery(prefixedQuery = '') {
-        const query = prefixedQuery || queryInput.value.trim();
+        const query = prefixedQuery || document.getElementById('query').value.trim();
         if (!userId || query === '') return;
 
+        const sendButton = document.getElementById('sendButton');
         sendButton.style.pointerEvents = 'none';  // Desactiva el botón de enviar temporalmente
 
+        const messages = document.getElementById('messages');
+
+        // Validación para evitar enviar mensajes vacíos o solo con espacios en blanco
         if (query) {
             const messageContainer = document.createElement("div");
             messageContainer.classList.add("message", "sent");
@@ -92,8 +71,14 @@ document.addEventListener('DOMContentLoaded', function () {
             messageContainer.appendChild(timeStamp);
 
             messages.appendChild(messageContainer);
-            queryInput.value = '';  // Limpiar el input
-            messages.scrollTop = messages.scrollHeight;  // Scroll automático
+
+            document.getElementById("query").value = ''; // Limpiar el input
+
+            // Scroll automático al final del chat
+            messages.scrollTop = messages.scrollHeight;
+        } else {
+            sendButton.style.pointerEvents = 'auto';  // Reactivar el botón si no hay texto
+            return;
         }
 
         try {
@@ -105,252 +90,63 @@ document.addEventListener('DOMContentLoaded', function () {
                 body: JSON.stringify({ user_id: userId, query })
             });
 
-            const data = await response.json();
-            if (response.ok) {
-                const messageContainerReceived = document.createElement("div");
-                messageContainerReceived.classList.add("message", "received");
-
-                const messageTextReceived = document.createElement("p");
-                // messageTextReceived.innerHTML = data.response.replace(/\n/g, '<br>');
-                messageTextReceived.innerHTML = decodeMessage(data.response);  
-                
-                const timeStampReceived = document.createElement("span");
-                timeStampReceived.classList.add("time");
-                timeStampReceived.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-                messageContainerReceived.appendChild(messageTextReceived);
-                messageContainerReceived.appendChild(timeStampReceived);
-
-                // Agregar un reproductor de audio si hay un archivo de audio en la respuesta
-                if (data.audio_response) {
-                    const audioPlayer = document.createElement('audio');
-                    audioPlayer.controls = true;
-                    audioPlayer.src = data.audio_response;  // Asegurarse de que la URL está bien configurada
-                    messageContainerReceived.appendChild(audioPlayer);
-                }
-
-                messages.appendChild(messageContainerReceived);
-                messages.scrollTop = messages.scrollHeight;  // Scroll automático al final del chat
-            }
-        } catch (error) {
-            console.error("Error:", error);
-        } finally {
-            sendButton.style.pointerEvents = 'auto';  // Reactivar el botón de enviar
-             // Restaurar los botones de adjuntar y grabar
-            attachButton.style.display = 'inline-block';
-            micButton.style.display = 'inline-block';
-            sendButton.style.display = 'none';  // Ocultar el botón de enviar nuevamente
-        }
-    }
-
-    // Manejo del evento "Enter" para enviar el mensaje
-    if (queryInput) {
-        queryInput.addEventListener('keypress', function (event) {
-            if (event.key === 'Enter') {
-                sendQuery();
-                // Restaurar los botones de adjuntar y grabar
-                attachButton.style.display = 'inline-block';
-                micButton.style.display = 'inline-block';
-                sendButton.style.display = 'none';  // Ocultar el botón de enviar nuevamente
-            }
-        });
-    }
-
-    // Enviar archivo adjunto
-    if (attachButton && fileInput) {
-        attachButton.addEventListener('click', function () {
-            fileInput.click();
-        });
-
-        fileInput.addEventListener('change', async function () {
-            const file = fileInput.files[0];
-            if (!file || !userId) return;
-        
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('user_id', userId);
-        
-            const messageContainer = document.createElement("div");
-            messageContainer.classList.add("message", "sent");
-        
-            if (file.type.startsWith('image/')) {
-                // Si el archivo es una imagen, mostrar una previsualización
-                const imagePreview = document.createElement("img");
-                imagePreview.src = URL.createObjectURL(file);
-                imagePreview.style.maxWidth = "100%";
-                imagePreview.style.borderRadius = "8px";
-                messageContainer.appendChild(imagePreview);
-            } else {
-                // Si no es una imagen, mostrar el nombre del archivo
-                const messageText = document.createElement("p");
-                messageText.textContent = `Archivo adjuntado: ${file.name}`;
-                messageContainer.appendChild(messageText);
-            }
-        
-            // Añadir la hora de envío
-            const timeStamp = document.createElement("span");
-            timeStamp.classList.add("time");
-            timeStamp.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            messageContainer.appendChild(timeStamp);
-        
-            messages.appendChild(messageContainer);
-            messages.scrollTop = messages.scrollHeight;
-        
-            // Enviar la imagen al servidor
-            try {
-                const response = await fetch('/module_manager/web-service/', {
-                    method: 'POST',
-                    body: formData
-                });
-        
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
                 const data = await response.json();
+
                 if (response.ok) {
+                    let formattedResponse = data.response
+                        .replace(/\n/g, '<br>')
+                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
                     const messageContainerReceived = document.createElement("div");
                     messageContainerReceived.classList.add("message", "received");
-        
+
                     const messageTextReceived = document.createElement("p");
-                    messageTextReceived.textContent = data.response;
-        
+                    messageTextReceived.innerHTML = formattedResponse;
+
                     const timeStampReceived = document.createElement("span");
                     timeStampReceived.classList.add("time");
                     timeStampReceived.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        
+
                     messageContainerReceived.appendChild(messageTextReceived);
                     messageContainerReceived.appendChild(timeStampReceived);
-        
+
                     messages.appendChild(messageContainerReceived);
+
+                    // Scroll automático al final del chat
                     messages.scrollTop = messages.scrollHeight;
                 } else {
-                    console.error('Error al enviar el archivo:', data.error);
-                }
-            } catch (error) {
-                console.error('Error al procesar el archivo:', error);
-            }
-        });
-    }
-
-    // Grabar audio
-    let mediaRecorder;
-    const chunks = [];
-    let recordingStartTime;
-    let recordingTimer;
-    let isRecording = false; // Variable para controlar el estado de grabación
-
-    if (micButton) {
-        micButton.addEventListener('click', async function () {
-            if (!isRecording) {
-                // Iniciar la grabación
-                micButton.src = '/static/img/stop.png';  // Cambiar el icono al de stop
-                chunks.length = 0;    
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    mediaRecorder = new MediaRecorder(stream);
-
-                    mediaRecorder.ondataavailable = function (e) {
-                        chunks.push(e.data);
-                    };
-
-                    mediaRecorder.onstop = async function () {
-                        const audioBlob = new Blob(chunks, { type: 'audio/mp3' });
-                        const formData = new FormData();
-                        formData.append('file', audioBlob, 'audio.mp3');
-                        formData.append('user_id', userId);
-                    
-                        // Mostrar el reproductor de audio para el audio enviado
-                        const audioURL = URL.createObjectURL(audioBlob);
-                        const audioElement = document.createElement('audio');
-                        audioElement.controls = true;
-                        audioElement.src = audioURL;
-                    
-                        const messageContainer = document.createElement("div");
-                        messageContainer.classList.add("message", "sent");
-                    
-                        const timeStamp = document.createElement("span");
-                        timeStamp.classList.add("time");
-                        timeStamp.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    
-                        messageContainer.appendChild(audioElement);
-                        messageContainer.appendChild(timeStamp);
-                        messages.appendChild(messageContainer);
-                        messages.scrollTop = messages.scrollHeight;
-                    
-                        try {
-                            const response = await fetch('/module_manager/web-service/', {
-                                method: 'POST',
-                                body: formData
-                            });
-                    
-                            const data = await response.json();
-                            if (response.ok) {
-                                // Manejar el texto de respuesta si existe
-                                if (data.response) {
-                                    const messageContainerReceivedText = document.createElement("div");
-                                    messageContainerReceivedText.classList.add("message", "received");
-                    
-                                    const messageTextReceived = document.createElement("p");
-                                    messageTextReceived.innerHTML = data.response.replace(/\n/g, '<br>');  // Mostrar HTML correctamente
-                    
-                                    const timeStampReceivedText = document.createElement("span");
-                                    timeStampReceivedText.classList.add("time");
-                                    timeStampReceivedText.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    
-                                    messageContainerReceivedText.appendChild(messageTextReceived);
-                                    messageContainerReceivedText.appendChild(timeStampReceivedText);
-                    
-                                    messages.appendChild(messageContainerReceivedText);
-                                }
-                    
-                                // Manejar el audio de respuesta si existe
-                                if (data.audio_response) {
-                                    const messageContainerReceivedAudio = document.createElement("div");
-                                    messageContainerReceivedAudio.classList.add("message", "received");
-                    
-                                    const audioPlayerReceived = document.createElement('audio');
-                                    audioPlayerReceived.controls = true;
-                                    audioPlayerReceived.src = data.audio_response;  // Reproductor de audio recibido
-                    
-                                    const timeStampReceivedAudio = document.createElement("span");
-                                    timeStampReceivedAudio.classList.add("time");
-                                    timeStampReceivedAudio.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    
-                                    messageContainerReceivedAudio.appendChild(audioPlayerReceived);
-                                    messageContainerReceivedAudio.appendChild(timeStampReceivedAudio);
-                    
-                                    messages.appendChild(messageContainerReceivedAudio);
-                                }
-                    
-                                // Scroll automático al final del chat
-                                messages.scrollTop = messages.scrollHeight;
-                            }
-                        } catch (error) {
-                            console.error('Error al enviar el archivo de audio:', error);
-                        }
-                    };
-
-                    mediaRecorder.start();
-                    recordingStartTime = Date.now();
-
-                    // Mostrar contador
-                    recordingTimer = setInterval(function () {
-                        const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
-                        micButton.textContent = `${elapsed}s`;  // Mostrar el tiempo transcurrido
-                    }, 1000);
-
-                    isRecording = true; // Cambia el estado a grabando
-                } catch (error) {
-                    console.error('Error al acceder al micrófono:', error);
+                    messages.innerHTML += `<div class="message received">Error: ${data.error}</div>`;
                 }
             } else {
-                // Detener la grabación
-                if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-                    mediaRecorder.stop();
-                    clearInterval(recordingTimer);
-                    micButton.src = '/static/img/mic.png';  // Restaurar el icono del micrófono
-                    micButton.textContent = '';  // Limpiar el contador
-                    isRecording = false; // Cambia el estado a no grabando
-                }
+                messages.innerHTML += `<div class="message received">Error: La respuesta no es válida o es HTML en lugar de JSeON.${contentType}</div>`;
             }
-        });
+        } catch (error) {
+            console.error("Error: ", error);
+            messages.innerHTML += `<div class="message received">Error al procesar la consulta.</div>`;
+        } finally {
+            sendButton.style.pointerEvents = 'auto';  // Reactiva el botón de envío
+        }
+    }
+
+    // Manejo del evento "Enter" para enviar mensajes
+    function handleKeyPress(event) {
+        if (event.key === 'Enter') {
+            sendQuery();
+        }
+    }
+
+    // Asignar eventos de Enter y click para el input de consulta
+    const queryInput = document.getElementById('query');
+    if (queryInput) {
+        queryInput.addEventListener('keypress', handleKeyPress);
+    }
+
+    const sendButton = document.getElementById('sendButton');
+    if (sendButton) {
+        sendButton.addEventListener('click', () => sendQuery());
+
     }
 
     // Funcionalidad para expandir el chat al hacer clic en expand-icon
@@ -368,6 +164,50 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    const terries = document.querySelector(".terries");
+
+  let isDragging = false;
+  let startX;
+  let scrollLeft;
+
+  terries.addEventListener("mousedown", (e) => {
+    isDragging = true;
+    terries.classList.add("active");
+    startX = e.pageX - terries.offsetLeft;
+    scrollLeft = terries.scrollLeft;
+  });
+
+  terries.addEventListener("mouseleave", () => {
+    isDragging = false;
+    terries.classList.remove("active");
+  });
+
+  terries.addEventListener("mouseup", () => {
+    isDragging = false;
+    terries.classList.remove("active");
+  });
+
+  terries.addEventListener("mousemove", (e) => {
+    if (!isDragging) return;
+    e.preventDefault();
+    const x = e.pageX - terries.offsetLeft;
+    const walk = (x - startX) * 2; // Ajusta la velocidad del desplazamiento
+    terries.scrollLeft = scrollLeft - walk;
+  });
+
+  const terriesItems = document.querySelectorAll(".terries ul li"); // Cambié el nombre aquí
+  const icon = document.querySelector(".grupo-409-icon");
+
+  terriesItems.forEach((terry) => {
+    terry.addEventListener("click", () => {
+      const selectedClass = Array.from(terry.classList).find((cls) => cls.startsWith("terry_"));
+
+      if (selectedClass) {
+        icon.className = "grupo-409-icon";
+        icon.classList.add(selectedClass);
+      }
+    });
+  });
 
 
 });

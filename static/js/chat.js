@@ -1,21 +1,6 @@
 document.addEventListener('DOMContentLoaded', function () {
     const userId = document.getElementById('user_id') ? document.getElementById('user_id').value : null;
-    function decodeMessage(rawMessage) {
-        // Reemplazar encabezados de nivel 3
-        const headerMessage = rawMessage.replace(/### (.*?)\n/g, '<h3>$1</h3>');
-    
-        // Reemplazar negritas
-        const boldedMessage = headerMessage.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-        
-        // Reemplazar saltos de línea para crear párrafos
-        const paragraphMessage = boldedMessage.replace(/\n/g, '<br>');
-        
-        // Reemplazar los elementos de la lista con etiquetas <li>
-        const listMessage = paragraphMessage.replace(/- (.*?)(?=<br>|$)/g, '<li>$1</li>');
-        
-        // Envolver la lista en un <ul> si hay elementos de lista
-        return listMessage.includes('<li>') ? '<ul>' + listMessage + '</ul>' : listMessage;
-    }
+
     // Funcionalidad para el botón de logout
     const logoutButton = document.querySelector('.logout');
     if (logoutButton) {
@@ -23,6 +8,7 @@ document.addEventListener('DOMContentLoaded', function () {
             window.location.href = '/logout/'; // Redirige al logout
         });
     }
+    
 
     // Al hacer clic en la mano, ocultar el mensaje de bienvenida y mostrar el login
     //const handIcon = document.getElementById('hand-icon');
@@ -51,7 +37,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         const data = await response.json();
-        console.log(data); // Agrega esta línea temporalmente
         if (data.status === 'success') {
             console.log('Thread creado con éxito:', data.message);
         } else {
@@ -59,314 +44,215 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Control de envío de texto y manejo de los íconos
-    const queryInput = document.getElementById('query');
-    const attachButton = document.getElementById('attachButton');
-    const micButton = document.getElementById('micButton');  // El botón de grabar
-    const sendButton = document.getElementById('sendButton');
-    const fileInput = document.getElementById('fileInput');
-    const messages = document.getElementById('messages');
 
-    // Ocultar los botones de mic y attach cuando se empieza a escribir
-    if (queryInput) {
-        queryInput.addEventListener('input', function () {
-            if (queryInput.value.trim() !== "") {
-                attachButton.style.display = 'none';
-                micButton.style.display = 'none';
-                sendButton.style.display = 'inline-block';  // Mostrar el botón de enviar
-            } else {
-                attachButton.style.display = 'inline-block';
-                micButton.style.display = 'inline-block';
-                sendButton.style.display = 'none';  // Ocultar el botón de enviar
-            }
-        });
-    }
-
-    if (sendButton) {
-        sendButton.addEventListener('click', () => sendQuery());
-    }
 
     async function sendQuery(prefixedQuery = '') {
-        const query = prefixedQuery || queryInput.value.trim();
+        const query = prefixedQuery || document.getElementById('query').value.trim();
         if (!userId || query === '') return;
-
-        sendButton.style.pointerEvents = 'none';  // Desactiva el botón de enviar temporalmente
-
+    
+        const sendButton = document.getElementById('sendButton');
+        sendButton.style.pointerEvents = 'none';
+        const messages = document.getElementById('messages');
+    
+        // Add user's message
         if (query) {
             const messageContainer = document.createElement("div");
             messageContainer.classList.add("message", "sent");
-
+    
             const messageText = document.createElement("p");
             messageText.textContent = query;
-
+    
             const timeStamp = document.createElement("span");
             timeStamp.classList.add("time");
-            timeStamp.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
+            timeStamp.textContent = new Date().toLocaleTimeString([], { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+    
             messageContainer.appendChild(messageText);
             messageContainer.appendChild(timeStamp);
-
             messages.appendChild(messageContainer);
-            queryInput.value = '';  // Limpiar el input
-            messages.scrollTop = messages.scrollHeight;  // Scroll automático
+            document.getElementById("query").value = '';
+            messages.scrollTop = messages.scrollHeight;
         }
-
+    
         try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 120000); // 120s timeout
+    
             const response = await fetch('/module_manager/web-service/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ user_id: userId, query })
+                body: JSON.stringify({ user_id: userId, query }),
+                signal: controller.signal
             });
-
-            const data = await response.json();
-            if (response.ok) {
+    
+            clearTimeout(timeoutId);
+    
+            // Detectar específicamente el error 504 de Nginx
+            if (response.status === 504) {
+                throw new Error('504 Gateway Time-out');
+            }
+    
+            const contentType = response.headers.get('content-type');
+            
+            if (contentType?.includes('application/json')) {
+                const data = await response.json();
+    
+                if (response.ok) {
+                    let formattedResponse = data.response
+                        .replace(/\n/g, '<br>')
+                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    
+                    const messageContainerReceived = document.createElement("div");
+                    messageContainerReceived.classList.add("message", "received");
+    
+                    const messageTextReceived = document.createElement("p");
+                    messageTextReceived.innerHTML = formattedResponse;
+    
+                    const timeStampReceived = document.createElement("span");
+                    timeStampReceived.classList.add("time");
+                    timeStampReceived.textContent = new Date().toLocaleTimeString([], { 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                    });
+    
+                    messageContainerReceived.appendChild(messageTextReceived);
+                    messageContainerReceived.appendChild(timeStampReceived);
+                    messages.appendChild(messageContainerReceived);
+                } else {
+                    const errorContainer = document.createElement("div");
+                    errorContainer.classList.add("message", "received");
+                    errorContainer.innerHTML = `⚠️ Server Error: ${data.error || 'Unknown error'}`;
+                    messages.appendChild(errorContainer);
+                }
+            } else {
+                const htmlContent = await response.text();
+                
                 const messageContainerReceived = document.createElement("div");
                 messageContainerReceived.classList.add("message", "received");
-
-                const messageTextReceived = document.createElement("p");
-                // messageTextReceived.innerHTML = data.response.replace(/\n/g, '<br>');
-                messageTextReceived.innerHTML = decodeMessage(data.response);  
-                
+    
+                const contentWrapper = document.createElement("div");
+                contentWrapper.innerHTML = htmlContent;
+    
                 const timeStampReceived = document.createElement("span");
                 timeStampReceived.classList.add("time");
-                timeStampReceived.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-                messageContainerReceived.appendChild(messageTextReceived);
+                timeStampReceived.textContent = new Date().toLocaleTimeString([], { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                });
+    
+                messageContainerReceived.appendChild(contentWrapper);
                 messageContainerReceived.appendChild(timeStampReceived);
-
-                // Agregar un reproductor de audio si hay un archivo de audio en la respuesta
-                if (data.audio_response) {
-                    const audioPlayer = document.createElement('audio');
-                    audioPlayer.controls = true;
-                    audioPlayer.src = data.audio_response;  // Asegurarse de que la URL está bien configurada
-                    messageContainerReceived.appendChild(audioPlayer);
-                }
-
                 messages.appendChild(messageContainerReceived);
-                messages.scrollTop = messages.scrollHeight;  // Scroll automático al final del chat
             }
+    
+            messages.scrollTop = messages.scrollHeight;
+    
         } catch (error) {
             console.error("Error:", error);
+            
+            const messageContainerReceived = document.createElement("div");
+            messageContainerReceived.classList.add("message", "received");
+    
+            const errorMessage = document.createElement("p");
+            
+            // Manejo avanzado de errores
+            if (error.name === 'AbortError' || error.message.includes('504')) {
+                errorMessage.innerHTML = `
+                    ⚠️ Timeout Error<br>
+                    <small>Our systems are temporarily unavailable. Please:<br>
+                    1. Try again in 2-3 minutes<br>
+                    2. Check <a href="https://terragene.com" target="_blank" style="color: #4CAF50; text-decoration: underline;">our page</a><br>
+                    3. Contact <span style="color: #4CAF50;">info@terragene.com</span> for urgent issues</small>
+                `;
+            } else if (error.message.includes('NetworkError')) {
+                errorMessage.innerHTML = `
+                    🌐 Connection Lost<br>
+                    <small>Please check your internet connection and try again</small>
+                `;
+            } else {
+                errorMessage.innerHTML = `
+                    ⚠️ Unexpected Error<br>
+                    <small>${error.message || 'Please try again later'}</small>
+                `;
+            }
+    
+            const timeStampReceived = document.createElement("span");
+            timeStampReceived.classList.add("time");
+            timeStampReceived.textContent = new Date().toLocaleTimeString([], { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+    
+            messageContainerReceived.appendChild(errorMessage);
+            messageContainerReceived.appendChild(timeStampReceived);
+            messages.appendChild(messageContainerReceived);
+            messages.scrollTop = messages.scrollHeight;
+    
         } finally {
-            sendButton.style.pointerEvents = 'auto';  // Reactivar el botón de enviar
-             // Restaurar los botones de adjuntar y grabar
-            attachButton.style.display = 'inline-block';
-            micButton.style.display = 'inline-block';
-            sendButton.style.display = 'none';  // Ocultar el botón de enviar nuevamente
+            sendButton.style.pointerEvents = 'auto';
+            document.getElementById('query').focus();
         }
     }
 
-    // Manejo del evento "Enter" para enviar el mensaje
+    // Manejo del evento "Enter" para enviar mensajes
+    function handleKeyPress(event) {
+        if (event.key === 'Enter') {
+            sendQuery();
+        }
+    }
+
+    // Asignar eventos de Enter y click para el input de consulta
+    const queryInput = document.getElementById('query');
     if (queryInput) {
-        queryInput.addEventListener('keypress', function (event) {
-            if (event.key === 'Enter') {
-                sendQuery();
-                // Restaurar los botones de adjuntar y grabar
-                attachButton.style.display = 'inline-block';
-                micButton.style.display = 'inline-block';
-                sendButton.style.display = 'none';  // Ocultar el botón de enviar nuevamente
-            }
-        });
+        queryInput.addEventListener('keypress', handleKeyPress);
     }
 
-    // Enviar archivo adjunto
-    if (attachButton && fileInput) {
-        attachButton.addEventListener('click', function () {
-            fileInput.click();
-        });
+    const sendButton = document.getElementById('sendButton');
+    if (sendButton) {
+        sendButton.addEventListener('click', () => sendQuery());
 
-        fileInput.addEventListener('change', async function () {
-            const file = fileInput.files[0];
-            if (!file || !userId) return;
-        
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('user_id', userId);
-        
-            const messageContainer = document.createElement("div");
-            messageContainer.classList.add("message", "sent");
-        
-            if (file.type.startsWith('image/')) {
-                // Si el archivo es una imagen, mostrar una previsualización
-                const imagePreview = document.createElement("img");
-                imagePreview.src = URL.createObjectURL(file);
-                imagePreview.style.maxWidth = "100%";
-                imagePreview.style.borderRadius = "8px";
-                messageContainer.appendChild(imagePreview);
-            } else {
-                // Si no es una imagen, mostrar el nombre del archivo
-                const messageText = document.createElement("p");
-                messageText.textContent = `Archivo adjuntado: ${file.name}`;
-                messageContainer.appendChild(messageText);
-            }
-        
-            // Añadir la hora de envío
-            const timeStamp = document.createElement("span");
-            timeStamp.classList.add("time");
-            timeStamp.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            messageContainer.appendChild(timeStamp);
-        
-            messages.appendChild(messageContainer);
-            messages.scrollTop = messages.scrollHeight;
-        
-            // Enviar la imagen al servidor
-            try {
-                const response = await fetch('/module_manager/web-service/', {
-                    method: 'POST',
-                    body: formData
-                });
-        
-                const data = await response.json();
+    }
+    // Funcionalidad del botón "Start"
+    const startButton = document.querySelector('.start');
+    startButton.addEventListener('click', function () {
+        // Obtener el avatar seleccionado o asignar 'hand' si no hay selección
+        const selectedAvatar = document.querySelector('.terries li.selected')
+            ? document.querySelector('.terries li.selected').getAttribute('data-avatar')
+            : "hand";
+    
+        fetch('/module_manager/set_avatar/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            },
+            body: JSON.stringify({ avatar: selectedAvatar })
+        })
+            .then(response => {
                 if (response.ok) {
-                    const messageContainerReceived = document.createElement("div");
-                    messageContainerReceived.classList.add("message", "received");
-        
-                    const messageTextReceived = document.createElement("p");
-                    messageTextReceived.textContent = data.response;
-        
-                    const timeStampReceived = document.createElement("span");
-                    timeStampReceived.classList.add("time");
-                    timeStampReceived.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        
-                    messageContainerReceived.appendChild(messageTextReceived);
-                    messageContainerReceived.appendChild(timeStampReceived);
-        
-                    messages.appendChild(messageContainerReceived);
-                    messages.scrollTop = messages.scrollHeight;
+                    // Redirigir al chat después de seleccionar el avatar
+                    window.location.href = '/';
                 } else {
-                    console.error('Error al enviar el archivo:', data.error);
+                    console.error('Error al configurar el avatar.');
                 }
-            } catch (error) {
-                console.error('Error al procesar el archivo:', error);
-            }
-        });
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+    });
+    
+    // Obtener el token CSRF del cookie
+    function getCSRFToken() {
+        const csrfCookie = document.cookie
+            .split('; ')
+            .find(row => row.startsWith('csrftoken='));
+        return csrfCookie ? csrfCookie.split('=')[1] : '';
     }
-
-    // Grabar audio
-    let mediaRecorder;
-    const chunks = [];
-    let recordingStartTime;
-    let recordingTimer;
-    let isRecording = false; // Variable para controlar el estado de grabación
-
-    if (micButton) {
-        micButton.addEventListener('click', async function () {
-            if (!isRecording) {
-                // Iniciar la grabación
-                micButton.src = '/static/img/stop.png';  // Cambiar el icono al de stop
-                chunks.length = 0;    
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    mediaRecorder = new MediaRecorder(stream);
-
-                    mediaRecorder.ondataavailable = function (e) {
-                        chunks.push(e.data);
-                    };
-
-                    mediaRecorder.onstop = async function () {
-                        const audioBlob = new Blob(chunks, { type: 'audio/mp3' });
-                        const formData = new FormData();
-                        formData.append('file', audioBlob, 'audio.mp3');
-                        formData.append('user_id', userId);
-                    
-                        // Mostrar el reproductor de audio para el audio enviado
-                        const audioURL = URL.createObjectURL(audioBlob);
-                        const audioElement = document.createElement('audio');
-                        audioElement.controls = true;
-                        audioElement.src = audioURL;
-                    
-                        const messageContainer = document.createElement("div");
-                        messageContainer.classList.add("message", "sent");
-                    
-                        const timeStamp = document.createElement("span");
-                        timeStamp.classList.add("time");
-                        timeStamp.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    
-                        messageContainer.appendChild(audioElement);
-                        messageContainer.appendChild(timeStamp);
-                        messages.appendChild(messageContainer);
-                        messages.scrollTop = messages.scrollHeight;
-                    
-                        try {
-                            const response = await fetch('/module_manager/web-service/', {
-                                method: 'POST',
-                                body: formData
-                            });
-                    
-                            const data = await response.json();
-                            if (response.ok) {
-                                // Manejar el texto de respuesta si existe
-                                if (data.response) {
-                                    const messageContainerReceivedText = document.createElement("div");
-                                    messageContainerReceivedText.classList.add("message", "received");
-                    
-                                    const messageTextReceived = document.createElement("p");
-                                    messageTextReceived.innerHTML = data.response.replace(/\n/g, '<br>');  // Mostrar HTML correctamente
-                    
-                                    const timeStampReceivedText = document.createElement("span");
-                                    timeStampReceivedText.classList.add("time");
-                                    timeStampReceivedText.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    
-                                    messageContainerReceivedText.appendChild(messageTextReceived);
-                                    messageContainerReceivedText.appendChild(timeStampReceivedText);
-                    
-                                    messages.appendChild(messageContainerReceivedText);
-                                }
-                    
-                                // Manejar el audio de respuesta si existe
-                                if (data.audio_response) {
-                                    const messageContainerReceivedAudio = document.createElement("div");
-                                    messageContainerReceivedAudio.classList.add("message", "received");
-                    
-                                    const audioPlayerReceived = document.createElement('audio');
-                                    audioPlayerReceived.controls = true;
-                                    audioPlayerReceived.src = data.audio_response;  // Reproductor de audio recibido
-                    
-                                    const timeStampReceivedAudio = document.createElement("span");
-                                    timeStampReceivedAudio.classList.add("time");
-                                    timeStampReceivedAudio.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    
-                                    messageContainerReceivedAudio.appendChild(audioPlayerReceived);
-                                    messageContainerReceivedAudio.appendChild(timeStampReceivedAudio);
-                    
-                                    messages.appendChild(messageContainerReceivedAudio);
-                                }
-                    
-                                // Scroll automático al final del chat
-                                messages.scrollTop = messages.scrollHeight;
-                            }
-                        } catch (error) {
-                            console.error('Error al enviar el archivo de audio:', error);
-                        }
-                    };
-
-                    mediaRecorder.start();
-                    recordingStartTime = Date.now();
-
-                    // Mostrar contador
-                    recordingTimer = setInterval(function () {
-                        const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
-                        micButton.textContent = `${elapsed}s`;  // Mostrar el tiempo transcurrido
-                    }, 1000);
-
-                    isRecording = true; // Cambia el estado a grabando
-                } catch (error) {
-                    console.error('Error al acceder al micrófono:', error);
-                }
-            } else {
-                // Detener la grabación
-                if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-                    mediaRecorder.stop();
-                    clearInterval(recordingTimer);
-                    micButton.src = '/static/img/mic.png';  // Restaurar el icono del micrófono
-                    micButton.textContent = '';  // Limpiar el contador
-                    isRecording = false; // Cambia el estado a no grabando
-                }
-            }
-        });
-    }
+    
 
     // Funcionalidad para expandir el chat al hacer clic en expand-icon
     const expandIcon = document.querySelector('.expand-icon');
@@ -383,8 +269,56 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    const terries = document.querySelector(".terries");
 
+  let isDragging = false;
+  let startX;
+  let scrollLeft;
 
+  terries.addEventListener("mousedown", (e) => {
+    isDragging = true;
+    terries.classList.add("active");
+    startX = e.pageX - terries.offsetLeft;
+    scrollLeft = terries.scrollLeft;
+  });
+
+  terries.addEventListener("mouseleave", () => {
+    isDragging = false;
+    terries.classList.remove("active");
+  });
+
+  terries.addEventListener("mouseup", () => {
+    isDragging = false;
+    terries.classList.remove("active");
+  });
+
+  terries.addEventListener("mousemove", (e) => {
+    if (!isDragging) return;
+    e.preventDefault();
+    const x = e.pageX - terries.offsetLeft;
+    const walk = (x - startX) * 2; // Ajusta la velocidad del desplazamiento
+    terries.scrollLeft = scrollLeft - walk;
+  });
+
+  const terriesItems = document.querySelectorAll('.terries li');
+  const icon = document.querySelector(".grupo-409-icon");
+
+  terriesItems.forEach((terry) => {
+    terry.addEventListener('click', function () {
+        // Eliminar la clase 'selected' de todos los avatares
+        terriesItems.forEach(item => item.classList.remove('selected'));
+
+        // Agregar la clase 'selected' al avatar clicado
+        this.classList.add('selected');
+
+        // Obtener la clase del avatar seleccionado (ej: 'terry_01') y actualizar el icono
+        const selectedClass = Array.from(this.classList).find(cls => cls.startsWith('terry_'));
+        if (selectedClass) {
+            icon.className = 'grupo-409-icon'; // Resetear clases
+            icon.classList.add(selectedClass); // Agregar la clase del avatar seleccionado
+        }
+    });
+});
 });
 
 $(document).ready(function() {

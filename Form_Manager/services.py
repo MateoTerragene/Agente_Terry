@@ -1,8 +1,17 @@
 from dotenv import load_dotenv
 from openai import OpenAI
+<<<<<<< HEAD
 import os
 import json
 from .models import FormDetails 
+=======
+from pydantic import BaseModel, Field
+import os
+import json
+from .models import FormDetails
+
+load_dotenv()
+>>>>>>> deployment
 
 load_dotenv() 
 

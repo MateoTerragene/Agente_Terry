@@ -430,18 +430,30 @@ def process_message(changes):
     else:
         print(f"Unhandled message type: {message_type}")
 
+
+
 @method_decorator(csrf_exempt, name='dispatch')
 class UserView(View):
     def get(self, request):
         # Comprobamos si el usuario está autenticado
         if not request.session.get('user_authenticated', False):
-            return render(request, 'login.html')  # No redirigimos, simplemente mostramos el formulario
+            return render(request, 'login.html')  # Mostrar formulario de inicio de sesión
 
-        # Si está autenticado, renderizamos el chat
+        # Comprobamos si ya seleccionó un avatar
+        avatar_selected = request.session.get('avatar_selected')
+        if not avatar_selected:
+            # Si no se ha seleccionado un avatar, mostrar la página de selección de avatar
+            return render(request, 'avatar.html')
+
+        # Renderizamos el chat con el avatar seleccionado
         user_id = request.session.get('ID')
-        return render(request, 'chat.html', {'user_id': user_id})
+        return render(request, 'chat.html', {
+            'user_id': user_id,
+            'avatar_selected': avatar_selected
+        })
 
     def post(self, request):
+        # Maneja el formulario de inicio de sesión
         username = request.POST.get('username')
         password = request.POST.get('password')
 
@@ -456,7 +468,8 @@ class UserView(View):
                         # Si la autenticación es exitosa, guardamos la sesión
                         request.session['user_authenticated'] = True
                         request.session['ID'] = user_id
-                        return redirect('/')  # Redirigir a la página principal
+                        request.session['avatar_selected'] = False  # Avatar no seleccionado aún
+                        return redirect('/')  # Redirigir al flujo principal
                     else:
                         messages.error(request, 'Contraseña incorrecta')
                 else:
@@ -464,11 +477,32 @@ class UserView(View):
         except DatabaseError as e:
             messages.error(request, 'Error al conectar con la base de datos')
 
-        # Si el login falla, volvemos a mostrar el formulario de login
+        # Si el login falla, volvemos a mostrar el formulario de inicio de sesión
         return render(request, 'login.html')
- 
+
+    def dispatch(self, request, *args, **kwargs):
+        # Maneja rutas específicas para cambiar el avatar
+        if request.path.endswith('set_avatar/'):
+            return self.set_avatar(request)
+        return super().dispatch(request, *args, **kwargs)
+
+    def set_avatar(self, request):
+        if request.method == 'POST':
+            import json
+            data = json.loads(request.body)
+            avatar = data.get('avatar')
+
+            if avatar:
+                request.session['avatar_selected'] = avatar  # Guarda el avatar seleccionado en la sesión
+                return JsonResponse({'status': 'success', 'message': 'Avatar configurado exitosamente.'})
+            return JsonResponse({'status': 'error', 'message': 'No se envió un avatar válido.'}, status=400)
+
+        return JsonResponse({'status': 'error', 'message': 'Método no permitido.'}, status=405)
+
+
+
 def logout_view(request):
-    # Limpiar la sesión
+    # Limpiar la sesión y redirigir al login
     request.session.flush()
     messages.success(request, 'Has cerrado sesión correctamente.')
     return redirect('/login/')

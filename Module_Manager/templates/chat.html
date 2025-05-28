@@ -19,7 +19,9 @@
     <div class="grupo-707 show-grupo">
         <div class="chat-header">
             <div class="user">
-                <img src="{% static 'img/hand.svg' %}" class="user-icon" alt="avatar">
+                <div class="user-icon">
+                    <img src="{% static 'img/' %}{{ avatar_selected|default:'hand' }}.svg" alt="Avatar seleccionado">  
+                </div>
                 <div class="user-name">
                     <h3>Terry</h3>
                     <p>Online</p>
