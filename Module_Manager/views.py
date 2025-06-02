@@ -5,26 +5,36 @@ import requests
 from django.shortcuts import render, redirect
 from django.views import View
 from Module_Manager.web_handler import WebHandler
-from passlib.hash import phpass
-from django.shortcuts import render, redirect
+# REMOVE: from passlib.hash import phpass
+from passlib.context import CryptContext # IMPORT THIS
+from passlib.exc import UnknownHashError # Optional: for more specific error handling
 from django.contrib import messages
 from django.db import connections, DatabaseError
 from django.utils.decorators import method_decorator
 from Module_Manager.thread_manager import thread_manager_instance
 from django.views.decorators.csrf import csrf_exempt
 from .whatsapp_handler import WhatsAppHandler
-from .web_handler import WebHandler
+# from .web_handler import WebHandler # Already imported above
 from django.http import JsonResponse, HttpResponse
 import re
 from .models import UserInteraction
 from dotenv import load_dotenv
 import os
 from threading import Thread
-from django.db import connections, DatabaseError
+# from django.db import connections, DatabaseError # Already imported above
 import time
 
 load_dotenv()
 logger = logging.getLogger(__name__)
+
+# Create a CryptContext for verifying WordPress passwords
+# WordPress primarily uses bcrypt ($2y$, $2a$, $2b$) for newer versions
+# and phpass ($P$, $H$) for older ones.
+# The $wp$ prefix seems to be a wrapper around a bcrypt hash.
+wp_pwd_context = CryptContext(
+    schemes=["bcrypt", "phpass"], # Schemes to try
+    deprecated="auto" # Auto-handle deprecated hash versions
+)
 
 
 def convertir_enlaces(texto):
@@ -465,19 +475,72 @@ class UserView(View):
 
                 if row:
                     user_id, contraseña_hash = row
-                    print(f"DEBUG: User ID: {user_id}, Hash from DB: '{contraseña_hash}'")
-                    if phpass.verify(password, contraseña_hash):
-                        # Si la autenticación es exitosa, guardamos la sesión
-                        request.session['user_authenticated'] = True
-                        request.session['ID'] = user_id
-                        request.session['avatar_selected'] = False  # Avatar no seleccionado aún
-                        return redirect('/')  # Redirigir al flujo principal
-                    else:
-                        messages.error(request, 'Contraseña incorrecta')
+                    logger.info(f"Attempting login for user: {username}, User ID: {user_id}, Hash from DB: '{contraseña_hash}'")
+
+                    # Prepare the hash for verification
+                    # The passlib bcrypt handler expects hashes starting with $2a$, $2b$, $2y$.
+                    # If we have a $wp$ prefix, we might need to strip it.
+                    hash_to_verify = contraseña_hash
+                    if contraseña_hash.startswith("$wp$"):
+                        # Check if the part after $wp$ looks like a bcrypt hash
+                        potential_bcrypt_hash = contraseña_hash[4:] # Strip "$wp$"
+                        # A more robust check for bcrypt would be to see if it starts with $2
+                        if potential_bcrypt_hash.startswith(("$2y$", "$2a$", "$2b$")):
+                           hash_to_verify = potential_bcrypt_hash
+                           logger.debug(f"Stripped '$wp$' prefix, verifying hash: '{hash_to_verify}'")
+                        # else: # It's $wp$ but not followed by a recognizable bcrypt prefix
+                        #    logger.warning(f"Hash for user {user_id} starts with '$wp$' but not a recognized bcrypt hash: {contraseña_hash}")
+                        #    # Fall through to let CryptContext try the original contraseña_hash
+
+                    try:
+                        # Use the CryptContext to verify. It will try the schemes defined (bcrypt, phpass).
+                        if wp_pwd_context.verify(password, hash_to_verify):
+                            # If verification with stripped hash fails, and original was $wp$-prefixed,
+                            # try one more time with the original hash, in case CryptContext
+                            # has some special handling for $wp$ (unlikely but safe to try).
+                            # This part is a fallback, usually the above should work.
+                            if hash_to_verify != contraseña_hash and not wp_pwd_context.verify(password, contraseña_hash):
+                                messages.error(request, 'Contraseña incorrecta (falló verificación secundaria)')
+                                logger.warning(f"Secondary password verification failed for user {user_id}")
+                                return render(request, 'login.html')
+
+                            # Si la autenticación es exitosa, guardamos la sesión
+                            request.session['user_authenticated'] = True
+                            request.session['ID'] = user_id
+                            request.session['avatar_selected'] = False  # Avatar no seleccionado aún
+                            logger.info(f"User {username} (ID: {user_id}) authenticated successfully.")
+                            return redirect('/')
+                        else:
+                            # If verify returns False and no exception, it's a mismatch.
+                            # But also try with original hash if we stripped $wp$, just in case.
+                            if hash_to_verify != contraseña_hash and wp_pwd_context.verify(password, contraseña_hash):
+                                request.session['user_authenticated'] = True
+                                request.session['ID'] = user_id
+                                request.session['avatar_selected'] = False
+                                logger.info(f"User {username} (ID: {user_id}) authenticated successfully with original hash.")
+                                return redirect('/')
+                            else:
+                                messages.error(request, 'Contraseña incorrecta')
+                                logger.warning(f"Password incorrect for user {username} (ID: {user_id}). Hash used: '{hash_to_verify}'")
+                    except UnknownHashError:
+                        # This means CryptContext doesn't recognize the hash format at all
+                        messages.error(request, 'Formato de contraseña no reconocido.')
+                        logger.error(f"Unknown hash format for user {username} (ID: {user_id}): '{hash_to_verify}'")
+                    except Exception as e:
+                        # Other unexpected errors during verification
+                        messages.error(request, f'Error al verificar contraseña: {type(e).__name__}')
+                        logger.error(f"Error verifying password for {username} (ID: {user_id}): {e}", exc_info=True)
+
                 else:
                     messages.error(request, 'Usuario no encontrado')
+                    logger.warning(f"Login attempt for non-existent user: {username}")
         except DatabaseError as e:
             messages.error(request, 'Error al conectar con la base de datos')
+            logger.error(f"Database error during login for {username}: {e}", exc_info=True)
+        except Exception as e:
+            messages.error(request, f'Ocurrió un error inesperado: {type(e).__name__}')
+            logger.error(f"Unexpected error during login for {username}: {e}", exc_info=True)
+
 
         # Si el login falla, volvemos a mostrar el formulario de inicio de sesión
         return render(request, 'login.html')
@@ -490,7 +553,7 @@ class UserView(View):
 
     def set_avatar(self, request):
         if request.method == 'POST':
-            import json
+            # import json # Already imported globally
             data = json.loads(request.body)
             avatar = data.get('avatar')
 
@@ -502,9 +565,10 @@ class UserView(View):
         return JsonResponse({'status': 'error', 'message': 'Método no permitido.'}, status=405)
 
 
-
 def logout_view(request):
     # Limpiar la sesión y redirigir al login
+    user_id = request.session.get('ID', 'Unknown')
     request.session.flush()
     messages.success(request, 'Has cerrado sesión correctamente.')
+    logger.info(f"User ID {user_id} logged out.")
     return redirect('/login/')
