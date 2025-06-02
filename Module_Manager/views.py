@@ -1,28 +1,26 @@
-# -*- coding: utf-8 -*-
 import logging
 import json
 import requests
 from django.shortcuts import render, redirect
 from django.views import View
 from Module_Manager.web_handler import WebHandler
-# REMOVE: from passlib.hash import phpass
 from passlib.context import CryptContext # IMPORT THIS
-from passlib.exc import UnknownHashError # Optional: for more specific error handling
+from passlib.exc import UnknownHashError, PasslibSecurityWarning # For more specific error handling
+import warnings # To catch PasslibSecurityWarning
 from django.contrib import messages
 from django.db import connections, DatabaseError
 from django.utils.decorators import method_decorator
 from Module_Manager.thread_manager import thread_manager_instance
 from django.views.decorators.csrf import csrf_exempt
 from .whatsapp_handler import WhatsAppHandler
-# from .web_handler import WebHandler # Already imported above
 from django.http import JsonResponse, HttpResponse
 import re
 from .models import UserInteraction
 from dotenv import load_dotenv
 import os
 from threading import Thread
-# from django.db import connections, DatabaseError # Already imported above
 import time
+
 
 load_dotenv()
 logger = logging.getLogger(__name__)
