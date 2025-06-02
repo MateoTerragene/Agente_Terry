@@ -458,7 +458,7 @@ class UserView(View):
         password = request.POST.get('password')
 
         try:
-            with connections['Terragene_Users_Database'].cursor() as cursor:
+            with connections['uvcindic_terragene'].cursor() as cursor:
                 cursor.execute("SELECT ID, user_pass FROM wp_users WHERE user_login=%s", [username])
                 row = cursor.fetchone()
 
