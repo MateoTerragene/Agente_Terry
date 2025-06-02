@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import logging
 import json
 import requests
@@ -464,6 +465,7 @@ class UserView(View):
 
                 if row:
                     user_id, contraseña_hash = row
+                    print(f"DEBUG: User ID: {user_id}, Hash from DB: '{contraseña_hash}'")
                     if phpass.verify(password, contraseña_hash):
                         # Si la autenticación es exitosa, guardamos la sesión
                         request.session['user_authenticated'] = True
