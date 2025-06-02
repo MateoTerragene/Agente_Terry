@@ -3,14 +3,11 @@ from openai import OpenAI
 import os
 import json
 from .models import FormDetails 
-from pydantic import BaseModel, Field
 import os
 import json
 from .models import FormDetails
 
 load_dotenv()
-
-load_dotenv() 
 
 class FormManager:
     def __init__(self):
