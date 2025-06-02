@@ -464,7 +464,6 @@ class UserView(View):
         })
 
     def post(self, request):
-        # Maneja el formulario de inicio de sesión
         username = request.POST.get('username')
         password = request.POST.get('password')
 
@@ -474,66 +473,60 @@ class UserView(View):
                 row = cursor.fetchone()
 
                 if row:
-                    user_id, contraseña_hash = row
-                    logger.info(f"Attempting login for user: {username}, User ID: {user_id}, Hash from DB: '{contraseña_hash}'")
+                    user_id, db_hash = row # Renamed for clarity
+                    logger.info(f"Attempting login for user: {username}, User ID: {user_id}, Hash from DB: '{db_hash}'")
 
-                    # Prepare the hash for verification
-                    # The passlib bcrypt handler expects hashes starting with $2a$, $2b$, $2y$.
-                    # If we have a $wp$ prefix, we might need to strip it.
-                    hash_to_verify = contraseña_hash
-                    if contraseña_hash.startswith("$wp$"):
-                        # Check if the part after $wp$ looks like a bcrypt hash
-                        potential_bcrypt_hash = contraseña_hash[4:] # Strip "$wp$"
-                        # A more robust check for bcrypt would be to see if it starts with $2
+                    hash_to_verify = db_hash # Start with the original hash
+
+                    # Check for and strip the '$wp$' prefix if the rest looks like bcrypt
+                    if db_hash and db_hash.startswith("$wp$"):
+                        potential_bcrypt_hash = db_hash[4:] # Strip "$wp$"
                         if potential_bcrypt_hash.startswith(("$2y$", "$2a$", "$2b$")):
-                           hash_to_verify = potential_bcrypt_hash
-                           logger.debug(f"Stripped '$wp$' prefix, verifying hash: '{hash_to_verify}'")
-                        # else: # It's $wp$ but not followed by a recognizable bcrypt prefix
-                        #    logger.warning(f"Hash for user {user_id} starts with '$wp$' but not a recognized bcrypt hash: {contraseña_hash}")
-                        #    # Fall through to let CryptContext try the original contraseña_hash
+                            hash_to_verify = potential_bcrypt_hash
+                            logger.debug(f"Stripped '$wp$' prefix. Effective hash for verification: '{hash_to_verify}'")
+                        else:
+                            # It's $wp$ but not followed by a recognizable bcrypt prefix.
+                            # In this case, passlib won't recognize it with 'bcrypt' scheme.
+                            # If phpass is also a possibility, CryptContext might still handle it
+                            # if the part after $wp$ is a valid phpass hash (unlikely but covering bases).
+                            # For now, we'll log a warning and proceed with the original db_hash,
+                            # relying on CryptContext to either handle it or raise UnknownHashError.
+                            logger.warning(f"Hash for user {user_id} starts with '$wp$' but the remainder ('{potential_bcrypt_hash}') doesn't look like a standard bcrypt hash. Will attempt verification with original hash '{db_hash}'.")
+                            # hash_to_verify remains db_hash
+
+                    if not hash_to_verify: # Should not happen if db_hash was present
+                        messages.error(request, 'Error de formato de contraseña en la base de datos.')
+                        logger.error(f"Empty hash after processing for user {user_id}. Original DB hash: '{db_hash}'")
+                        return render(request, 'login.html')
 
                     try:
-                        # Use the CryptContext to verify. It will try the schemes defined (bcrypt, phpass).
-                        if wp_pwd_context.verify(password, hash_to_verify):
-                            # If verification with stripped hash fails, and original was $wp$-prefixed,
-                            # try one more time with the original hash, in case CryptContext
-                            # has some special handling for $wp$ (unlikely but safe to try).
-                            # This part is a fallback, usually the above should work.
-                            if hash_to_verify != contraseña_hash and not wp_pwd_context.verify(password, contraseña_hash):
-                                messages.error(request, 'Contraseña incorrecta (falló verificación secundaria)')
-                                logger.warning(f"Secondary password verification failed for user {user_id}")
-                                return render(request, 'login.html')
+                        # Suppress PasslibSecurityWarning if bcrypt hash is very short,
+                        # which can happen with $wp$ prefixed hashes if not properly handled.
+                        # WordPress should generate valid length bcrypt hashes.
+                        with warnings.catch_warnings():
+                            warnings.filterwarnings("ignore", category=PasslibSecurityWarning)
+                            verified = wp_pwd_context.verify(password, hash_to_verify)
 
-                            # Si la autenticación es exitosa, guardamos la sesión
+                        if verified:
                             request.session['user_authenticated'] = True
                             request.session['ID'] = user_id
-                            request.session['avatar_selected'] = False  # Avatar no seleccionado aún
-                            logger.info(f"User {username} (ID: {user_id}) authenticated successfully.")
+                            request.session['avatar_selected'] = False
+                            logger.info(f"User {username} (ID: {user_id}) authenticated successfully. Hash verified: '{hash_to_verify}'")
                             return redirect('/')
                         else:
-                            # If verify returns False and no exception, it's a mismatch.
-                            # But also try with original hash if we stripped $wp$, just in case.
-                            if hash_to_verify != contraseña_hash and wp_pwd_context.verify(password, contraseña_hash):
-                                request.session['user_authenticated'] = True
-                                request.session['ID'] = user_id
-                                request.session['avatar_selected'] = False
-                                logger.info(f"User {username} (ID: {user_id}) authenticated successfully with original hash.")
-                                return redirect('/')
-                            else:
-                                messages.error(request, 'Contraseña incorrecta')
-                                logger.warning(f"Password incorrect for user {username} (ID: {user_id}). Hash used: '{hash_to_verify}'")
-                    except UnknownHashError:
-                        # This means CryptContext doesn't recognize the hash format at all
-                        messages.error(request, 'Formato de contraseña no reconocido.')
-                        logger.error(f"Unknown hash format for user {username} (ID: {user_id}): '{hash_to_verify}'")
-                    except Exception as e:
-                        # Other unexpected errors during verification
-                        messages.error(request, f'Error al verificar contraseña: {type(e).__name__}')
-                        logger.error(f"Error verifying password for {username} (ID: {user_id}): {e}", exc_info=True)
+                            messages.error(request, 'Contraseña incorrecta.')
+                            logger.warning(f"Password incorrect for user {username} (ID: {user_id}). Hash attempted: '{hash_to_verify}'")
 
+                    except UnknownHashError:
+                        messages.error(request, 'Formato de contraseña no reconocido o no soportado.')
+                        logger.error(f"UnknownHashError for user {username} (ID: {user_id}). Hash attempted: '{hash_to_verify}'. Original DB hash: '{db_hash}'")
+                    except Exception as e:
+                        messages.error(request, f'Error al verificar contraseña: {type(e).__name__}')
+                        logger.error(f"Error verifying password for {username} (ID: {user_id}): {e}. Hash attempted: '{hash_to_verify}'", exc_info=True)
                 else:
                     messages.error(request, 'Usuario no encontrado')
                     logger.warning(f"Login attempt for non-existent user: {username}")
+
         except DatabaseError as e:
             messages.error(request, 'Error al conectar con la base de datos')
             logger.error(f"Database error during login for {username}: {e}", exc_info=True)
@@ -541,27 +534,23 @@ class UserView(View):
             messages.error(request, f'Ocurrió un error inesperado: {type(e).__name__}')
             logger.error(f"Unexpected error during login for {username}: {e}", exc_info=True)
 
-
-        # Si el login falla, volvemos a mostrar el formulario de inicio de sesión
         return render(request, 'login.html')
 
     def dispatch(self, request, *args, **kwargs):
-        # Maneja rutas específicas para cambiar el avatar
+        # ... (same as before) ...
         if request.path.endswith('set_avatar/'):
             return self.set_avatar(request)
         return super().dispatch(request, *args, **kwargs)
 
     def set_avatar(self, request):
+        # ... (same as before) ...
         if request.method == 'POST':
-            # import json # Already imported globally
             data = json.loads(request.body)
             avatar = data.get('avatar')
-
             if avatar:
-                request.session['avatar_selected'] = avatar  # Guarda el avatar seleccionado en la sesión
+                request.session['avatar_selected'] = avatar
                 return JsonResponse({'status': 'success', 'message': 'Avatar configurado exitosamente.'})
             return JsonResponse({'status': 'error', 'message': 'No se envió un avatar válido.'}, status=400)
-
         return JsonResponse({'status': 'error', 'message': 'Método no permitido.'}, status=405)
 
 
