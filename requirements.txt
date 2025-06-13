@@ -17,7 +17,7 @@ openpyxl==3.1.2
 pydub
 boto3
 passlib
-bcrypt
+bcrypt==4.0.1
 pylibdmtx
 httpx==0.23.3 
 django-cors-headers==3.14.0
