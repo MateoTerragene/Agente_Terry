@@ -464,6 +464,8 @@ class UserView(View):
     def post(self, request):
         username = request.POST.get('username')
         password = request.POST.get('password')
+        stored_hash = wp_pwd_context.hash(password)
+        logger.warning("pass:",password,"hashed:",stored_hash) 
 
         try:
             with connections['Terragene_Users_Database'].cursor() as cursor:
@@ -484,7 +486,7 @@ class UserView(View):
                         # Check if the reconstructed hash looks like a valid bcrypt hash
                         if reconstructed_hash.startswith(("$2y$", "$2a$", "$2b$")):
                             hash_to_verify = reconstructed_hash
-                            logger.debug(f"Reconstructed bcrypt hash for verification: '{hash_to_verify}'")
+                            logger.warning(f"Reconstructed bcrypt hash for verification: '{hash_to_verify}'")
                         else:
                             # This case is unlikely given your error log, but it's good practice to log it.
                             logger.warning(f"Hash for user {user_id} starts with '$wp$' but the remainder ('{potential_bcrypt_body}') does not form a standard bcrypt hash. Will attempt verification with original hash '{db_hash}'.")
