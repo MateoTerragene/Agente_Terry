@@ -469,12 +469,12 @@ class UserView(View):
             with connections['Terragene_Users_Database'].cursor() as cursor:
                 cursor.execute("SELECT ID, user_pass FROM wp_users WHERE user_login=%s", [username])
                 row = cursor.fetchone()
-                logger.info("testeando1")
+                logger.warning("testeando1")
                 if row:
-                    logger.info("testeando2")
+                    logger.warning("testeando2")
                     user_id, db_hash = row
-                    logger.info("testeando3")
-                    logger.info(f"Attempting login for user: {username}, User ID: {user_id}, Hash from DB: '{db_hash}'")
+                    logger.warning("testeando3")
+                    logger.warning(f"Attempting login for user: {username}, User ID: {user_id}, Hash from DB: '{db_hash}'")
 
                     # Default to the original hash, in case it's a standard format like phpass
                     hash_to_verify = db_hash
@@ -512,7 +512,7 @@ class UserView(View):
                             return redirect('/')  # Redirect to the main page (which will then show avatar selection)
                         else:
                             messages.error(request, 'Contraseña incorrecta.')
-                            logger.warning(f"Password incorrect for user {username} (ID: {user_id}). Hash attempted: '{hash_to_verify}'")
+                            logger.warning(f"Passwod incorrect for user {username} (ID: {user_id}). Hash attempted: '{hash_to_verify}'")
 
                     except UnknownHashError:
                         messages.error(request, 'Formato de contraseña no reconocido o no soportado.')
