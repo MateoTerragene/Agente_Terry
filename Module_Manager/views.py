@@ -471,46 +471,43 @@ class UserView(View):
                 row = cursor.fetchone()
 
                 if row:
-                    user_id, db_hash = row # Renamed for clarity
+                    user_id, db_hash = row
                     logger.info(f"Attempting login for user: {username}, User ID: {user_id}, Hash from DB: '{db_hash}'")
 
-                    hash_to_verify = db_hash # Start with the original hash
+                    # Default to the original hash, in case it's a standard format like phpass
+                    hash_to_verify = db_hash
 
-                    # Check for and strip the '$wp$' prefix if the rest looks like bcrypt
                     if db_hash and db_hash.startswith("$wp$"):
-                        potential_bcrypt_hash = db_hash[4:] # Strip "$wp$"
-                        if potential_bcrypt_hash.startswith(("$2y$", "$2a$", "$2b$")):
-                            hash_to_verify = potential_bcrypt_hash
-                            logger.debug(f"Stripped '$wp$' prefix. Effective hash for verification: '{hash_to_verify}'")
-                        else:
-                            # It's $wp$ but not followed by a recognizable bcrypt prefix.
-                            # In this case, passlib won't recognize it with 'bcrypt' scheme.
-                            # If phpass is also a possibility, CryptContext might still handle it
-                            # if the part after $wp$ is a valid phpass hash (unlikely but covering bases).
-                            # For now, we'll log a warning and proceed with the original db_hash,
-                            # relying on CryptContext to either handle it or raise UnknownHashError.
-                            logger.warning(f"Hash for user {user_id} starts with '$wp$' but the remainder ('{potential_bcrypt_hash}') doesn't look like a standard bcrypt hash. Will attempt verification with original hash '{db_hash}'.")
-                            # hash_to_verify remains db_hash
+                        potential_bcrypt_body = db_hash[4:] 
+                        reconstructed_hash = "$" + potential_bcrypt_body
 
-                    if not hash_to_verify: # Should not happen if db_hash was present
+                        if reconstructed_hash.startswith(("$2y$", "$2a$", "$2b$")):
+                            hash_to_verify = reconstructed_hash
+                            logger.debug(f"Reconstructed bcrypt hash for verification: '{hash_to_verify}'")
+                        else:
+                            # This case is unlikely given your error log, but it's good practice to log it.
+                            logger.warning(f"Hash for user {user_id} starts with '$wp$' but the remainder ('{potential_bcrypt_body}') does not form a standard bcrypt hash. Will attempt verification with original hash '{db_hash}'.")
+                    # --- END: FIX ---
+
+                    if not hash_to_verify:
                         messages.error(request, 'Error de formato de contraseña en la base de datos.')
                         logger.error(f"Empty hash after processing for user {user_id}. Original DB hash: '{db_hash}'")
                         return render(request, 'login.html')
 
                     try:
-                        # Suppress PasslibSecurityWarning if bcrypt hash is very short,
-                        # which can happen with $wp$ prefixed hashes if not properly handled.
-                        # WordPress should generate valid length bcrypt hashes.
+                        # Suppress PasslibSecurityWarning for edge cases
                         with warnings.catch_warnings():
                             warnings.filterwarnings("ignore", category=PasslibSecurityWarning)
+                            # Pass the corrected hash to passlib
                             verified = wp_pwd_context.verify(password, hash_to_verify)
 
                         if verified:
                             request.session['user_authenticated'] = True
                             request.session['ID'] = user_id
+                            # Set avatar_selected to False to trigger the selection page after login
                             request.session['avatar_selected'] = False
                             logger.info(f"User {username} (ID: {user_id}) authenticated successfully. Hash verified: '{hash_to_verify}'")
-                            return redirect('/')
+                            return redirect('/')  # Redirect to the main page (which will then show avatar selection)
                         else:
                             messages.error(request, 'Contraseña incorrecta.')
                             logger.warning(f"Password incorrect for user {username} (ID: {user_id}). Hash attempted: '{hash_to_verify}'")
