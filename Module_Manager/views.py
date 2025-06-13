@@ -469,24 +469,22 @@ class UserView(View):
             with connections['Terragene_Users_Database'].cursor() as cursor:
                 cursor.execute("SELECT ID, user_pass FROM wp_users WHERE user_login=%s", [username])
                 row = cursor.fetchone()
-                logger.warning("testeando1")
+
                 if row:
-                    logger.warning("testeando2")
                     user_id, db_hash = row
-                    logger.warning("testeando3")
-                    logger.warning(f"Attempting login for user: {username}, User ID: {user_id}, Hash from DB: '{db_hash}'")
+                    logger.info(f"Attempting login for user: {username}, User ID: {user_id}, Hash from DB: '{db_hash}'")
 
                     # Default to the original hash, in case it's a standard format like phpass
                     hash_to_verify = db_hash
-                    
-                    if db_hash and db_hash.startswith("$wp$"):
-                        logger.warning("testeando4")
-                        potential_bcrypt_body = db_hash[4:] 
-                        reconstructed_hash = "$" + potential_bcrypt_body
 
+                    if db_hash and db_hash.startswith("$wp$"):
+                        potential_bcrypt_body = db_hash[4:]  # This gives '2y$10$...'
+                        reconstructed_hash = "$" + potential_bcrypt_body  # This gives '$2y$10$...'
+
+                        # Check if the reconstructed hash looks like a valid bcrypt hash
                         if reconstructed_hash.startswith(("$2y$", "$2a$", "$2b$")):
                             hash_to_verify = reconstructed_hash
-                            logger.warning(f"Reconstructed bcrypt hash for verification: '{hash_to_verify}'")
+                            logger.debug(f"Reconstructed bcrypt hash for verification: '{hash_to_verify}'")
                         else:
                             # This case is unlikely given your error log, but it's good practice to log it.
                             logger.warning(f"Hash for user {user_id} starts with '$wp$' but the remainder ('{potential_bcrypt_body}') does not form a standard bcrypt hash. Will attempt verification with original hash '{db_hash}'.")
@@ -502,7 +500,7 @@ class UserView(View):
                         with warnings.catch_warnings():
                             warnings.filterwarnings("ignore", category=PasslibSecurityWarning)
                             # Pass the corrected hash to passlib
-                            verified = wp_pwd_context.verify(password, db_hash)
+                            verified = wp_pwd_context.verify(password, hash_to_verify)
 
                         if verified:
                             request.session['user_authenticated'] = True
@@ -513,7 +511,7 @@ class UserView(View):
                             return redirect('/')  # Redirect to the main page (which will then show avatar selection)
                         else:
                             messages.error(request, 'Contraseña incorrecta.')
-                            logger.warning(f"Passwod incorrect for user {username} (ID: {user_id}). Hash attempted: '{hash_to_verify}'")
+                            logger.warning(f"Password incorrect for user {username} (ID: {user_id}). Hash attempted: '{hash_to_verify}'")
 
                     except UnknownHashError:
                         messages.error(request, 'Formato de contraseña no reconocido o no soportado.')
