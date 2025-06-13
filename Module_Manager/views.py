@@ -473,6 +473,8 @@ class UserView(View):
             with connections['Terragene_Users_Database'].cursor() as cursor:
                 cursor.execute("SELECT ID, user_pass FROM wp_users WHERE user_login=%s", [username])
                 row = cursor.fetchone()
+                print("row: ",row)
+                print("--------------------")
 
                 if row:
                     user_id, db_hash = row
