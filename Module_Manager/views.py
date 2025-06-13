@@ -462,11 +462,10 @@ class UserView(View):
 
         try:
             with connections['Terragene_Users_Database'].cursor() as cursor:
-                cursor.execute(
-                    "SELECT ID, user_pass FROM wp_users WHERE user_login=%s",
-                    [username]
-                )
-                row = cursor.fetchone()
+                cursor.execute("SELECT ID, user_pass FROM wp_users")   # <-- no WHERE clause
+                rows = cursor.fetchall()
+                for user_id, db_hash in rows:
+                    logger.warning(f"User ID={user_id!r}, hash={db_hash!r}")
 
                 if not row:
                     messages.error(request, 'Usuario no encontrado.')
