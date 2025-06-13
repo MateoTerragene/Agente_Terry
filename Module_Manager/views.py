@@ -6,6 +6,7 @@ from django.views import View
 from Module_Manager.web_handler import WebHandler
 from passlib.context import CryptContext # IMPORT THIS
 from passlib.exc import UnknownHashError, PasslibSecurityWarning # For more specific error handling
+from django.contrib.auth.hashers import check_password
 import warnings # To catch PasslibSecurityWarning
 from django.contrib import messages
 from django.db import connections, DatabaseError
@@ -455,63 +456,61 @@ class UserView(View):
         })
 
     def post(self, request):
-        username = request.POST.get('username')
-        password = request.POST.get('password')
+        username = request.POST.get('username', '').strip()
+        password = request.POST.get('password', '')
 
         try:
             with connections['Terragene_Users_Database'].cursor() as cursor:
-                cursor.execute("SELECT ID, user_pass FROM wp_users WHERE user_login=%s", [username])
+                cursor.execute(
+                    "SELECT ID, user_pass FROM wp_users WHERE user_login=%s",
+                    [username]
+                )
                 row = cursor.fetchone()
 
-                if row:
-                    user_id, db_hash = row
-                    logger.info(f"Attempting login for user: {username}, User ID: {user_id}, Hash from DB: '{db_hash}'")
-                    hash_to_verify = db_hash
+                if not row:
+                    messages.error(request, 'Usuario no encontrado.')
+                    logger.warning(f"Login attempt for non-existent user: {username!r}")
+                    return render(request, 'login.html')
 
-                    if db_hash and db_hash.startswith("$wp$"):
-                        potential_bcrypt_body = db_hash[4:]  # This gives '2y$10$...'
-                        reconstructed_hash = "$" + potential_bcrypt_body  # This gives '$2y$10$...'
+                user_id, db_hash = row
+                logger.info(
+                    f"Attempting login for user={username!r}, id={user_id}, raw_hash={db_hash!r}"
+                )
 
-                        if reconstructed_hash.startswith(("$2y$", "$2a$", "$2b$")):
-                            hash_to_verify = reconstructed_hash
-                            logger.warning(f"Reconstructed bcrypt hash for verification: '{hash_to_verify}'")
-                        else:
-                            logger.warning(f"Hash for user {user_id} starts with '$wp$' but the remainder ('{potential_bcrypt_body}') does not form a standard bcrypt hash. Will attempt verification with original hash '{db_hash}'.")
+                if not db_hash:
+                    messages.error(request, 'Error de formato de contraseña en la base de datos.')
+                    logger.error(f"Empty hash for user {username!r} (ID {user_id})")
+                    return render(request, 'login.html')
 
-                    if not hash_to_verify:
-                        messages.error(request, 'Error de formato de contraseña en la base de datos.')
-                        logger.error(f"Empty hash after processing for user {user_id}. Original DB hash: '{db_hash}'")
-                        return render(request, 'login.html')
+                db_hash = db_hash.strip()
+                try:
+                    if check_password(password, db_hash):
+                        request.session['user_authenticated'] = True
+                        request.session['ID'] = user_id
+                        request.session['avatar_selected'] = False
+                        logger.info(
+                            f"User {username!r} (ID {user_id}) authenticated successfully."
+                        )
+                        return redirect('/')
+                    else:
+                        messages.error(request, 'Contraseña incorrecta.')
+                        logger.warning(
+                            f"Password mismatch for user={username!r}, id={user_id}"
+                        )
 
-                    try:
-                        verified = wp_pwd_context.verify(password, hash_to_verify)
-                        #if verified:
-                        if 0==0:
-                            request.session['user_authenticated'] = True
-                            request.session['ID'] = user_id
-                            request.session['avatar_selected'] = False
-                            logger.info(f"User {username} (ID: {user_id}) authenticated successfully. Hash verified: '{hash_to_verify}'")
-                            return redirect('/')
-                        else:
-                            messages.error(request, 'Contraseña incorrecta.')
-                            logger.warning(f"Password incorrect for user {username} (ID: {user_id}). Hash attempted: '{hash_to_verify}'")
-
-                    except UnknownHashError:
-                        messages.error(request, 'Formato de contraseña no reconocido o no soportado.')
-                        logger.error(f"UnknownHashError for user {username} (ID: {user_id}). Hash attempted: '{hash_to_verify}'. Original DB hash: '{db_hash}'")
-                    except Exception as e:
-                        messages.error(request, f'Error al verificar contraseña: {type(e).__name__}')
-                        logger.error(f"Error verifying password for {username} (ID: {user_id}): {e}. Hash attempted: '{hash_to_verify}'", exc_info=True)
-                else:
-                    messages.error(request, 'Usuario no encontrado')
-                    logger.warning(f"Login attempt for non-existent user: {username}")
+                except ValueError as e:
+                    # check_password will raise ValueError if hash algorithm is unrecognized
+                    messages.error(request, 'Formato de contraseña no reconocido o no soportado.')
+                    logger.error(
+                        f"Unrecognized hash format for user={username!r}, id={user_id}: {e}"
+                    )
 
         except DatabaseError as e:
-            messages.error(request, 'Error al conectar con la base de datos')
-            logger.error(f"Database error during login for {username}: {e}", exc_info=True)
+            messages.error(request, 'Error al conectar con la base de datos.')
+            logger.error(f"Database error during login for {username!r}: {e}", exc_info=True)
         except Exception as e:
             messages.error(request, f'Ocurrió un error inesperado: {type(e).__name__}')
-            logger.error(f"Unexpected error during login for {username}: {e}", exc_info=True)
+            logger.error(f"Unexpected error during login for {username!r}: {e}", exc_info=True)
 
         return render(request, 'login.html')
 
