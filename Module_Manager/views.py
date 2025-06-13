@@ -469,14 +469,16 @@ class UserView(View):
             with connections['Terragene_Users_Database'].cursor() as cursor:
                 cursor.execute("SELECT ID, user_pass FROM wp_users WHERE user_login=%s", [username])
                 row = cursor.fetchone()
-
+                logger.info("testeando1")
                 if row:
+                    logger.info("testeando2")
                     user_id, db_hash = row
+                    logger.info("testeando3")
                     logger.info(f"Attempting login for user: {username}, User ID: {user_id}, Hash from DB: '{db_hash}'")
 
                     # Default to the original hash, in case it's a standard format like phpass
                     hash_to_verify = db_hash
-
+                    
                     if db_hash and db_hash.startswith("$wp$"):
                         potential_bcrypt_body = db_hash[4:] 
                         reconstructed_hash = "$" + potential_bcrypt_body
