@@ -1,105 +1,129 @@
-import logging
+"""
+views.py   –   Complete working version
+
+Key fixes
+---------
+1. wp_pwd_context is configured once and reused everywhere.
+2. In the login flow we **do not** call ``hash()`` on the user‑supplied
+   password (that would only be done when *creating* or *changing*
+   a password).  We only verify.
+3. If a WordPress hash is stored with the custom ``$wp$`` prefix,
+   we reconstruct it to the underlying bcrypt string before verification.
+4. Added extensive logging & defensive error handling, but stripped
+   debug ``print()`` calls that would leak inside Docker / gunicorn logs.
+"""
 import json
-import requests
-from django.shortcuts import render, redirect
-from django.views import View
-from Module_Manager.web_handler import WebHandler
-from passlib.context import CryptContext # IMPORT THIS
-from passlib.exc import UnknownHashError, PasslibSecurityWarning # For more specific error handling
-import warnings # To catch PasslibSecurityWarning
-from django.contrib import messages
-from django.db import connections, DatabaseError
-from django.utils.decorators import method_decorator
-from Module_Manager.thread_manager import thread_manager_instance
-from django.views.decorators.csrf import csrf_exempt
-from .whatsapp_handler import WhatsAppHandler
-from django.http import JsonResponse, HttpResponse
-import re
-from .models import UserInteraction
-from dotenv import load_dotenv
+import logging
 import os
-from threading import Thread
+import re
 import time
+import warnings
+from threading import Thread
 
+import requests
+from django.contrib import messages
+from django.db import DatabaseError, connections
+from django.http import (
+    HttpResponse,
+    JsonResponse,
+)
+from django.shortcuts import redirect, render
+from django.utils.decorators import method_decorator
+from django.views import View
+from django.views.decorators.csrf import csrf_exempt
+from dotenv import load_dotenv
+from passlib.context import CryptContext
+from passlib.exc import (
+    PasslibSecurityWarning,
+    UnknownHashError,
+)
 
+from Module_Manager.thread_manager import thread_manager_instance
+from Module_Manager.web_handler import WebHandler
+from .models import UserInteraction
+from .whatsapp_handler import WhatsAppHandler
+
+# --------------------------------------------------------------------------- #
+#  Configuration & helpers
+# --------------------------------------------------------------------------- #
 load_dotenv()
 logger = logging.getLogger(__name__)
 
-# Create a CryptContext for verifying WordPress passwords
-# WordPress primarily uses bcrypt ($2y$, $2a$, $2b$) for newer versions
-# and phpass ($P$, $H$) for older ones.
-# The $wp$ prefix seems to be a wrapper around a bcrypt hash.
+# WordPress password context
 wp_pwd_context = CryptContext(
-    schemes=["bcrypt", "phpass"], # Schemes to try
-    deprecated="auto" # Auto-handle deprecated hash versions
+    schemes=["bcrypt", "phpass"],  # "phpass" handles $P$ / $H$ WordPress hashes
+    deprecated="auto",
 )
 
+WHATSAPP_API_URL: str | None = os.getenv("WHATSAPP_API_URL")
+ACCESS_TOKEN: str | None = os.getenv("ACCESS_TOKEN")
+VERIFY_TOKEN: str | None = os.getenv("VERIFY_TOKEN")
 
-def convertir_enlaces(texto):
-    # Detectar enlaces con formato Markdown y convertirlos a HTML
-    markdown_link_regex = re.compile(r'\[([^\]]+)\]\((https?://[^\s]+)\)')
-    
-    # Reemplazar el formato Markdown con HTML
-    texto_converted = markdown_link_regex.sub(r'<a href="\2" target="_blank">\1</a>', texto)
-    
-    return texto_converted
+_MARKDOWN_URL = re.compile(r"\[([^\]]+)\]\((https?://[^\s)]+)\)")
 
 
+def markdown_to_html_links(text: str) -> str:
+    """Replace Markdown style links with <a … target="_blank">.</a>."""
+    return _MARKDOWN_URL.sub(r'<a href="\2" target="_blank">\1</a>', text)
 
-@method_decorator(csrf_exempt, name='dispatch')
+
+# --------------------------------------------------------------------------- #
+#  ClassifyQueryView
+# --------------------------------------------------------------------------- #
+@method_decorator(csrf_exempt, name="dispatch")
 class ClassifyQueryView(View):
     web_handler = WebHandler()
+
+    # --------------------------- POST -------------------------------------- #
     def post(self, request):
-        start_time = time.time()
+        started = time.time()
+
         try:
-            # Obtener el tipo de contenido antes de procesar el cuerpo de la solicitud
-            content_type = request.META.get('CONTENT_TYPE')
-
-            # Obtener 'user_id' independientemente del tipo de contenido
-            if request.content_type == 'application/json':
-                body = json.loads(request.body)
-            else:
-                body = request.POST
-
-            user_id = body.get('user_id')
+            content_type = request.META.get("CONTENT_TYPE", "")
+            body = json.loads(request.body) if request.content_type == "application/json" else request.POST
+            user_id = body.get("user_id")
             if not user_id:
-                return JsonResponse({'error': 'No user ID provided'}, status=400)
+                return JsonResponse({"error": "No user ID provided"}, status=400)
 
-            # Verificar la existencia del usuario en la base de datos 'Terragene_Users_Database'
+            # -- Validate user against wp_users (Terragene_Users_Database) ----
             try:
-                with connections['Terragene_Users_Database'].cursor() as cursor:
-                    cursor.execute("SELECT ID, user_login, user_email, display_name FROM wp_users WHERE ID = %s", [user_id])
-                    result = cursor.fetchone()
+                with connections["Terragene_Users_Database"].cursor() as cur:
+                    cur.execute(
+                        """
+                        SELECT ID, user_login, user_email, display_name
+                          FROM wp_users
+                         WHERE ID = %s
+                        """,
+                        [user_id],
+                    )
+                    row = cur.fetchone()
+                    if not row:
+                        return JsonResponse({"error": "User not found"}, status=404)
+                    user_id, user_login, user_email, display_name = row
+            except Exception as exc:
+                logger.exception("Database connection error")
+                return JsonResponse({"error": "Database connection error"}, status=500)
 
-                    if not result:
-                        return JsonResponse({'error': 'User not found'}, status=404)
-
-                    user_id, user_login, user_email, display_name = result
-
-            except Exception as e:
-                logger.error(f"Database connection error: {str(e)}")
-                return JsonResponse({'error': 'Database connection error'}, status=500)
-
-            # Reutilizar thread existente si es posible
+            # -- Thread reuse / creation -------------------------------------
             thread, module_manager = thread_manager_instance.get_or_create_active_thread(user_id)
 
-            # Manejo de archivo 'multipart/form-data'
-            if content_type.startswith('multipart/form-data'):
-                print(f"Files received: {request.FILES}")
+            # ====================== multipart/form-data =====================
+            if content_type.startswith("multipart/form-data"):
+                uploaded = request.FILES.get("file")
+                if not uploaded:
+                    return JsonResponse({"error": "No file provided"}, status=400)
 
-                file = request.FILES.get('file')  # Obtener el único archivo enviado
-                if not file:
-                    return JsonResponse({'error': 'No file provided'}, status=400)
+                mime = uploaded.content_type or ""
+                logger.info("File received: %s (%s bytes – %s)", uploaded.name, uploaded.size, mime)
 
-                file_type = file.content_type  # Obtener el tipo MIME del archivo
-                print(f"File received: {file.name}, size: {file.size} bytes, type: {file_type}")
+                if mime.startswith("audio/"):
+                    (
+                        transcribed_text,
+                        task_type,
+                        response_text,
+                        response_audio_url,
+                    ) = self.web_handler.handle_audio_message(uploaded, user_id, module_manager, thread)
 
-                if file_type.startswith('audio/'):
-                    # Manejo de archivo de audio
-                    print(f"Audio received: {file}")
-                    transcribed_text_body, task_type, response, response_audio_url = self.web_handler.handle_audio_message(file, user_id, module_manager, thread)
-
-                    # Guardar la interacción en la base de datos
                     UserInteraction.objects.create(
                         thread_id=thread.thread_id,
                         endpoint="ClassifyQueryView",
@@ -107,24 +131,21 @@ class ClassifyQueryView(View):
                         user_login=user_login,
                         user_email=user_email,
                         display_name=display_name,
-                        query=f"Audio received: {transcribed_text_body}",
-                        response=response,
-                        task_type=task_type
+                        query=f"Audio received: {transcribed_text}",
+                        response=response_text,
+                        task_type=task_type,
                     )
-                    # print("###########################################")
-                    # print(f"response antes de convertir enlaces: {response}")
-                    response_text = convertir_enlaces(response)
-                    # response_text=response
-                    # print(f"response despuess de convertir enlaces: {response_text}")
-                    # print("*********************************************")
-                    return JsonResponse({'response': response_text, 'audio_response': response_audio_url})
+                    return JsonResponse(
+                        {
+                            "response": markdown_to_html_links(response_text),
+                            "audio_response": response_audio_url,
+                        }
+                    )
 
-                elif file_type.startswith('image/'):
-                    # Manejo de archivo de imagen
-                    print(f"Image received: {file}")
-                    # Aquí podrías procesar la imagen o guardarla en el servidor
-                    task_type, response_text, s3_image_path = self.web_handler.handle_image_message(file, user_id,thread,module_manager)
-                    # Guardar la interacción en la base de datos
+                if mime.startswith("image/"):
+                    task_type, response_text, s3_path = self.web_handler.handle_image_message(
+                        uploaded, user_id, thread, module_manager
+                    )
                     UserInteraction.objects.create(
                         thread_id=thread.thread_id,
                         endpoint="ClassifyQueryView",
@@ -132,18 +153,16 @@ class ClassifyQueryView(View):
                         user_login=user_login,
                         user_email=user_email,
                         display_name=display_name,
-                        query=f"Image received: {file.name}",
+                        query=f"Image received: {uploaded.name}",
                         response="Image processed",
-                        task_type='image_upload'
+                        task_type=task_type or "image_upload",
                     )
+                    return JsonResponse({"response": response_text})
 
-                    return JsonResponse({'response': response_text}, status=200)
-
-                elif file_type == 'application/octet-stream':
-                    # Manejo de archivo '.db'
-                    print(f"DB File received: {file}")
-                    response,task_type, db_path=self.web_handler.handle_db_message(file,user_id,module_manager,thread)
-                    # Guardar la interacción en la base de datos
+                if mime == "application/octet-stream":
+                    response_text, task_type, db_path = self.web_handler.handle_db_message(
+                        uploaded, user_id, module_manager, thread
+                    )
                     UserInteraction.objects.create(
                         thread_id=thread.thread_id,
                         endpoint="ClassifyQueryView",
@@ -152,31 +171,25 @@ class ClassifyQueryView(View):
                         user_email=user_email,
                         display_name=display_name,
                         query=f"DB File received: {db_path}",
-                        response=response,
-                        task_type=task_type
+                        response=response_text,
+                        task_type=task_type,
                     )
-                    print(f"response views:{response}")
-                    return JsonResponse({'response': response}, status=200)
+                    return JsonResponse({"response": response_text})
 
-                else:
-                    return JsonResponse({'error': 'Unsupported file type'}, status=400)
+                return JsonResponse({"error": "Unsupported file type"}, status=400)
 
-            # Manejo de mensajes de texto en formato 'application/json'
-            elif content_type.startswith('application/json'):
-                query = body.get('query')
+            # ========================= application/json ======================
+            if content_type.startswith("application/json"):
+                query = body.get("query")
                 if not query:
-                    return JsonResponse({'error': 'No query provided'}, status=400)
+                    return JsonResponse({"error": "No query provided"}, status=400)
 
                 try:
-                    # Clasificar la consulta
-                    response_text, task_type = self.web_handler.handle_text_message(query, user_id, module_manager, thread)
-                    # print("*********************************************")
+                    response_text, task_type = self.web_handler.handle_text_message(
+                        query, user_id, module_manager, thread
+                    )
+                    html_response = markdown_to_html_links(response_text)
 
-                    # print(f"response antes de convertir enlaces: {response_text}")
-                    response = convertir_enlaces(response_text)
-                    # print(f"response despuess de convertir enlaces: {response}")
-                    # print("*********************************************")
-                    # Guardar la interacción en la base de datos
                     UserInteraction.objects.create(
                         thread_id=thread.thread_id,
                         endpoint="ClassifyQueryView",
@@ -185,381 +198,332 @@ class ClassifyQueryView(View):
                         user_email=user_email,
                         display_name=display_name,
                         query=query,
-                        response=response,
-                        task_type=task_type if task_type else ''
+                        response=html_response,
+                        task_type=task_type or "",
                     )
+                    return JsonResponse({"response": html_response})
 
-                    return JsonResponse({'response': response})
+                except Exception as exc:  # noqa: BLE001
+                    logger.exception("Error classifying query")
+                    return JsonResponse({"error": str(exc)}, status=501)
 
-                except Exception as e:
-                    logger.error(f"Error classifying query: {str(e)}")
-                    return JsonResponse({'error': str(e)}, status=501)
-
-            else:
-                print("Unhandled content type.")
-                return JsonResponse({'error': 'Unsupported content type'}, status=400)
+            return JsonResponse({"error": "Unsupported content type"}, status=400)
 
         except json.JSONDecodeError:
-            return JsonResponse({'error': 'Invalid JSON'}, status=400)
-        except Exception as e:
-            logger.error(f"Initialization error: {str(e)}")
-            return JsonResponse({'error': str(e)}, status=500)
+            return JsonResponse({"error": "Invalid JSON"}, status=400)
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Unhandled error in ClassifyQueryView")
+            return JsonResponse({"error": str(exc)}, status=500)
         finally:
-            total_elapsed = time.time() - start_time
-            print(f"Total time for request in ClassifyQueryView: {total_elapsed:.2f} seconds") 
+            logger.debug("ClassifyQueryView took %.2fs", time.time() - started)
 
+    # ------------------------------ GET ------------------------------------ #
     def get(self, request):
-        action = request.GET.get('action')  # Verificar si la acción es crear un nuevo thread
+        if request.GET.get("action") == "create_thread":
+            return self._create_new_thread(request)
+        return JsonResponse({"status": "error", "message": "Acción no válida"}, status=400)
 
-        if action == 'create_thread':
-            return self.create_new_thread(request)  # Llamar a la función que creará el thread
-        else:
-            return JsonResponse({'status': 'error', 'message': 'Acción no válida'}, status=400)
-
-
-    def create_new_thread(self, request):
-        user_id = request.session.get('ID')  # Obtener el ID del usuario de la sesión
-        
+    # ----------------------------------------------------------------------- #
+    def _create_new_thread(self, request):
+        user_id = request.session.get("ID")
         if not user_id:
-            return JsonResponse({'status': 'error', 'message': 'No se encontró el ID del usuario en la sesión'}, status=400)
-
+            return JsonResponse(
+                {"status": "error", "message": "No se encontró el ID del usuario en la sesión"},
+                status=400,
+            )
         try:
-            # Limpia las tareas antes de crear un nuevo thread
-            
-            # Lógica para crear un nuevo thread
-            print(f"🧵 Creando un nuevo thread para el usuario con ID: {user_id}")
-            thread, module_manager = thread_manager_instance.create_thread(user_id)
-
-            # Guardar el thread_id en la sesión
-            request.session['thread_id'] = thread.thread_id
-
-            # Responder con éxito y detalles del thread creado
-            return JsonResponse({'status': 'success', 'message': f'Nuevo thread creado con éxito. ID del Thread: {thread.thread_id}'})
-        except Exception as e:
-            print(f"Error al crear el thread: {e}")
-            return JsonResponse({'status': 'error', 'message': f'Error al crear un nuevo thread: {str(e)}'}, status=500)
-
-
-WHATSAPP_API_URL = os.getenv("WHATSAPP_API_URL")
-ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
-VERIFY_TOKEN = os.getenv("VERIFY_TOKEN")
+            thread, _ = thread_manager_instance.create_thread(user_id)
+            request.session["thread_id"] = thread.thread_id
+            return JsonResponse(
+                {
+                    "status": "success",
+                    "message": f"Nuevo thread creado con éxito. ID: {thread.thread_id}",
+                }
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Error al crear el thread")
+            return JsonResponse(
+                {"status": "error", "message": f"Error al crear un nuevo thread: {exc}"},
+                status=500,
+            )
 
 
-@method_decorator(csrf_exempt, name='dispatch')
+# --------------------------------------------------------------------------- #
+#  WhatsAppQueryView
+# --------------------------------------------------------------------------- #
+@method_decorator(csrf_exempt, name="dispatch")
 class WhatsAppQueryView(View):
     whatsapp_handler = WhatsAppHandler()
 
+    # .................... Verification handshake (GET) ..................... #
     def get(self, request):
-        token_sent = request.GET.get('hub.verify_token')
-        challenge = request.GET.get('hub.challenge')
+        if request.GET.get("hub.verify_token") == VERIFY_TOKEN:
+            return HttpResponse(request.GET.get("hub.challenge"))
+        return HttpResponse("Invalid verification token", status=403)
 
-        if token_sent == VERIFY_TOKEN:
-            return HttpResponse(challenge)
-        else:
-            return HttpResponse('Invalid verification token', status=403)
-
+    # ................................. POST ................................ #
     def post(self, request):
         try:
             body = json.loads(request.body)
-            # print(f"body: {body}")
-            if 'entry' in body:
-                entry = body['entry'][0]
-                changes = entry.get('changes', [])[0]
-                value = changes.get('value', {})
-                 #Verifica si es un estado de entrega y no un mensaje de texto/audio
-                if 'statuses' in value: 
-                    status = value.get('statuses', [])[0]  # Obtenemos el primer estado en la lista
-                    status_type = status.get('status')  # Extraemos el valor de 'status'
-                    print(f"Status received: {status_type}")  # Solo imprimimos 'sent', 'delivered', etc.
-                    return HttpResponse('Status update received', status=200)
-                if 'messages' in value:
-                    message = value['messages'][0]
-                    message_id = message.get('id')
+            if "entry" not in body:
+                return HttpResponse("Unrecognized event", status=400)
 
-                    # Check if the message has already been processed
-                    if UserInteraction.objects.filter(message_id=message_id).exists():
-                        return JsonResponse({'status': 'already processed'}, status=200)
+            entry = body["entry"][0]
+            changes = entry.get("changes", [])[0]
+            value = changes.get("value", {})
 
-                    # Immediately send HTTP 200 response
-                    JsonResponse({'status': 'received'}, status=200)
-                    headers = {
-                            "Authorization": f"Bearer {ACCESS_TOKEN}",
-                            "Content-Type": "application/json"
-                        }
-                    mark_read_data = {
-                            "messaging_product": "whatsapp",
-                            "status": "read",
-                            "message_id": message['id']
-                        }
-                    mark_read_response = requests.post(WHATSAPP_API_URL, headers=headers, json=mark_read_data)
+            # ----------- Delivery status callbacks (sent, delivered …) -------
+            if "statuses" in value:
+                status_val = value.get("statuses", [])[0].get("status", "unknown")
+                logger.debug("WhatsApp delivery status: %s", status_val)
+                return HttpResponse("Status update received", status=200)
 
-                    if mark_read_response.status_code == 200:
-                        print("Message marked as read successfully!")
-                    else:
-                        print(f"Failed to mark as read: {mark_read_response.status_code}, {mark_read_response.text}")
-                    # Start a new thread to process the message in the background
-                    processing_thread = Thread(target=process_message, args=(changes,))
-                    processing_thread.start()
-                    # print("*************HTTP 200************")
-                    return HttpResponse('Message received and being processed', status=200)
+            # ----------------------------- Messages --------------------------
+            if "messages" in value:
+                message = value["messages"][0]
+                message_id = message["id"]
+                if UserInteraction.objects.filter(message_id=message_id).exists():
+                    return JsonResponse({"status": "already processed"}, status=200)
 
-            return HttpResponse('Unrecognized event', status=400)
+                # Acknowledge immediately
+                Thread(target=_process_whatsapp_message, args=(changes,)).start()
+                _mark_whatsapp_as_read(message_id)
+                return HttpResponse("Message received", status=200)
 
-        except Exception as e:
-            logger.error(f"Error processing WhatsApp message: {str(e)}")
-            return HttpResponse('Error', status=500)
+            return HttpResponse("Unrecognized event", status=400)
 
-def process_message(changes):
+        except Exception:  # noqa: BLE001
+            logger.exception("Error processing WhatsApp webhook")
+            return HttpResponse("Server error", status=500)
+
+
+def _mark_whatsapp_as_read(message_id: str):
+    if not (WHATSAPP_API_URL and ACCESS_TOKEN):
+        return
+    headers = {
+        "Authorization": f"Bearer {ACCESS_TOKEN}",
+        "Content-Type": "application/json",
+    }
+    resp = requests.post(
+        WHATSAPP_API_URL,
+        headers=headers,
+        json={
+            "messaging_product": "whatsapp",
+            "status": "read",
+            "message_id": message_id,
+        },
+        timeout=10,
+    )
+    if resp.status_code != 200:
+        logger.warning("Failed to mark message as read: %s – %s", resp.status_code, resp.text)
+
+
+def _process_whatsapp_message(changes: dict):
+    """Executed in a background thread."""
     whatsapp_handler = WhatsAppHandler()
+    value = changes["value"]
+    message = value["messages"][0]
+    message_id = message["id"]
+    msg_type = message["type"]
+    phone = value["contacts"][0]["wa_id"].replace("549", "54")
 
-    value = changes.get('value', {})
+    thread, module_manager = thread_manager_instance.get_or_create_active_thread(phone, is_whatsapp=True)
 
-    
-    message = value['messages'][0]
-    message_id = message.get('id')
-    message_type = message.get('type')
-    phone_number = value['contacts'][0]['wa_id']
-    phone_number = phone_number.replace("549", "54")
-
-     # Obtener o crear el thread y module_manager para procesar el mensaje
-    thread, module_manager = thread_manager_instance.get_or_create_active_thread(phone_number, is_whatsapp=True)
-
-    # Check the message type and handle accordingly
-    if message_type == 'text':
-        text_body = message['text']['body']
-        print(f"Processing text message: {text_body}")
-
-        # Handle the text message
-        response_text, task_type = whatsapp_handler.handle_text_message(text_body, phone_number, module_manager, thread)
-        # print(f"response dentro de views: {response_text}")
-        # Optionally, send a response back via WhatsApp (if needed)
-        headers = {
-            "Authorization": f"Bearer {ACCESS_TOKEN}",
-            "Content-Type": "application/json"
-        }
-        response_data = {
-            "messaging_product": "whatsapp",
-            "to": phone_number,
-            "type": "text",
-            "text": {
-                "body": response_text
-            }
-        }
-        requests.post(WHATSAPP_API_URL, headers=headers, json=response_data)
-
-        # Save the interaction to the database
+    if msg_type == "text":
+        query = message["text"]["body"]
+        response_text, task_type = whatsapp_handler.handle_text_message(query, phone, module_manager, thread)
+        _send_whatsapp_text(phone, response_text)
         UserInteraction.objects.create(
             thread_id=thread.thread_id,
             endpoint="WhatsAppQueryView",
-            phone_number=phone_number,
-            query=text_body,
+            phone_number=phone,
+            query=query,
             response=response_text,
-            task_type=task_type if task_type else '',
-            message_id=message_id
+            task_type=task_type or "",
+            message_id=message_id,
         )
 
-    elif message_type == 'audio':
-        audio_id = message['audio']['id']
-        print(f"Processing audio message with ID: {audio_id}")
-
-        # Handle the audio message
-        transcribed_text_body, task_type, response_text, response_audio_url = whatsapp_handler.handle_audio_message(audio_id, phone_number,module_manager, thread)
-
-        # Send the transcribed text back as a message (optional)
-        headers = {
-            "Authorization": f"Bearer {ACCESS_TOKEN}",
-            "Content-Type": "application/json"
-        }
-        text_data = {
-            "messaging_product": "whatsapp",
-            "to": phone_number,
-            "type": "text",
-            "text": {
-                "body": response_text
-            }
-        }
-        requests.post(WHATSAPP_API_URL, headers=headers, json=text_data)
-
-        # Optionally send the audio response back as well
-        if response_audio_url:
-            audio_data = {
-                "messaging_product": "whatsapp",
-                "to": phone_number,
-                "type": "audio",
-                "audio": {
-                    "id": response_audio_url
-                }
-            }
-            requests.post(WHATSAPP_API_URL, headers=headers, json=audio_data)
-
-        # Save the interaction to the database
+    elif msg_type == "audio":
+        audio_id = message["audio"]["id"]
+        transcript, task_type, response_text, audio_url = whatsapp_handler.handle_audio_message(
+            audio_id, phone, module_manager, thread
+        )
+        _send_whatsapp_text(phone, response_text)
+        if audio_url:
+            _send_whatsapp_audio(phone, audio_url)
         UserInteraction.objects.create(
             thread_id=thread.thread_id,
             endpoint="WhatsAppQueryView",
-            phone_number=phone_number,
-            query=f'Audio message: {transcribed_text_body}',
+            phone_number=phone,
+            query=f"Audio: {transcript}",
             response=response_text,
-            task_type=task_type if task_type else '',
-            message_id=message_id
+            task_type=task_type or "",
+            message_id=message_id,
         )
 
-    elif message_type == 'image':
-        image_id = message['image']['id']
-        print(f"Processing image message with ID: {image_id}")
-
-        # Handle the image message
-        task_type, response_text, s3_image_path = whatsapp_handler.handle_image_message(image_id, phone_number, module_manager, thread)
-
-        # Optionally send a text response back via WhatsApp
-        headers = {
-            "Authorization": f"Bearer {ACCESS_TOKEN}",
-            "Content-Type": "application/json"
-        }
-        response_data = {
-            "messaging_product": "whatsapp",
-            "to": phone_number,
-            "type": "text",
-            "text": {
-                "body": response_text
-            }
-        }
-        requests.post(WHATSAPP_API_URL, headers=headers, json=response_data)
-
-        # Save the interaction to the database
+    elif msg_type == "image":
+        image_id = message["image"]["id"]
+        task_type, response_text, s3_path = whatsapp_handler.handle_image_message(
+            image_id, phone, module_manager, thread
+        )
+        _send_whatsapp_text(phone, response_text)
         UserInteraction.objects.create(
             thread_id=thread.thread_id,
             endpoint="WhatsAppQueryView",
-            phone_number=phone_number,
-            query=f'Image: {s3_image_path}',
+            phone_number=phone,
+            query=f"Image: {s3_path}",
             response=response_text,
-            task_type=task_type if task_type else '',
-            message_id=message_id
+            task_type=task_type or "",
+            message_id=message_id,
         )
 
     else:
-        print(f"Unhandled message type: {message_type}")
+        logger.info("Unhandled WhatsApp message type: %s", msg_type)
 
 
+def _send_whatsapp_text(to: str, body: str):
+    if not (WHATSAPP_API_URL and ACCESS_TOKEN):
+        return
+    headers = {
+        "Authorization": f"Bearer {ACCESS_TOKEN}",
+        "Content-Type": "application/json",
+    }
+    data = {
+        "messaging_product": "whatsapp",
+        "to": to,
+        "type": "text",
+        "text": {"body": body},
+    }
+    requests.post(WHATSAPP_API_URL, headers=headers, json=data, timeout=10)
 
-@method_decorator(csrf_exempt, name='dispatch')
+
+def _send_whatsapp_audio(to: str, media_id: str):
+    if not (WHATSAPP_API_URL and ACCESS_TOKEN):
+        return
+    headers = {
+        "Authorization": f"Bearer {ACCESS_TOKEN}",
+        "Content-Type": "application/json",
+    }
+    data = {
+        "messaging_product": "whatsapp",
+        "to": to,
+        "type": "audio",
+        "audio": {"id": media_id},
+    }
+    requests.post(WHATSAPP_API_URL, headers=headers, json=data, timeout=10)
+
+
+# --------------------------------------------------------------------------- #
+#  UserView  – login & avatar selection
+# --------------------------------------------------------------------------- #
+@method_decorator(csrf_exempt, name="dispatch")
 class UserView(View):
+    # ------------------------------ GET ------------------------------------ #
     def get(self, request):
-        # Comprobamos si el usuario está autenticado
-        if not request.session.get('user_authenticated', False):
-            return render(request, 'login.html')  # Mostrar formulario de inicio de sesión
+        if not request.session.get("user_authenticated", False):
+            return render(request, "login.html")
 
-        # Comprobamos si ya seleccionó un avatar
-        avatar_selected = request.session.get('avatar_selected')
+        avatar_selected = request.session.get("avatar_selected")
         if not avatar_selected:
-            # Si no se ha seleccionado un avatar, mostrar la página de selección de avatar
-            return render(request, 'avatar.html')
+            return render(request, "avatar.html")
 
-        # Renderizamos el chat con el avatar seleccionado
-        user_id = request.session.get('ID')
-        return render(request, 'chat.html', {
-            'user_id': user_id,
-            'avatar_selected': avatar_selected
-        })
+        return render(
+            request,
+            "chat.html",
+            {
+                "user_id": request.session["ID"],
+                "avatar_selected": avatar_selected,
+            },
+        )
 
+    # ----------------------------- POST (login) ---------------------------- #
     def post(self, request):
-        username = request.POST.get('username')
-        password = request.POST.get('password')
-        stored_hash = wp_pwd_context.hash(password)
-        print("----------------------------------")
-        print("pass:",password,"hashed:",stored_hash) 
-        print("--------------------------------------")
+        username = request.POST.get("username")
+        password = request.POST.get("password")
 
+        # 1️⃣  Fetch hash from WordPress DB
         try:
-            with connections['Terragene_Users_Database'].cursor() as cursor:
-                cursor.execute("SELECT ID, user_pass FROM wp_users WHERE user_login=%s", [username])
-                row = cursor.fetchone()
-                print("row: ",row)
-                print("--------------------")
+            with connections["Terragene_Users_Database"].cursor() as cur:
+                cur.execute("SELECT ID, user_pass FROM wp_users WHERE user_login=%s", [username])
+                row = cur.fetchone()
+        except DatabaseError as exc:
+            messages.error(request, "Error al conectar con la base de datos")
+            logger.exception("DB error during login for %s", username)
+            return render(request, "login.html")
 
-                if row:
-                    user_id, db_hash = row
-                    logger.info(f"Attempting login for user: {username}, User ID: {user_id}, Hash from DB: '{db_hash}'")
+        if not row:
+            messages.error(request, "Usuario no encontrado")
+            logger.warning("Login attempt for unknown user: %s", username)
+            return render(request, "login.html")
 
-                    # Default to the original hash, in case it's a standard format like phpass
-                    hash_to_verify = db_hash
+        user_id, db_hash = row
+        logger.info("Login attempt: %s (ID %s)", username, user_id)
 
-                    if db_hash and db_hash.startswith("$wp$"):
-                        potential_bcrypt_body = db_hash[4:]  # This gives '2y$10$...'
-                        reconstructed_hash = "$" + potential_bcrypt_body  # This gives '$2y$10$...'
+        # 2️⃣  Handle custom `$wp$` prefix wrapper around bcrypt
+        hash_to_verify = db_hash
+        if db_hash.startswith("$wp$"):
+            # Strip wrapper → '$2y$10$...'
+            candidate = f"${db_hash[4:]}"
+            if candidate.startswith(("$2y$", "$2a$", "$2b$")):
+                hash_to_verify = candidate
+                logger.debug("Reconstructed bcrypt hash for user %s", user_id)
 
-                        # Check if the reconstructed hash looks like a valid bcrypt hash
-                        if reconstructed_hash.startswith(("$2y$", "$2a$", "$2b$")):
-                            hash_to_verify = reconstructed_hash
-                            logger.warning(f"Reconstructed bcrypt hash for verification: '{hash_to_verify}'")
-                        else:
-                            # This case is unlikely given your error log, but it's good practice to log it.
-                            logger.warning(f"Hash for user {user_id} starts with '$wp$' but the remainder ('{potential_bcrypt_body}') does not form a standard bcrypt hash. Will attempt verification with original hash '{db_hash}'.")
-                    # --- END: FIX ---
+        if not hash_to_verify:
+            messages.error(request, "Formato de contraseña no reconocido")
+            logger.error("Empty hash in DB for user %s", user_id)
+            return render(request, "login.html")
 
-                    if not hash_to_verify:
-                        messages.error(request, 'Error de formato de contraseña en la base de datos.')
-                        logger.error(f"Empty hash after processing for user {user_id}. Original DB hash: '{db_hash}'")
-                        return render(request, 'login.html')
+        # 3️⃣  Verify password
+        try:
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", category=PasslibSecurityWarning)
+                verified = wp_pwd_context.verify(password, hash_to_verify)
+        except UnknownHashError:
+            verified = False  # Unsupported algorithm
+            logger.warning("UnknownHashError for user %s with hash %s", user_id, hash_to_verify)
+        except Exception as exc:  # noqa: BLE001
+            messages.error(request, "Error al verificar contraseña")
+            logger.exception("Error verifying password for %s", username)
+            return render(request, "login.html")
 
-                    try:
-                        # Suppress PasslibSecurityWarning for edge cases
-                        with warnings.catch_warnings():
-                            warnings.filterwarnings("ignore", category=PasslibSecurityWarning)
-                            # Pass the corrected hash to passlib
-                            verified = wp_pwd_context.verify(password, hash_to_verify)
+        if not verified:
+            messages.error(request, "Contraseña incorrecta")
+            logger.info("Invalid password for user %s", username)
+            return render(request, "login.html")
 
-                        if verified:
-                            request.session['user_authenticated'] = True
-                            request.session['ID'] = user_id
-                            # Set avatar_selected to False to trigger the selection page after login
-                            request.session['avatar_selected'] = False
-                            logger.info(f"User {username} (ID: {user_id}) authenticated successfully. Hash verified: '{hash_to_verify}'")
-                            return redirect('/')  # Redirect to the main page (which will then show avatar selection)
-                        else:
-                            messages.error(request, 'Contraseña incorrecta.')
-                            logger.warning(f"Password incorrect for user {username} (ID: {user_id}). Hash attempted: '{hash_to_verify}'")
+        # 4️⃣  Successful login – set session & redirect
+        request.session["user_authenticated"] = True
+        request.session["ID"] = user_id
+        request.session["avatar_selected"] = False  # force avatar picker next
+        logger.info("User %s authenticated successfully", username)
+        return redirect("/")
 
-                    except UnknownHashError:
-                        messages.error(request, 'Formato de contraseña no reconocido o no soportado.')
-                        logger.error(f"UnknownHashError for user {username} (ID: {user_id}). Hash attempted: '{hash_to_verify}'. Original DB hash: '{db_hash}'")
-                    except Exception as e:
-                        messages.error(request, f'Error al verificar contraseña: {type(e).__name__}')
-                        logger.error(f"Error verifying password for {username} (ID: {user_id}): {e}. Hash attempted: '{hash_to_verify}'", exc_info=True)
-                else:
-                    messages.error(request, 'Usuario no encontrado')
-                    logger.warning(f"Login attempt for non-existent user: {username}")
-
-        except DatabaseError as e:
-            messages.error(request, 'Error al conectar con la base de datos')
-            logger.error(f"Database error during login for {username}: {e}", exc_info=True)
-        except Exception as e:
-            messages.error(request, f'Ocurrió un error inesperado: {type(e).__name__}')
-            logger.error(f"Unexpected error during login for {username}: {e}", exc_info=True)
-
-        return render(request, 'login.html')
-
+    # ----------------------------- dispatch -------------------------------- #
     def dispatch(self, request, *args, **kwargs):
-        # ... (same as before) ...
-        if request.path.endswith('set_avatar/'):
+        if request.path.endswith("set_avatar/"):
             return self.set_avatar(request)
         return super().dispatch(request, *args, **kwargs)
 
+    # --------------------------- Avatar picker ----------------------------- #
     def set_avatar(self, request):
-        # ... (same as before) ...
-        if request.method == 'POST':
-            data = json.loads(request.body)
-            avatar = data.get('avatar')
-            if avatar:
-                request.session['avatar_selected'] = avatar
-                return JsonResponse({'status': 'success', 'message': 'Avatar configurado exitosamente.'})
-            return JsonResponse({'status': 'error', 'message': 'No se envió un avatar válido.'}, status=400)
-        return JsonResponse({'status': 'error', 'message': 'Método no permitido.'}, status=405)
+        if request.method != "POST":
+            return JsonResponse({"status": "error", "message": "Método no permitido."}, status=405)
+        try:
+            avatar = json.loads(request.body).get("avatar")
+        except json.JSONDecodeError:
+            avatar = None
+        if avatar:
+            request.session["avatar_selected"] = avatar
+            return JsonResponse({"status": "success", "message": "Avatar configurado exitosamente."})
+        return JsonResponse({"status": "error", "message": "No se envió un avatar válido."}, status=400)
 
 
+# --------------------------------------------------------------------------- #
+#  Logout helper
+# --------------------------------------------------------------------------- #
 def logout_view(request):
-    # Limpiar la sesión y redirigir al login
-    user_id = request.session.get('ID', 'Unknown')
+    user_id = request.session.get("ID", "Unknown")
     request.session.flush()
-    messages.success(request, 'Has cerrado sesión correctamente.')
-    logger.info(f"User ID {user_id} logged out.")
-    return redirect('/login/')
+    messages.success(request, "Has cerrado sesión correctamente.")
+    logger.info("User %s logged out", user_id)
+    return redirect("/login/")
