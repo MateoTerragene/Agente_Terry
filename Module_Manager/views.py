@@ -15,6 +15,7 @@ from django.views.decorators.csrf import csrf_exempt
 from .whatsapp_handler import WhatsAppHandler
 from django.http import JsonResponse, HttpResponse
 import re
+import bcrypt
 from .models import UserInteraction
 from dotenv import load_dotenv
 import os
@@ -464,70 +465,52 @@ class UserView(View):
     def post(self, request):
         username = request.POST.get('username')
         password = request.POST.get('password')
-        stored_hash = wp_pwd_context.hash(password)
-        print("----------------------------------")
-        print("pass:",password,"hashed:",stored_hash) 
-        print("--------------------------------------")
 
         try:
             with connections['Terragene_Users_Database'].cursor() as cursor:
-                cursor.execute("SELECT ID, user_pass FROM wp_users WHERE user_login=%s", [username])
+                cursor.execute(
+                    "SELECT ID, user_pass FROM wp_users WHERE user_login = %s",
+                    [username]
+                )
                 row = cursor.fetchone()
-                print("row: ",row)
-                print("--------------------")
 
-                if row:
-                    user_id, db_hash = row
-                    logger.info(f"Attempting login for user: {username}, User ID: {user_id}, Hash from DB: '{db_hash}'")
-
-                    # Default to the original hash, in case it's a standard format like phpass
-                    hash_to_verify = db_hash
-
-                    if db_hash and db_hash.startswith("$wp$"):
-                        potential_bcrypt_body = db_hash[4:]  # This gives '2y$10$...'
-                        reconstructed_hash = "$" + potential_bcrypt_body  # This gives '$2y$10$...'
-
-                        # Check if the reconstructed hash looks like a valid bcrypt hash
-                        if reconstructed_hash.startswith(("$2y$", "$2a$", "$2b$")):
-                            hash_to_verify = reconstructed_hash
-                            logger.warning(f"Reconstructed bcrypt hash for verification: '{hash_to_verify}'")
-                        else:
-                            # This case is unlikely given your error log, but it's good practice to log it.
-                            logger.warning(f"Hash for user {user_id} starts with '$wp$' but the remainder ('{potential_bcrypt_body}') does not form a standard bcrypt hash. Will attempt verification with original hash '{db_hash}'.")
-                    # --- END: FIX ---
-
-                    if not hash_to_verify:
-                        messages.error(request, 'Error de formato de contraseña en la base de datos.')
-                        logger.error(f"Empty hash after processing for user {user_id}. Original DB hash: '{db_hash}'")
-                        return render(request, 'login.html')
-
-                    try:
-                        # Suppress PasslibSecurityWarning for edge cases
-                        with warnings.catch_warnings():
-                            warnings.filterwarnings("ignore", category=PasslibSecurityWarning)
-                            # Pass the corrected hash to passlib
-                            verified = wp_pwd_context.verify(password, hash_to_verify)
-
-                        if verified:
-                            request.session['user_authenticated'] = True
-                            request.session['ID'] = user_id
-                            # Set avatar_selected to False to trigger the selection page after login
-                            request.session['avatar_selected'] = False
-                            logger.info(f"User {username} (ID: {user_id}) authenticated successfully. Hash verified: '{hash_to_verify}'")
-                            return redirect('/')  # Redirect to the main page (which will then show avatar selection)
-                        else:
-                            messages.error(request, 'Contraseña incorrecta.')
-                            logger.warning(f"Password incorrect for user {username} (ID: {user_id}). Hash attempted: '{hash_to_verify}'")
-
-                    except UnknownHashError:
-                        messages.error(request, 'Formato de contraseña no reconocido o no soportado.')
-                        logger.error(f"UnknownHashError for user {username} (ID: {user_id}). Hash attempted: '{hash_to_verify}'. Original DB hash: '{db_hash}'")
-                    except Exception as e:
-                        messages.error(request, f'Error al verificar contraseña: {type(e).__name__}')
-                        logger.error(f"Error verifying password for {username} (ID: {user_id}): {e}. Hash attempted: '{hash_to_verify}'", exc_info=True)
-                else:
+                if not row:
                     messages.error(request, 'Usuario no encontrado')
                     logger.warning(f"Login attempt for non-existent user: {username}")
+                    return render(request, 'login.html')
+
+                user_id, db_hash = row
+                logger.info(f"Attempting login for user: {username} (ID: {user_id})")
+
+                # 1) Strip WordPress prefix
+                if db_hash.startswith("$wp$"):
+                    raw_hash = db_hash[4:]
+                else:
+                    raw_hash = db_hash
+
+                # 2) Ensure leading '$'
+                if not raw_hash.startswith("$"):
+                    raw_hash = "$" + raw_hash
+
+                # 3) Normalize PHP’s $2y$ → $2b$
+                if raw_hash.startswith("$2y$"):
+                    raw_hash = "$2b$" + raw_hash[4:]
+
+                # 4) Verify with bcrypt
+                pw_bytes   = password.encode("utf-8")
+                hash_bytes = raw_hash.encode("utf-8")
+                if bcrypt.checkpw(pw_bytes, hash_bytes):
+                    # ✅ Authenticated
+                    request.session['user_authenticated'] = True
+                    request.session['ID']                = user_id
+                    request.session['avatar_selected']   = False
+                    logger.info(f"User {username} (ID: {user_id}) authenticated via bcrypt.")
+                    return redirect('/')
+                else:
+                    # ❌ Wrong password
+                    messages.error(request, 'Contraseña incorrecta.')
+                    logger.warning(f"bcrypt.checkpw failed for user {username} (ID: {user_id}).")
+                    return render(request, 'login.html')
 
         except DatabaseError as e:
             messages.error(request, 'Error al conectar con la base de datos')
@@ -536,6 +519,7 @@ class UserView(View):
             messages.error(request, f'Ocurrió un error inesperado: {type(e).__name__}')
             logger.error(f"Unexpected error during login for {username}: {e}", exc_info=True)
 
+        # Fallback for any unhandled path
         return render(request, 'login.html')
 
     def dispatch(self, request, *args, **kwargs):
