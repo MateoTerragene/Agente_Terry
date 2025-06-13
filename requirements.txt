@@ -16,9 +16,8 @@ pandas>=1.3.0
 openpyxl==3.1.2
 pydub
 boto3
-bcrypt
 passlib
-pydub
+bcrypt
 pylibdmtx
 httpx==0.23.3 
 django-cors-headers==3.14.0
