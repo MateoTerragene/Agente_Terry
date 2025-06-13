@@ -480,12 +480,13 @@ class UserView(View):
                     hash_to_verify = db_hash
                     
                     if db_hash and db_hash.startswith("$wp$"):
+                        logger.warning("testeando4")
                         potential_bcrypt_body = db_hash[4:] 
                         reconstructed_hash = "$" + potential_bcrypt_body
 
                         if reconstructed_hash.startswith(("$2y$", "$2a$", "$2b$")):
                             hash_to_verify = reconstructed_hash
-                            logger.debug(f"Reconstructed bcrypt hash for verification: '{hash_to_verify}'")
+                            logger.warning(f"Reconstructed bcrypt hash for verification: '{hash_to_verify}'")
                         else:
                             # This case is unlikely given your error log, but it's good practice to log it.
                             logger.warning(f"Hash for user {user_id} starts with '$wp$' but the remainder ('{potential_bcrypt_body}') does not form a standard bcrypt hash. Will attempt verification with original hash '{db_hash}'.")
@@ -501,7 +502,7 @@ class UserView(View):
                         with warnings.catch_warnings():
                             warnings.filterwarnings("ignore", category=PasslibSecurityWarning)
                             # Pass the corrected hash to passlib
-                            verified = wp_pwd_context.verify(password, hash_to_verify)
+                            verified = wp_pwd_context.verify(password, db_hash)
 
                         if verified:
                             request.session['user_authenticated'] = True
