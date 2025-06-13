@@ -19,6 +19,7 @@ import re
 from .models import UserInteraction
 from dotenv import load_dotenv
 import os
+from passlib.hash import bcrypt, phpass
 from threading import Thread
 import time
 
@@ -469,48 +470,69 @@ class UserView(View):
 
                 if not row:
                     messages.error(request, 'Usuario no encontrado.')
-                    logger.warning(f"Login attempt for non-existent user: {username!r}")
+                    logger.warning(f"Login attempt for non-existent user={username!r}")
                     return render(request, 'login.html')
 
                 user_id, db_hash = row
-                logger.info(
-                    f"Attempting login for user={username!r}, id={user_id}, raw_hash={db_hash!r}"
-                )
+                logger.debug(f"Raw DB hash repr: {db_hash!r} (len={len(db_hash) if db_hash else 0})")
+
+                # Normalize and check presence
+                db_hash = (db_hash or '').strip()
+                logger.debug(f"Stripped DB hash repr: {db_hash!r} (len={len(db_hash)})")
 
                 if not db_hash:
                     messages.error(request, 'Error de formato de contraseña en la base de datos.')
-                    logger.error(f"Empty hash for user {username!r} (ID {user_id})")
+                    logger.error(f"Empty hash for user={username!r}, id={user_id}")
                     return render(request, 'login.html')
 
-                db_hash = db_hash.strip()
-                try:
-                    if check_password(password, db_hash):
-                        request.session['user_authenticated'] = True
-                        request.session['ID'] = user_id
-                        request.session['avatar_selected'] = False
-                        logger.info(
-                            f"User {username!r} (ID {user_id}) authenticated successfully."
+                # Choose hasher
+                if db_hash.startswith('$P$') or db_hash.startswith('$H$'):
+                    logger.info(f"Using phpass hasher for user={username!r} (ID {user_id})")
+                    try:
+                        verified = phpass.verify(password, db_hash)
+                    except Exception as e:
+                        messages.error(request, 'Error al verificar contraseña.')
+                        logger.error(
+                            f"Exception verifying phpass for user={username!r}, id={user_id}: {e}",
+                            exc_info=True
                         )
-                        return redirect('/')
-                    else:
-                        messages.error(request, 'Contraseña incorrecta.')
-                        logger.warning(
-                            f"Password mismatch for user={username!r}, id={user_id}"
+                        return render(request, 'login.html')
+                else:
+                    # Reconstruct a proper bcrypt hash
+                    h = db_hash
+                    if h.startswith('$wp$'):
+                        h = '$' + h[4:]
+                    # Normalize $2y$→$2b$ if your Passlib version needs it
+                    if h.startswith('$2y$'):
+                        h = '$2b$' + h[4:]
+                    logger.debug(f"Bcrypt hash for verification: {h!r} (len={len(h)})")
+                    try:
+                        verified = bcrypt.verify(password, h)
+                    except Exception as e:
+                        messages.error(request, 'Error al verificar contraseña.')
+                        logger.error(
+                            f"Exception verifying bcrypt for user={username!r}, id={user_id}: {e}",
+                            exc_info=True
                         )
+                        return render(request, 'login.html')
 
-                except ValueError as e:
-                    # check_password will raise ValueError if hash algorithm is unrecognized
-                    messages.error(request, 'Formato de contraseña no reconocido o no soportado.')
-                    logger.error(
-                        f"Unrecognized hash format for user={username!r}, id={user_id}: {e}"
-                    )
+                # Final decision
+                if verified:
+                    request.session['user_authenticated'] = True
+                    request.session['ID'] = user_id
+                    request.session['avatar_selected'] = False
+                    logger.info(f"User={username!r} (ID {user_id}) authenticated successfully.")
+                    return redirect('/')
+                else:
+                    messages.error(request, 'Contraseña incorrecta.')
+                    logger.warning(f"Password mismatch for user={username!r}, id={user_id}")
 
         except DatabaseError as e:
             messages.error(request, 'Error al conectar con la base de datos.')
-            logger.error(f"Database error during login for {username!r}: {e}", exc_info=True)
+            logger.error(f"Database error for user={username!r}: {e}", exc_info=True)
         except Exception as e:
             messages.error(request, f'Ocurrió un error inesperado: {type(e).__name__}')
-            logger.error(f"Unexpected error during login for {username!r}: {e}", exc_info=True)
+            logger.error(f"Unexpected error for user={username!r}: {e}", exc_info=True)
 
         return render(request, 'login.html')
 
