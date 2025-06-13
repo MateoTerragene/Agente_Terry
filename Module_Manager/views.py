@@ -465,7 +465,9 @@ class UserView(View):
         username = request.POST.get('username')
         password = request.POST.get('password')
         stored_hash = wp_pwd_context.hash(password)
-        logger.warning("pass:",password,"hashed:",stored_hash) 
+        print("----------------------------------")
+        print("pass:",password,"hashed:",stored_hash) 
+        print("--------------------------------------")
 
         try:
             with connections['Terragene_Users_Database'].cursor() as cursor:
