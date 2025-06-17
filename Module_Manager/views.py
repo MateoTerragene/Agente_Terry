@@ -5,7 +5,7 @@ from django.shortcuts import render, redirect
 from django.views import View
 from Module_Manager.web_handler import WebHandler
 from passlib.context import CryptContext # IMPORT THIS
-from passlib.exc import UnknownHashError, PasslibSecurityWarning # For more specific error handling
+from passlib.exc import UnknownHashError, PasslibSecurityWarning
 from django.contrib.auth.hashers import check_password
 import warnings # To catch PasslibSecurityWarning
 from django.contrib import messages
@@ -35,8 +35,6 @@ def convertir_enlaces(texto):
     texto_converted = markdown_link_regex.sub(r'<a href="\2" target="_blank">\1</a>', texto)
     
     return texto_converted
-
-
 
 @method_decorator(csrf_exempt, name='dispatch')
 class ClassifyQueryView(View):
@@ -431,10 +429,6 @@ def process_message(changes):
     else:
         print(f"Unhandled message type: {message_type}")
 
-wp_pwd_context = CryptContext(
-    schemes=["bcrypt", "phpass"], # Schemes to try
-    deprecated="auto" # Auto-handle deprecated hash versions
-)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class UserView(View):
@@ -455,85 +449,79 @@ class UserView(View):
             'user_id': user_id,
             'avatar_selected': avatar_selected
         })
-
+        
     def post(self, request):
         username = request.POST.get('username', '').strip()
         password = request.POST.get('password', '')
 
+        if not username or not password:
+            messages.error(request, 'Por favor, ingrese usuario y contraseña.')
+            return render(request, 'login.html')
+
+        # This context will handle both old PHPass ($P$) and new Bcrypt ($wp$2y$) WordPress hashes.
+        pwd_context = CryptContext(schemes=["phpass", "bcrypt"], deprecated="auto")
+
         try:
             with connections['Terragene_Users_Database'].cursor() as cursor:
-                cursor.execute("SELECT ID, user_pass FROM wp_users")   # <-- no WHERE clause
-                rows = cursor.fetchall()
-                for user_id, db_hash in rows:
-                    logger.warning(f"User ID={user_id!r}, hash={db_hash!r}")
+                # Fetch the specific user by their login name or email.
+                # WordPress allows login using either.
+                cursor.execute(
+                    "SELECT ID, user_pass, user_login FROM wp_users WHERE user_login = %s OR user_email = %s",
+                    [username, username]
+                )
+                user_data = cursor.fetchone()
 
-                if not row:
-                    messages.error(request, 'Usuario no encontrado.')
-                    logger.warning(f"Login attempt for non-existent user={username!r}")
-                    return render(request, 'login.html')
+            if not user_data:
+                messages.error(request, 'Usuario o contraseña incorrectos.')
+                logger.warning(f"Login attempt failed for non-existent user: {username!r}")
+                return render(request, 'login.html')
 
-                user_id, db_hash = row
-                logger.debug(f"Raw DB hash repr: {db_hash!r} (len={len(db_hash) if db_hash else 0})")
+            user_id, db_hash, user_login_from_db = user_data
+            verified = False
 
-                # Normalize and check presence
-                db_hash = (db_hash or '').strip()
-                logger.debug(f"Stripped DB hash repr: {db_hash!r} (len={len(db_hash)})")
+            # The WordPress password hash can have different formats. Passlib is designed to handle this.
+            # The hash in the DB might have a custom '$wp$' prefix for bcrypt.
+            # We replace it with a standard '$' to ensure passlib's bcrypt handler recognizes it.
+            actual_hash_to_check = db_hash
+            if db_hash.startswith('$wp$'):
+                actual_hash_to_check = db_hash.replace('$wp$', '$', 1)
 
-                if not db_hash:
-                    messages.error(request, 'Error de formato de contraseña en la base de datos.')
-                    logger.error(f"Empty hash for user={username!r}, id={user_id}")
-                    return render(request, 'login.html')
-
-                # Choose hasher
-                if db_hash.startswith('$P$') or db_hash.startswith('$H$'):
-                    logger.info(f"Using phpass hasher for user={username!r} (ID {user_id})")
-                    try:
-                        verified = phpass.verify(password, db_hash)
-                    except Exception as e:
-                        messages.error(request, 'Error al verificar contraseña.')
-                        logger.error(
-                            f"Exception verifying phpass for user={username!r}, id={user_id}: {e}",
-                            exc_info=True
+            try:
+                # Use a warning catcher to log potential security issues,
+                # e.g., if the hash uses a weak or deprecated algorithm.
+                with warnings.catch_warnings(record=True) as w:
+                    warnings.simplefilter("always", PasslibSecurityWarning)
+                    verified = pwd_context.verify(password, actual_hash_to_check)
+                    if w:
+                        logger.warning(
+                            f"Passlib security warning for user ID {user_id}: {w[-1].message}"
                         )
-                        return render(request, 'login.html')
-                else:
-                    # Reconstruct a proper bcrypt hash
-                    h = db_hash
-                    if h.startswith('$wp$'):
-                        h = '$' + h[4:]
-                    # Normalize $2y$→$2b$ if your Passlib version needs it
-                    if h.startswith('$2y$'):
-                        h = '$2b$' + h[4:]
-                    logger.debug(f"Bcrypt hash for verification: {h!r} (len={len(h)})")
-                    try:
-                        verified = bcrypt.verify(password, h)
-                    except Exception as e:
-                        messages.error(request, 'Error al verificar contraseña.')
-                        logger.error(
-                            f"Exception verifying bcrypt for user={username!r}, id={user_id}: {e}",
-                            exc_info=True
-                        )
-                        return render(request, 'login.html')
 
-                # Final decision
-                if verified:
-                    request.session['user_authenticated'] = True
-                    request.session['ID'] = user_id
-                    request.session['avatar_selected'] = False
-                    logger.info(f"User={username!r} (ID {user_id}) authenticated successfully.")
-                    return redirect('/')
-                else:
-                    messages.error(request, 'Contraseña incorrecta.')
-                    logger.warning(f"Password mismatch for user={username!r}, id={user_id}")
+            except UnknownHashError:
+                # This error means passlib couldn't identify the hash format.
+                logger.error(f"Unknown password hash format for user ID {user_id}: {db_hash!r}")
+                # The login will fail securely as 'verified' remains False.
+            
+            # Now, based on verification, proceed with the login or show an error.
+            if verified:
+                request.session['user_authenticated'] = True
+                request.session['ID'] = user_id
+                request.session['avatar_selected'] = False  # Force avatar selection after login
+                logger.info(f"User={user_login_from_db!r} (ID {user_id}) authenticated successfully.")
+                return redirect('/')  # Redirect to the main view, which will handle avatar/chat rendering
+            else:
+                messages.error(request, 'Usuario o contraseña incorrectos.')
+                logger.warning(f"Password mismatch for user={user_login_from_db!r} (ID {user_id})")
+                return render(request, 'login.html')
 
         except DatabaseError as e:
-            messages.error(request, 'Error al conectar con la base de datos.')
-            logger.error(f"Database error for user={username!r}: {e}", exc_info=True)
+            logger.error(f"Database error during login for user {username!r}: {e}")
+            messages.error(request, 'Error de base de datos. Por favor, intente de nuevo más tarde.')
+            return render(request, 'login.html')
         except Exception as e:
-            messages.error(request, f'Ocurrió un error inesperado: {type(e).__name__}')
-            logger.error(f"Unexpected error for user={username!r}: {e}", exc_info=True)
-
-        return render(request, 'login.html')
+            logger.error(f"An unexpected error occurred during login for user {username!r}: {e}")
+            messages.error(request, 'Ocurrió un error inesperado. Por favor, intente de nuevo más tarde.')
+            return render(request, 'login.html')
 
     def dispatch(self, request, *args, **kwargs):
         # ... (same as before) ...
