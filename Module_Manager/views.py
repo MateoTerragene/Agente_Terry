@@ -477,7 +477,7 @@ class UserView(View):
             print("contraseña hasheada:", pwd_ctx.hash(password), "identificacion:", pwd_ctx.identify(db_hash[3:]))
             print("___________________________________")
             try:
-                verified = pwd_ctx.verify(password, db_hash)
+                verified = pwd_ctx.verify(password, db_hash[3:])
             except UnknownHashError:
                 # unsupported hash format
                 logger.error(f"Unknown hash format for user_id={user_id}: {db_hash!r}")
