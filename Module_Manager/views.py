@@ -475,6 +475,7 @@ class UserView(View):
             pwd_ctx = CryptContext(schemes=["phpass", "bcrypt"], deprecated="auto")
             print("________________________________")
             print("contraseña hasheada:", pwd_ctx.hash(password), "identificacion:", pwd_ctx.identify(db_hash[3:]))
+            print("identificando pass hasheada nueva:",pwd_ctx.identify(pwd_ctx.hash(password)))
             print("___________________________________")
             try:
                 verified = pwd_ctx.verify(password, db_hash[3:])
