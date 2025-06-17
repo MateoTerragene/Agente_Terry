@@ -6,8 +6,8 @@ from django.views import View
 from Module_Manager.web_handler import WebHandler
 from passlib.apps import wordpress_context
 from passlib.exc import UnknownHashError, PasslibSecurityWarning
-from django.contrib.auth.hashers import check_password
 import warnings
+from passlib.context import CryptContext
 from django.contrib import messages
 from django.db import connections, DatabaseError
 from django.utils.decorators import method_decorator
@@ -453,61 +453,48 @@ class UserView(View):
         username = request.POST.get('username', '').strip()
         password = request.POST.get('password', '')
 
-        if not username or not password:
-            messages.error(request, 'Por favor, ingrese usuario y contraseña.')
-            return render(request, 'login.html')
-
-        # This context is specifically designed for WordPress hashes and handles all quirks.
-        # REMOVED: pwd_context = CryptContext(schemes=["phpass", "bcrypt"], deprecated="auto")
-        
         try:
             with connections['Terragene_Users_Database'].cursor() as cursor:
+                # only fetch the one user we're trying to log in
                 cursor.execute(
-                    "SELECT ID, user_pass, user_login FROM wp_users WHERE user_login = %s OR user_email = %s",
-                    [username, username]
+                    "SELECT ID, user_pass FROM wp_users WHERE user_login = %s",
+                    [username]
                 )
-                user_data = cursor.fetchone()
+                row = cursor.fetchone()
 
-            if not user_data:
-                # ... (no change here)
-                return render(request, 'login.html')
+                if not row:
+                    messages.error(request, 'Usuario no encontrado.')
+                    logger.warning(f"Login attempt for unknown user={username!r}")
+                    return render(request, 'login.html')
 
-            user_id, db_hash, user_login_from_db = user_data
-            verified = False
+                user_id, db_hash = row
+                logger.debug(f"Verifying password for user_id={user_id}, hash={db_hash!r}")
 
-            # NO LONGER NEEDED: The wordpress_context handles the '$wp$' prefix automatically.
-            # actual_hash_to_check = db_hash
-            # if db_hash.startswith('$wp$'):
-            #    actual_hash_to_check = db_hash.replace('$wp$', '$', 1)
-
+            # set up passlib to handle both phpass (WordPress portable) and bcrypt
+            warnings.filterwarnings('ignore', category=PasslibSecurityWarning)
+            pwd_ctx = CryptContext(schemes=["phpass", "bcrypt"], deprecated="auto")
             try:
-                # Use the official wordpress_context directly with the raw hash from the DB
-                verified = wordpress_context.verify(password, db_hash) # <--- THE KEY CHANGE
-
+                verified = pwd_ctx.verify(password, db_hash)
             except UnknownHashError:
-                logger.error(f"Unknown password hash format for user ID {user_id}: {db_hash!r}")
+                # unsupported hash format
+                logger.error(f"Unknown hash format for user_id={user_id}: {db_hash!r}")
                 verified = False
-            
-            # Now, based on verification, proceed with the login or show an error.
+
             if verified:
                 request.session['user_authenticated'] = True
                 request.session['ID'] = user_id
-                request.session['avatar_selected'] = False  # Force avatar selection after login
-                logger.info(f"User={user_login_from_db!r} (ID {user_id}) authenticated successfully.")
-                return redirect('/')  # Redirect to the main view, which will handle avatar/chat rendering
+                request.session['avatar_selected'] = False
+                logger.info(f"User={username!r} (ID {user_id}) authenticated successfully.")
+                return redirect('/')
             else:
-                messages.error(request, 'Usuario o contraseña incorrectos.')
-                logger.warning(f"Password mismatch for user={user_login_from_db!r} (ID {user_id})")
-                return render(request, 'login.html')
+                messages.error(request, 'Contraseña incorrecta.')
+                logger.warning(f"Password mismatch for user={username!r}, id={user_id}")
 
         except DatabaseError as e:
-            logger.error(f"Database error during login for user {username!r}: {e}")
-            messages.error(request, 'Error de base de datos. Por favor, intente de nuevo más tarde.')
-            return render(request, 'login.html')
-        except Exception as e:
-            logger.error(f"An unexpected error occurred during login for user {username!r}: {e}")
-            messages.error(request, 'Ocurrió un error inesperado. Por favor, intente de nuevo más tarde.')
-            return render(request, 'login.html')
+            logger.error(f"Database error during login for user={username!r}: {e}")
+            messages.error(request, 'Error interno. Intente más tarde.')
+
+        return render(request, 'login.html')
 
     def dispatch(self, request, *args, **kwargs):
         # ... (same as before) ...
