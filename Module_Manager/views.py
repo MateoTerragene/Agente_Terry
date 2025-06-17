@@ -8,6 +8,8 @@ from passlib.exc import UnknownHashError, PasslibSecurityWarning
 import warnings
 from passlib.context import CryptContext
 from django.contrib import messages
+import hashlib
+import bcrypt
 from django.db import connections, DatabaseError
 from django.utils.decorators import method_decorator
 from Module_Manager.thread_manager import thread_manager_instance
@@ -468,22 +470,32 @@ class UserView(View):
                     return render(request, 'login.html')
 
                 user_id, db_hash = row
-                logger.debug(f"Verifying password for user_id={user_id}, hash={db_hash!r}")
 
-            # set up passlib to handle both phpass (WordPress portable) and bcrypt
-            warnings.filterwarnings('ignore', category=PasslibSecurityWarning)
-            pwd_ctx = CryptContext(schemes=["phpass", "bcrypt"], deprecated="auto")
-            print("________________________________")
-            print("contraseña hasheada:", pwd_ctx.hash(password,"bcrypt"))
-            print(db_hash)
-            print(db_hash[3:], "identificacion:", pwd_ctx.identify(db_hash[3:]))
-            print("___________________________________")
-            try:
-                verified = pwd_ctx.verify(password, db_hash[3:])
-            except UnknownHashError:
-                # unsupported hash format
-                logger.error(f"Unknown hash format for user_id={user_id}: {db_hash!r}")
+                # Set up phpass context only for old hashes
+                warnings.filterwarnings('ignore', category=PasslibSecurityWarning)
+                pwd_ctx = CryptContext(schemes=["phpass"], deprecated="auto")
+
                 verified = False
+
+                if db_hash.startswith("$wp$2y$") or db_hash.startswith("$wp$2b$"):
+                    # New WP 6.8+ SHA-384 pre-hash + bcrypt
+                    # Strip the '$wp$' prefix (4 chars) and encode to bytes
+                    bcrypt_hash = db_hash[4:].encode('utf-8')
+                    # Compute raw SHA-384 digest of the plain password
+                    prehashed = hashlib.sha384(password.encode('utf-8')).digest()
+                    # Verify prehashed against bcrypt hash
+                    verified = bcrypt.checkpw(prehashed, bcrypt_hash)
+
+                elif db_hash.startswith("$2y$") or db_hash.startswith("$2b$"):
+                    # Legacy “plain” bcrypt (no SHA-384 prehash)
+                    verified = bcrypt.checkpw(password.encode('utf-8'), db_hash.encode('utf-8'))
+
+                elif db_hash.startswith("$P$"):
+                    # Classic phpass portable hashes
+                    try:
+                        verified = pwd_ctx.verify(password, db_hash)
+                    except UnknownHashError:
+                        verified = False
 
             if verified:
                 request.session['user_authenticated'] = True
