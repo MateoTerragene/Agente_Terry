@@ -4,7 +4,6 @@ import requests
 from django.shortcuts import render, redirect
 from django.views import View
 from Module_Manager.web_handler import WebHandler
-from passlib.apps import wordpress_context
 from passlib.exc import UnknownHashError, PasslibSecurityWarning
 import warnings
 from passlib.context import CryptContext
