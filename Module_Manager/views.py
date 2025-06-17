@@ -482,9 +482,18 @@ class UserView(View):
             # The WordPress password hash can have different formats. Passlib is designed to handle this.
             # The hash in the DB might have a custom '$wp$' prefix for bcrypt.
             # We replace it with a standard '$' to ensure passlib's bcrypt handler recognizes it.
+            # --- ADD THESE DIAGNOSTIC LINES ---
+            logger.warning(f"--- STARTING PASSWORD DIAGNOSTICS FOR USER: {user_login_from_db} ---")
+            logger.warning(f"RAW Hash from DB for user ID {user_id}: '{db_hash}'")
+            # For security, NEVER log the full password. Logging its length is a safe way to spot issues like whitespace.
+            logger.warning(f"Length of password received from form: {len(password)}")
+
             actual_hash_to_check = db_hash
             if db_hash.startswith('$wp$'):
                 actual_hash_to_check = db_hash.replace('$wp$', '$', 1)
+
+            logger.warning(f"Hash being sent to passlib for verification: '{actual_hash_to_check}'")
+            # --- END OF DIAGNOSTIC LINES ---
 
             try:
                 # Use a warning catcher to log potential security issues,
