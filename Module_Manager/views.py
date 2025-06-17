@@ -451,6 +451,7 @@ class UserView(View):
     def post(self, request):
         username = request.POST.get('username', '').strip()
         password = request.POST.get('password', '')
+        print()
 
         try:
             with connections['Terragene_Users_Database'].cursor() as cursor:
@@ -472,6 +473,9 @@ class UserView(View):
             # set up passlib to handle both phpass (WordPress portable) and bcrypt
             warnings.filterwarnings('ignore', category=PasslibSecurityWarning)
             pwd_ctx = CryptContext(schemes=["phpass", "bcrypt"], deprecated="auto")
+            print("________________________________")
+            print("contraseña hasheada:", pwd_ctx.hash(password), "identificacion:", pwd_ctx.identify(db_hash))
+            print("___________________________________")
             try:
                 verified = pwd_ctx.verify(password, db_hash)
             except UnknownHashError:
