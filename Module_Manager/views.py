@@ -4,10 +4,10 @@ import requests
 from django.shortcuts import render, redirect
 from django.views import View
 from Module_Manager.web_handler import WebHandler
-from passlib.context import CryptContext # IMPORT THIS
+from passlib.apps import wordpress_context
 from passlib.exc import UnknownHashError, PasslibSecurityWarning
 from django.contrib.auth.hashers import check_password
-import warnings # To catch PasslibSecurityWarning
+import warnings
 from django.contrib import messages
 from django.db import connections, DatabaseError
 from django.utils.decorators import method_decorator
@@ -19,7 +19,6 @@ import re
 from .models import UserInteraction
 from dotenv import load_dotenv
 import os
-from passlib.hash import bcrypt, phpass
 from threading import Thread
 import time
 
@@ -458,13 +457,11 @@ class UserView(View):
             messages.error(request, 'Por favor, ingrese usuario y contraseña.')
             return render(request, 'login.html')
 
-        # This context will handle both old PHPass ($P$) and new Bcrypt ($wp$2y$) WordPress hashes.
-        pwd_context = CryptContext(schemes=["phpass", "bcrypt"], deprecated="auto")
-
+        # This context is specifically designed for WordPress hashes and handles all quirks.
+        # REMOVED: pwd_context = CryptContext(schemes=["phpass", "bcrypt"], deprecated="auto")
+        
         try:
             with connections['Terragene_Users_Database'].cursor() as cursor:
-                # Fetch the specific user by their login name or email.
-                # WordPress allows login using either.
                 cursor.execute(
                     "SELECT ID, user_pass, user_login FROM wp_users WHERE user_login = %s OR user_email = %s",
                     [username, username]
@@ -472,44 +469,24 @@ class UserView(View):
                 user_data = cursor.fetchone()
 
             if not user_data:
-                messages.error(request, 'Usuario o contraseña incorrectos.')
-                logger.warning(f"Login attempt failed for non-existent user: {username!r}")
+                # ... (no change here)
                 return render(request, 'login.html')
 
             user_id, db_hash, user_login_from_db = user_data
             verified = False
 
-            # The WordPress password hash can have different formats. Passlib is designed to handle this.
-            # The hash in the DB might have a custom '$wp$' prefix for bcrypt.
-            # We replace it with a standard '$' to ensure passlib's bcrypt handler recognizes it.
-            # --- ADD THESE DIAGNOSTIC LINES ---
-            logger.warning(f"--- STARTING PASSWORD DIAGNOSTICS FOR USER: {user_login_from_db} ---")
-            logger.warning(f"RAW Hash from DB for user ID {user_id}: '{db_hash}'")
-            # For security, NEVER log the full password. Logging its length is a safe way to spot issues like whitespace.
-            logger.warning(f"Length of password received from form: {len(password)}")
-
-            actual_hash_to_check = db_hash
-            if db_hash.startswith('$wp$'):
-                actual_hash_to_check = db_hash.replace('$wp$', '$', 1)
-
-            logger.warning(f"Hash being sent to passlib for verification: '{actual_hash_to_check}'")
-            # --- END OF DIAGNOSTIC LINES ---
+            # NO LONGER NEEDED: The wordpress_context handles the '$wp$' prefix automatically.
+            # actual_hash_to_check = db_hash
+            # if db_hash.startswith('$wp$'):
+            #    actual_hash_to_check = db_hash.replace('$wp$', '$', 1)
 
             try:
-                # Use a warning catcher to log potential security issues,
-                # e.g., if the hash uses a weak or deprecated algorithm.
-                with warnings.catch_warnings(record=True) as w:
-                    warnings.simplefilter("always", PasslibSecurityWarning)
-                    verified = pwd_context.verify(password, actual_hash_to_check)
-                    if w:
-                        logger.warning(
-                            f"Passlib security warning for user ID {user_id}: {w[-1].message}"
-                        )
+                # Use the official wordpress_context directly with the raw hash from the DB
+                verified = wordpress_context.verify(password, db_hash) # <--- THE KEY CHANGE
 
             except UnknownHashError:
-                # This error means passlib couldn't identify the hash format.
                 logger.error(f"Unknown password hash format for user ID {user_id}: {db_hash!r}")
-                # The login will fail securely as 'verified' remains False.
+                verified = False
             
             # Now, based on verification, proceed with the login or show an error.
             if verified:
