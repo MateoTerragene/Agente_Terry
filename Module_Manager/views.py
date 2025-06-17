@@ -474,7 +474,7 @@ class UserView(View):
             warnings.filterwarnings('ignore', category=PasslibSecurityWarning)
             pwd_ctx = CryptContext(schemes=["phpass", "bcrypt"], deprecated="auto")
             print("________________________________")
-            print("contraseña hasheada:", pwd_ctx.hash(password), "identificacion:", pwd_ctx.identify(db_hash))
+            print("contraseña hasheada:", pwd_ctx.hash(password), "identificacion:", pwd_ctx.identify(db_hash[3:]))
             print("___________________________________")
             try:
                 verified = pwd_ctx.verify(password, db_hash)
