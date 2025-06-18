@@ -6,6 +6,8 @@ from django.views import View
 from Module_Manager.web_handler import WebHandler
 from django.contrib import messages
 from passlib.hash import phpass, bcrypt
+import hashlib
+import base64
 from django.db import connections, DatabaseError
 from django.utils.decorators import method_decorator
 from Module_Manager.thread_manager import thread_manager_instance
@@ -465,10 +467,14 @@ class UserView(View):
                 print("hashh:", password_hash)
 
                 if password_hash.startswith('$wp$'):
-                    # es un bcrypt con prefijo '$wp$'
-                    # lo cortamos y usamos bcrypt para verificar
-                    bcrypt_hash = password_hash[len('$wp'):]
-                    if bcrypt.verify(password, bcrypt_hash):
+                    # 1) regeneramos el hash bcrypt “puro” quitando el prefijo wp
+                    bcrypt_hash = password_hash.replace('$wp$', '$', 1)
+                    # 2) pre-haseamos con SHA-384 y codificamos en base64
+                    pre_hash = base64.b64encode(
+                        hashlib.sha384(password.encode('utf-8')).digest()
+                    ).decode('utf-8')
+                    # 3) verificamos el pre_hash contra el bcrypt
+                    if bcrypt.verify(pre_hash, bcrypt_hash):
                         request.session['user_authenticated'] = True
                         request.session['ID'] = user_id
                         request.session['avatar_selected'] = False
