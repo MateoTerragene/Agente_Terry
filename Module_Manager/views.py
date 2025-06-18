@@ -4,12 +4,8 @@ import requests
 from django.shortcuts import render, redirect
 from django.views import View
 from Module_Manager.web_handler import WebHandler
-from passlib.exc import UnknownHashError, PasslibSecurityWarning
-import warnings
-from passlib.context import CryptContext
 from django.contrib import messages
-import hashlib
-import bcrypt
+from passlib.hash import phpass
 from django.db import connections, DatabaseError
 from django.utils.decorators import method_decorator
 from Module_Manager.thread_manager import thread_manager_instance
@@ -452,11 +448,11 @@ class UserView(View):
         
     def post(self, request):
         # Maneja el formulario de inicio de sesión
-        username = request.POST.get('username')
+        username = request.POST.get('username').strip()
         password = request.POST.get('password')
 
         try:
-            with connections['uvcindic_terragene'].cursor() as cursor:
+            with connections['Terragene_Users_Database'].cursor() as cursor:
                 cursor.execute("SELECT ID, user_pass FROM wp_users WHERE user_login=%s", [username])
                 row = cursor.fetchone()
 
