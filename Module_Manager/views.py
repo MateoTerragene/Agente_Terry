@@ -462,6 +462,7 @@ class UserView(View):
                 messages.error(request, 'Usuario no encontrado')
             else:
                 user_id, password_hash = row
+                print("hashh:", password_hash)
 
                 if password_hash.startswith('$wp$'):
                     # es un bcrypt con prefijo '$wp$'
