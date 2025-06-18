@@ -451,66 +451,32 @@ class UserView(View):
         })
         
     def post(self, request):
-        username = request.POST.get('username', '').strip()
-        password = request.POST.get('password', '')
-        print()
+        # Maneja el formulario de inicio de sesión
+        username = request.POST.get('username')
+        password = request.POST.get('password')
 
         try:
-            with connections['Terragene_Users_Database'].cursor() as cursor:
-                # only fetch the one user we're trying to log in
-                cursor.execute(
-                    "SELECT ID, user_pass FROM wp_users WHERE user_login = %s",
-                    [username]
-                )
+            with connections['uvcindic_terragene'].cursor() as cursor:
+                cursor.execute("SELECT ID, user_pass FROM wp_users WHERE user_login=%s", [username])
                 row = cursor.fetchone()
 
-                if not row:
-                    messages.error(request, 'Usuario no encontrado.')
-                    logger.warning(f"Login attempt for unknown user={username!r}")
-                    return render(request, 'login.html')
-
-                user_id, db_hash = row
-
-                # Set up phpass context only for old hashes
-                warnings.filterwarnings('ignore', category=PasslibSecurityWarning)
-                pwd_ctx = CryptContext(schemes=["phpass"], deprecated="auto")
-
-                verified = False
-
-                if db_hash.startswith("$wp$2y$") or db_hash.startswith("$wp$2b$"):
-                    # New WP 6.8+ SHA-384 pre-hash + bcrypt
-                    # Strip the '$wp$' prefix (4 chars) and encode to bytes
-                    bcrypt_hash = db_hash[4:].encode('utf-8')
-                    # Compute raw SHA-384 digest of the plain password
-                    prehashed = hashlib.sha384(password.encode('utf-8')).digest()
-                    # Verify prehashed against bcrypt hash
-                    verified = bcrypt.checkpw(prehashed, bcrypt_hash)
-
-                elif db_hash.startswith("$2y$") or db_hash.startswith("$2b$"):
-                    # Legacy “plain” bcrypt (no SHA-384 prehash)
-                    verified = bcrypt.checkpw(password.encode('utf-8'), db_hash.encode('utf-8'))
-
-                elif db_hash.startswith("$P$"):
-                    # Classic phpass portable hashes
-                    try:
-                        verified = pwd_ctx.verify(password, db_hash)
-                    except UnknownHashError:
-                        verified = False
-
-            if verified:
-                request.session['user_authenticated'] = True
-                request.session['ID'] = user_id
-                request.session['avatar_selected'] = False
-                logger.info(f"User={username!r} (ID {user_id}) authenticated successfully.")
-                return redirect('/')
-            else:
-                messages.error(request, 'Contraseña incorrecta.')
-                logger.warning(f"Password mismatch for user={username!r}, id={user_id}")
-
+                if row:
+                    user_id, contraseña_hash = row
+                    print(repr(contraseña_hash), len(contraseña_hash))
+                    if phpass.verify(password, contraseña_hash):
+                        # Si la autenticación es exitosa, guardamos la sesión
+                        request.session['user_authenticated'] = True
+                        request.session['ID'] = user_id
+                        request.session['avatar_selected'] = False  # Avatar no seleccionado aún
+                        return redirect('/')  # Redirigir al flujo principal
+                    else:
+                        messages.error(request, 'Contraseña incorrecta')
+                else:
+                    messages.error(request, 'Usuario no encontrado')
         except DatabaseError as e:
-            logger.error(f"Database error during login for user={username!r}: {e}")
-            messages.error(request, 'Error interno. Intente más tarde.')
+            messages.error(request, 'Error al conectar con la base de datos')
 
+        # Si el login falla, volvemos a mostrar el formulario de inicio de sesión
         return render(request, 'login.html')
 
     def dispatch(self, request, *args, **kwargs):
