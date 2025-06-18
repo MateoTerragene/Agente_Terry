@@ -5,7 +5,7 @@ from django.shortcuts import render, redirect
 from django.views import View
 from Module_Manager.web_handler import WebHandler
 from django.contrib import messages
-from passlib.hash import phpass
+from passlib.hash import phpass, bcrypt
 from django.db import connections, DatabaseError
 from django.utils.decorators import method_decorator
 from Module_Manager.thread_manager import thread_manager_instance
@@ -447,32 +447,47 @@ class UserView(View):
         })
         
     def post(self, request):
-        # Maneja el formulario de inicio de sesión
-        username = request.POST.get('username').strip()
-        password = request.POST.get('password')
+        username = request.POST.get('username', '').strip()
+        password = request.POST.get('password', '')
 
         try:
             with connections['Terragene_Users_Database'].cursor() as cursor:
-                cursor.execute("SELECT ID, user_pass FROM wp_users WHERE user_login=%s", [username])
+                cursor.execute(
+                    "SELECT ID, user_pass FROM wp_users WHERE user_login=%s",
+                    [username]
+                )
                 row = cursor.fetchone()
 
-                if row:
-                    user_id, contraseña_hash = row
-                    print(repr(contraseña_hash), len(contraseña_hash))
-                    if phpass.verify(password, contraseña_hash):
-                        # Si la autenticación es exitosa, guardamos la sesión
+            if not row:
+                messages.error(request, 'Usuario no encontrado')
+            else:
+                user_id, password_hash = row
+
+                if password_hash.startswith('$wp$'):
+                    # es un bcrypt con prefijo '$wp$'
+                    # lo cortamos y usamos bcrypt para verificar
+                    bcrypt_hash = password_hash[len('$wp$'):]
+                    if bcrypt.verify(password, bcrypt_hash):
                         request.session['user_authenticated'] = True
                         request.session['ID'] = user_id
-                        request.session['avatar_selected'] = False  # Avatar no seleccionado aún
-                        return redirect('/')  # Redirigir al flujo principal
+                        request.session['avatar_selected'] = False
+                        return redirect('/')
                     else:
                         messages.error(request, 'Contraseña incorrecta')
+
                 else:
-                    messages.error(request, 'Usuario no encontrado')
-        except DatabaseError as e:
+                    # asumir hash PHPass portátil estándar
+                    if phpass.verify(password, password_hash):
+                        request.session['user_authenticated'] = True
+                        request.session['ID'] = user_id
+                        request.session['avatar_selected'] = False
+                        return redirect('/')
+                    else:
+                        messages.error(request, 'Contraseña incorrecta')
+
+        except DatabaseError:
             messages.error(request, 'Error al conectar con la base de datos')
 
-        # Si el login falla, volvemos a mostrar el formulario de inicio de sesión
         return render(request, 'login.html')
 
     def dispatch(self, request, *args, **kwargs):
