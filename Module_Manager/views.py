@@ -467,7 +467,7 @@ class UserView(View):
                 if password_hash.startswith('$wp$'):
                     # es un bcrypt con prefijo '$wp$'
                     # lo cortamos y usamos bcrypt para verificar
-                    bcrypt_hash = password_hash[len('$wp$'):]
+                    bcrypt_hash = password_hash[len('$wp'):]
                     if bcrypt.verify(password, bcrypt_hash):
                         request.session['user_authenticated'] = True
                         request.session['ID'] = user_id
