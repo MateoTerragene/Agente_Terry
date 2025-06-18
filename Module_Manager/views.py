@@ -20,6 +20,7 @@ from dotenv import load_dotenv
 import os
 from threading import Thread
 import time
+import hmac
 
 
 load_dotenv()
@@ -297,6 +298,38 @@ class WhatsAppQueryView(View):
             logger.error(f"Error processing WhatsApp message: {str(e)}")
             return HttpResponse('Error', status=500)
 
+def _check_wp_password(password: str, db_hash: str) -> bool:
+    """
+    Verify a WordPress‑style password hash against *password*.
+    Supports:
+        - $wp$  (bcrypt + SHA‑384 + Base64 pre‑hash)
+        - $2y$ / $2b$ / $2a$ (plain bcrypt)
+        - $P$ / $H$ (portable phpass)
+        - 32‑character hexadecimal (legacy MD5, UNSALTED → weak → login allowed but flagged)
+    """
+    try:
+        if db_hash.startswith('$wp$'):
+            # Strip the custom prefix and rebuild a regular bcrypt hash
+            bcrypt_hash = db_hash.replace('$wp$', '$', 1)
+            pre_hash = base64.b64encode(hashlib.sha384(password.encode()).digest()).decode()
+            return bcrypt.verify(pre_hash, bcrypt_hash)
+
+        if db_hash.startswith(('$2y$', '$2b$', '$2a$')):
+            return bcrypt.verify(password, db_hash)
+
+        if db_hash.startswith(('$P$', '$H$')):
+            return phpass.verify(password, db_hash)
+
+        # Very old WordPress exported plain MD5 (32 hex chars, no salt)
+        if re.fullmatch(r'[0-9a-fA-F]{32}', db_hash):
+            candidate = hashlib.md5(password.encode()).hexdigest()
+            return hmac.compare_digest(candidate, db_hash.lower())
+
+    except Exception as exc:          # any Passlib error
+        logger.warning("Password-hash verification error: %s", exc)
+
+    return False                       # on any failure, deny login
+
 def process_message(changes):
     whatsapp_handler = WhatsAppHandler()
 
@@ -448,53 +481,50 @@ class UserView(View):
             'avatar_selected': avatar_selected
         })
         
+
     def post(self, request):
-        username = request.POST.get('username', '').strip()
+        username = (request.POST.get('username') or '').strip()
         password = request.POST.get('password', '')
+
+        # Always rotate the session key early to mitigate fixation attacks
+        request.session.cycle_key()
+
+        if not username or not password:
+            messages.error(request, 'Usuario y contraseña son obligatorios')
+            return render(request, 'login.html')
 
         try:
             with connections['Terragene_Users_Database'].cursor() as cursor:
                 cursor.execute(
-                    "SELECT ID, user_pass FROM wp_users WHERE user_login=%s",
+                    "SELECT ID, user_pass FROM wp_users WHERE user_login = %s",
                     [username]
                 )
                 row = cursor.fetchone()
 
             if not row:
                 messages.error(request, 'Usuario no encontrado')
-            else:
-                user_id, password_hash = row
-                print("hashh:", password_hash)
+                return render(request, 'login.html')
 
-                if password_hash.startswith('$wp$'):
-                    # 1) regeneramos el hash bcrypt “puro” quitando el prefijo wp
-                    bcrypt_hash = password_hash.replace('$wp$', '$', 1)
-                    # 2) pre-haseamos con SHA-384 y codificamos en base64
-                    pre_hash = base64.b64encode(
-                        hashlib.sha384(password.encode('utf-8')).digest()
-                    ).decode('utf-8')
-                    # 3) verificamos el pre_hash contra el bcrypt
-                    if bcrypt.verify(pre_hash, bcrypt_hash):
-                        request.session['user_authenticated'] = True
-                        request.session['ID'] = user_id
-                        request.session['avatar_selected'] = False
-                        return redirect('/')
-                    else:
-                        messages.error(request, 'Contraseña incorrecta')
+            user_id, password_hash = row
+            if _check_wp_password(password, password_hash):
+                # Full session reset before login – prevents session fixation
+                request.session.flush()
+                request.session.cycle_key()
 
-                else:
-                    # asumir hash PHPass portátil estándar
-                    if phpass.verify(password, password_hash):
-                        request.session['user_authenticated'] = True
-                        request.session['ID'] = user_id
-                        request.session['avatar_selected'] = False
-                        return redirect('/')
-                    else:
-                        messages.error(request, 'Contraseña incorrecta')
+                request.session['user_authenticated'] = True
+                request.session['ID'] = user_id
+                request.session['avatar_selected'] = False
+                logger.info("User %s (ID %s) logged in", username, user_id)
+                return redirect('/')
 
-        except DatabaseError:
+            messages.error(request, 'Contraseña incorrecta')
+
+        except DatabaseError as db_exc:
+            logger.error("DB error during login for user '%s': %s", username, db_exc)
             messages.error(request, 'Error al conectar con la base de datos')
 
+        # On any failure fall through to login page
+        request.session.cycle_key()
         return render(request, 'login.html')
 
     def dispatch(self, request, *args, **kwargs):
